@@ -74,7 +74,7 @@ class SYN_API SynChronoManager {
     ///
     std::map<AgentKey, std::shared_ptr<SynAgent>>& GetAgents() { return m_agents; }
 
-    ///@brief Get the zombies list
+    ///@brief Get the zombie list
     ///
     std::map<AgentKey, std::shared_ptr<SynAgent>>& GetZombies() { return m_zombies; }
 
