@@ -163,8 +163,7 @@ std::shared_ptr<SynDDSTopic> SynDDSCommunicator::CreateTopic(const std::string& 
     return topic;
 }
 
-std::shared_ptr<SynDDSTopic> SynDDSCommunicator::CreateTopic(const std::string& topic_name,
-                                                             TopicDataType* data_type) {
+std::shared_ptr<SynDDSTopic> SynDDSCommunicator::CreateTopic(const std::string& topic_name, TopicDataType* data_type) {
     auto topic = this->CreateTopic(topic_name, data_type, m_prefix);
     return topic;
 }
@@ -238,11 +237,17 @@ std::shared_ptr<SynDDSSubscriber> SynDDSCommunicator::CreateSubscriber(const std
         SynLog() << "CreateSubscriber: Topic (" << topic_name << ") instantiation FAILED\n";
         return nullptr;
     }
-	for(auto sub : m_subscribers) {
-		if (topic->GetTopicName().find(sub->m_topic->GetTopicName()) != std::string::npos) {
-			return nullptr;
-		}
-	}
+
+    // TODO: this section seems to cause issues with some nodes unable to recognize zombies
+    /*
+    for (auto sub : m_subscribers) {
+        if (topic->GetTopicName().find(sub->m_topic->GetTopicName()) != std::string::npos) {
+            std::cout << topic->GetTopicName().find(sub->m_topic->GetTopicName()) << std::endl;
+            std::cout << "you should not be here" << std::endl;
+            return nullptr;
+        }
+    }
+    */
 
     return CreateSubscriber(topic, callback, message, is_synchronous, is_managed);
 }
