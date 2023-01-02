@@ -128,16 +128,16 @@ ChBezierCurve::ChBezierCurve(const std::vector<ChVector<> >& points, bool closed
 
         ChVectorDynamic<> rhs_x(n);
         ChVectorDynamic<> rhs_y(n);
-        ChVectorDynamic<> rhs_z(n);        
+        ChVectorDynamic<> rhs_z(n);
         ChVectorDynamic<> x(n);
         ChVectorDynamic<> y(n);
         ChVectorDynamic<> z(n);
 
         std::vector<T> triplets;
         for (int i = 1; i < n - 1; i++) {
-            triplets.push_back(T(i, i-1, 1.0));
+            triplets.push_back(T(i, i - 1, 1.0));
             triplets.push_back(T(i, i, 4.0));
-            triplets.push_back(T(i, i+1, 1.0));
+            triplets.push_back(T(i, i + 1, 1.0));
             rhs_x[i] = 4 * m_points[i].x() + 2 * m_points[i + 1].x();
             rhs_y[i] = 4 * m_points[i].y() + 2 * m_points[i + 1].y();
             rhs_z[i] = 4 * m_points[i].z() + 2 * m_points[i + 1].z();
@@ -182,7 +182,8 @@ ChBezierCurve::ChBezierCurve(const std::vector<ChVector<> >& points, bool closed
         m_inCV[n] = m_points[n] + m_points[0] - m_outCV[0];
 
         ////std::cout << "slope diff: " << (m_outCV[0] - m_points[0]) - (m_points[n] - m_inCV[n]) << std::endl;
-        ////std::cout << "curv diff: " << (m_inCV[1] - 2.0 * m_outCV[0] + m_points[0]) - (m_points[n] - 2.0 * m_inCV[n] + m_outCV[n-1]) << std::endl;
+        ////std::cout << "curv diff: " << (m_inCV[1] - 2.0 * m_outCV[0] + m_points[0]) - (m_points[n] - 2.0 * m_inCV[n]
+        ///+ m_outCV[n-1]) << std::endl;
 
     } else {
         double* rhs_x = new double[n];
@@ -203,11 +204,11 @@ ChBezierCurve::ChBezierCurve(const std::vector<ChVector<> >& points, bool closed
         rhs_x[0] = m_points[0].x() + 2 * m_points[1].x();
         rhs_y[0] = m_points[0].y() + 2 * m_points[1].y();
         rhs_z[0] = m_points[0].z() + 2 * m_points[1].z();
-        
+
         rhs_x[n - 1] = (8 * m_points[n - 1].x() + m_points[n].x()) / 2;
         rhs_y[n - 1] = (8 * m_points[n - 1].y() + m_points[n].y()) / 2;
         rhs_z[n - 1] = (8 * m_points[n - 1].z() + m_points[n].z()) / 2;
-        
+
         solveTriDiag(n, rhs_x, x);
         solveTriDiag(n, rhs_y, y);
         solveTriDiag(n, rhs_z, z);
@@ -286,7 +287,7 @@ std::shared_ptr<ChBezierCurve> ChBezierCurve::read(const std::string& filename, 
     try {
         ifile.exceptions(std::ios::failbit | std::ios::badbit | std::ios::eofbit);
         ifile.open(filename.c_str());
-    } catch (const std::exception &) {
+    } catch (const std::exception&) {
         throw ChException("Cannot open input file");
     }
 
@@ -460,7 +461,7 @@ ChVector<> ChBezierCurve::eval(double t) const {
 // -----------------------------------------------------------------------------
 ChVector<> ChBezierCurve::calcClosestPoint(const ChVector<>& loc, size_t i, double& t) const {
     // Bracket location of projection
-    int m_numEvals = 20;
+    int m_numEvals = 100;
     double dt = 1.0 / m_numEvals;
     int min_idx = -1;
     double d2_min = std::numeric_limits<double>::max();
@@ -555,8 +556,7 @@ ChVector<> ChBezierCurve::calcClosestPoint(const ChVector<>& loc, size_t i, doub
 
 // -----------------------------------------------------------------------------
 
-void ChBezierCurve::ArchiveOUT(ChArchiveOut& marchive)
-{
+void ChBezierCurve::ArchiveOUT(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChBezierCurve>();
 
@@ -570,10 +570,9 @@ void ChBezierCurve::ArchiveOUT(ChArchiveOut& marchive)
     marchive << CHNVP(m_paramTol);
 }
 
-void ChBezierCurve::ArchiveIN(ChArchiveIn& marchive)
-{
+void ChBezierCurve::ArchiveIN(ChArchiveIn& marchive) {
     // version number
-    /*int version =*/ marchive.VersionRead<ChBezierCurve>();
+    /*int version =*/marchive.VersionRead<ChBezierCurve>();
 
     // stream in all member data:
     marchive >> CHNVP(m_points);
@@ -661,6 +660,7 @@ void ChBezierCurveTracker::reset(const ChVector<>& loc) {
 //    the previous iteration the parameter was close to 0.
 // -----------------------------------------------------------------------------
 int ChBezierCurveTracker::calcClosestPoint(const ChVector<>& loc, ChVector<>& point) {
+    /*
     // Evaluate in current interval
     point = m_path->calcClosestPoint(loc, m_curInterval, m_curParam);
 
@@ -714,8 +714,8 @@ int ChBezierCurveTracker::calcClosestPoint(const ChVector<>& loc, ChVector<>& po
         // Not close to interval bounds. Done
         return 0;
     }
+    */
 
-    /*
     bool lastAtMin = false;
     bool lastAtMax = false;
 
@@ -723,33 +723,33 @@ int ChBezierCurveTracker::calcClosestPoint(const ChVector<>& loc, ChVector<>& po
         point = m_path->calcClosestPoint(loc, m_curInterval, m_curParam);
 
         if (m_curParam < ChBezierCurve::m_paramTol) {
-            if ((m_curInterval == 0) && (!m_isClosedPath))
+            if ((m_curInterval == 0) && (!m_path->IsClosed()))
                 return -1;
 
             if (lastAtMax)
                 return 0;
 
             // If the search region is at the beginning of the interval check the
-            // previous interval.  Loop to the last interval if the path is a 
+            // previous interval.  Loop to the last interval if the path is a
             // closed loop and is it is currently in the first interval
-            if ((m_curInterval == 0) && (m_isClosedPath))
-                m_curInterval = m_path->getNumPoints() - 2; 
+            if ((m_curInterval == 0) && (m_path->IsClosed()))
+                m_curInterval = m_path->getNumPoints() - 2;
             else
                 m_curInterval--;
 
             lastAtMin = true;
             m_curParam = 1;
         } else if (m_curParam > 1 - ChBezierCurve::m_paramTol) {
-            if ((m_curInterval == m_path->getNumPoints() - 2) && (!m_isClosedPath))
+            if ((m_curInterval == m_path->getNumPoints() - 2) && (!m_path->IsClosed()))
                 return +1;
 
             if (lastAtMin)
                 return 0;
 
-            // If the search region is at the end of the interval check the 
-            // next interval.  Loop to the first interval if the path is a 
+            // If the search region is at the end of the interval check the
+            // next interval.  Loop to the first interval if the path is a
             // closed loop and is it is currently in the last interval
-            if ((m_curInterval == m_path->getNumPoints() - 2) && (m_isClosedPath))
+            if ((m_curInterval == m_path->getNumPoints() - 2) && (m_path->IsClosed()))
                 m_curInterval = 0;
             else
                 m_curInterval++;
@@ -759,7 +759,6 @@ int ChBezierCurveTracker::calcClosestPoint(const ChVector<>& loc, ChVector<>& po
         } else
             return 0;
     }
-    */
 }
 
 int ChBezierCurveTracker::calcClosestPoint(const ChVector<>& loc, ChFrame<>& tnb, double& curvature) {
@@ -792,7 +791,6 @@ int ChBezierCurveTracker::calcClosestPoint(const ChVector<>& loc, ChFrame<>& tnb
 
     tnb.SetRot(A);
     tnb.SetPos(r);
-
 
     // Calculate curvature
     curvature = rp_rpp_norm / (rp_norm * rp_norm * rp_norm);
