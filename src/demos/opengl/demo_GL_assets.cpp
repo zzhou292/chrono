@@ -27,7 +27,7 @@
 #include "chrono/assets/ChCylinderShape.h"
 #include "chrono/assets/ChSphereShape.h"
 #include "chrono/assets/ChPathShape.h"
-#include "chrono/assets/ChObjFileShape.h"
+#include "chrono/assets/ChModelFileShape.h"
 
 #include "chrono_opengl/ChVisualSystemOpenGL.h"
 
@@ -157,7 +157,7 @@ int main(int argc, char* argv[]) {
     body->AddVisualShape(mesh, ChFrame<>(ChVector<>(2, 1, 2), QUNIT));
 
     // ==Asset== Attach a 'Wavefront mesh' asset, referencing a .obj file and offset it.
-    auto objmesh = chrono_types::make_shared<ChObjFileShape>();
+    auto objmesh = chrono_types::make_shared<ChModelFileShape>();
     objmesh->SetFilename(GetChronoDataFile("models/forklift/body.obj"));
     objmesh->SetTexture(GetChronoDataFile("textures/bluewhite.png"));
     body->AddVisualShape(objmesh, ChFrame<>(ChVector<>(0, 0, 2), QUNIT));
@@ -229,7 +229,7 @@ int main(int argc, char* argv[]) {
     vis.SetRenderMode(opengl::SOLID);
     vis.SetParticleRenderMode(0.05f, opengl::POINTS);
     vis.Initialize();
-    vis.SetCameraPosition(ChVector<>(-2.0, 3.0, -4.0), ChVector<>(0, 0, 0));
+    vis.AddCamera(ChVector<>(-2.0, 3.0, -4.0), ChVector<>(0, 0, 0));
     vis.SetCameraVertical(CameraVerticalDir::Y);
     vis.SetCameraProperties(0.5f, 0.1f, 500.0f);
 
