@@ -18,11 +18,17 @@
 #include <vsg/maths/mat4.h>
 #include <vsg/maths/vec3.h>
 
-#include "chrono/core/ChFrame.h"
+#include "chrono/physics/ChBody.h"
 
 #include "chrono_vsg/ChApiVSG.h"
 
 namespace vsg {
+
+class CH_VSG_API vec3CH : public vec3 {
+  public:
+    vec3CH(const chrono::ChVector<>& vec);
+};
+
 class CH_VSG_API dvec3CH : public dvec3 {
   public:
     dvec3CH(const chrono::ChVector<>& vec);

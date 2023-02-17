@@ -19,13 +19,10 @@
 #include "chrono/ChConfig.h"
 #include "chrono/physics/ChSystem.h"
 #include "chrono/physics/ChParticleCloud.h"
+#include "chrono/assets/ChVisualSystem.h"
 
 #include "chrono_fsi/ChApiFsi.h"
 #include "chrono_fsi/ChSystemFsi.h"
-
-#ifdef CHRONO_OPENGL
-    #include "chrono_opengl/ChVisualSystemOpenGL.h"
-#endif
 
 namespace chrono {
 namespace fsi {
@@ -34,50 +31,61 @@ namespace fsi {
 /// @{
 
 /// Run-time visualization support for Chrono::FSI systems.
-/// Requires the Chrono::OpenGL module; if not available, most ChVisualizationFsi functions are no-op.
-///
 /// Note that using run-time visualization for a Chrono::FSI system incurs the penalty of collecting positions of all
 /// particles every time the Render() function is invoked.
-class CH_FSI_API ChVisualizationFsi {
+class CH_FSI_API ChFsiVisualization {
   public:
     /// Rendering mode for particles and mesh objects.
     enum class RenderMode {POINTS, WIREFRAME, SOLID};
 
     /// Create a run-time FSI visualization object associated with a given Chrono::Fsi system.
-    ChVisualizationFsi(ChSystemFsi* sysFSI);
+    ChFsiVisualization(ChSystemFsi* sysFSI);
 
-#ifdef CHRONO_OPENGL
-    /// Create a run-time FSI visualization object associated with a given Chrono::Fsi system and using an existing
-    /// OpenGL visual system.
-    ChVisualizationFsi(ChSystemFsi* sysFSI, opengl::ChVisualSystemOpenGL* vis);
-#endif
-
-    ~ChVisualizationFsi();
+    virtual ~ChFsiVisualization();
 
     /// Set title of the visualization window (default: "").
-    void SetTitle(const std::string& title);
+    virtual void SetTitle(const std::string& title);
 
     /// Set window dimensions (default: 1280x720).
-    void SetSize(int width, int height);
+    virtual void SetSize(int width, int height);
+
+    /// Add a camera initially at the specified position and target (look at) point.
+    virtual void AddCamera(const ChVector<>& pos, const ChVector<>& target);
 
     /// Set camera position and target (look at) point.
-    void UpdateCamera(const ChVector<>& pos, const ChVector<>& target);
+    virtual void UpdateCamera(const ChVector<>& pos, const ChVector<>& target);
 
     /// Set camera up vector (default: Z).
-    void SetCameraUpVector(const ChVector<>& up);
+    virtual void SetCameraVertical(CameraVerticalDir up);
 
     /// Set scale for camera movement increments (default: 0.1).
-    void SetCameraMoveScale(float scale);
+    virtual void SetCameraMoveScale(float scale);
 
-    /// Set visualization radius for SPH particles (default: half initial spacing).
+    /// Set rendering mode for SPH particles.
     /// Must be called before Initialize().
-    void SetParticleRenderMode(double radius, RenderMode mode = RenderMode::POINTS);
+    virtual void SetParticleRenderMode(RenderMode mode);
 
     /// Set rendering mode for mesh objects (default: WIREFRAME).
-    void SetRenderMode(RenderMode mode);
+    virtual void SetRenderMode(RenderMode mode);
 
-    /// Enable/disable information overlay (default: false).
-    void EnableInfoOverlay(bool val);
+    /// Set default color for fluid SPH particles (default: [0.10, 0.40, 0.65]).
+    void SetColorFluidMarkers(const ChColor& col) { m_sph_color = col; }
+
+    /// Set default color for boundary BCE markers (default: [0.65, 0.30, 0.03]).
+    void SetColorBoundaryMarkers(const ChColor& col) { m_bndry_bce_color = col; }
+
+    /// Set default color for rigid body BCE markers (default: [0.10, 0.60, 0.30]).
+    void SetColorRigidBodyMarkers(const ChColor& col) { m_rigid_bce_color = col; }
+
+    /// Set default color for flex body BCE markers (default: [0.40, 0.10, 0.65]).
+    void SetColorFlexBodyMarkers(const ChColor& col) { m_flex_bce_color = col; }
+
+    /// Set a callback for dynamic coloring of SPH particles.
+    /// If none provided, SPH particles are rendered with a default color.
+    void SetSPHColorCallback(std::shared_ptr<ChParticleCloud::ColorCallback> functor) { m_color_fun = functor; }
+
+    /// Enable/disable information overlay (default: true).
+    virtual void EnableInfoOverlay(bool val);
 
     /// Enable/disable rendering of fluid SPH particles (default: true).
     void EnableFluidMarkers(bool val) { m_sph_markers = val; }
@@ -103,38 +111,36 @@ class CH_FSI_API ChVisualizationFsi {
     void AddProxyBody(std::shared_ptr<ChBody> body);
 
     /// Initialize the run-time visualization system.
-    /// If the Chrono::OpenGL module is not available, this function is no-op.
-    void Initialize();
+    virtual void Initialize();
 
     /// Render the current state of the Chrono::Fsi system. This function, typically invoked from within the main
     /// simulation loop, can only be called after construction of the FSI system was completed (i.e., the system was
     /// initialized). This function querries the positions of all particles in the FSI system in order to update the
     /// positions of the proxy bodies.
     /// Returns false if the visualization window was closed.
-    /// If the Chrono::OpenGL module is not available, this function is no-op.
-    bool Render();
+    virtual bool Render() = 0;
 
-#ifdef CHRONO_OPENGL
-    opengl::ChVisualSystemOpenGL& GetVisualSystem() const { return *m_vsys; }
-#endif
-
-  private:
+  protected:
     ChSystemFsi* m_systemFSI;  ///< associated Chrono::FSI system
     ChSystem* m_system;        ///< internal Chrono system (holds proxy bodies)
     ChSystem* m_user_system;   ///< optional user-provided system
-    bool m_owns_vis;           ///< ownership flag for OpenGL visualization system
-#ifdef CHRONO_OPENGL
-    opengl::ChVisualSystemOpenGL* m_vsys;  ///< OpenGL visualization system
-#endif
 
-    double m_radius;           ///< particle visualization radius
     bool m_sph_markers;        ///< render fluid SPH particles?
+    bool m_bndry_bce_markers;  ///< render boundary BCE markers?
     bool m_rigid_bce_markers;  ///< render rigid-body BCE markers?
     bool m_flex_bce_markers;   ///< render flex-body markers?
-    bool m_bndry_bce_markers;  ///< render boundary BCE markers?
 
-    std::shared_ptr<ChParticleCloud> m_particles;  ///< particle cloud proxy for SPH markers
-    unsigned int m_bce_start_index;                ///< start index of BCE proxy bodies in m_system's body list
+    std::shared_ptr<ChParticleCloud> m_sph_cloud;        ///< particle cloud proxy for SPH particles
+    std::shared_ptr<ChParticleCloud> m_bndry_bce_cloud;  ///< particle cloud proxy for boundary BCE markers
+    std::shared_ptr<ChParticleCloud> m_rigid_bce_cloud;  ///< particle cloud proxy for BCE markers on rigid bodies
+    std::shared_ptr<ChParticleCloud> m_flex_bce_cloud;   ///< particle cloud proxy for BCE markers on flex bodies
+
+    ChColor m_sph_color;        ///< color for SPH particles
+    ChColor m_bndry_bce_color;  ///< color for boundary BCE markers
+    ChColor m_rigid_bce_color;  ///< color for BCE markers on rigid bodies
+    ChColor m_flex_bce_color;   ///< color for BCE markers on flex bodies
+
+    std::shared_ptr<ChParticleCloud::ColorCallback> m_color_fun;  ///< dynamic color functor for SPH particles
 };
 
 /// @} fsi_utils
