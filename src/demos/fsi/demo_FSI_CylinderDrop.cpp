@@ -25,10 +25,10 @@
 
 #include "chrono_fsi/ChSystemFsi.h"
 
+#include "chrono/assets/ChVisualSystem.h"
 #ifdef CHRONO_OPENGL
     #include "chrono_fsi/visualization/ChFsiVisualizationGL.h"
 #endif
-
 #ifdef CHRONO_VSG
     #include "chrono_fsi/visualization/ChFsiVisualizationVSG.h"
 #endif
@@ -306,8 +306,8 @@ int main(int argc, char* argv[]) {
         visFSI->SetCameraMoveScale(0.1f);
         visFSI->EnableBoundaryMarkers(false);
         visFSI->EnableRigidBodyMarkers(true);
-        visFSI->SetRenderMode(ChFsiVisualizationGL::RenderMode::SOLID);
-        visFSI->SetParticleRenderMode(ChFsiVisualizationGL::RenderMode::SOLID);
+        visFSI->SetRenderMode(ChFsiVisualization::RenderMode::SOLID);
+        visFSI->SetParticleRenderMode(ChFsiVisualization::RenderMode::SOLID);
         visFSI->SetSPHColorCallback(chrono_types::make_shared<HeightColorCallback>(0, 1.2));
         visFSI->AttachSystem(&sysMBS);
         visFSI->Initialize();
@@ -324,9 +324,6 @@ int main(int argc, char* argv[]) {
     ChTimer<> timer;
     timer.start();
     while (time < t_end) {
-        std::cout << "step: " << current_step << "  time: " << time
-                  << "  cyl z: " << sysMBS.Get_bodylist()[1]->GetPos().z() << std::endl;
-
         if (output && current_step % output_steps == 0) {
             std::cout << "-------- Output" << std::endl;
             sysFSI.PrintParticleToFile(out_dir + "/particles");
@@ -341,6 +338,9 @@ int main(int argc, char* argv[]) {
             if (!visFSI->Render())
                 break;
         }
+
+        std::cout << "step: " << current_step << "\ttime: " << time << "\tRTF: " << sysFSI.GetRTF()
+                  << "\tcyl z: " << sysMBS.Get_bodylist()[1]->GetPos().z() << std::endl;
 
         // Call the FSI solver
         sysFSI.DoStepDynamics_FSI();
