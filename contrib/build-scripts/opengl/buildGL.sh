@@ -118,3 +118,6 @@ then
 else
     echo "No Debug build"
 fi
+
+# Renaming glfw3 config file name
+mv ~/Packages/gl/lib/cmake/glfw3/glfw3Config.cmake ~/Packages/gl/lib/cmake/glfw3/glfw3-config.cmake
