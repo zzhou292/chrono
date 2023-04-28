@@ -42,6 +42,14 @@ FASTRTPS_INSTALL_DIR="$HOME/Packages/fastrtps-2.4.0"
 
 SWIG_EXE="swig"
 
+LIB_DIR="lib"
+os_info=`uname -a`
+alma=MANJARO
+
+if [[ "$os_info" == *"$alma"* ]]; then
+      LIB_DIR="lib64"
+fi
+ 
 # ------------------------------------------------------------------------
 
 BUILDSYSTEM="Ninja Multi-Config"
