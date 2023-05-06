@@ -140,35 +140,39 @@ void ChLinkMateGeneric::Update(double mytime, bool update_assets) {
     if (this->Body1 && this->Body2) {
         this->mask.SetTwoBodiesVariables(&Body1->Variables(), &Body2->Variables());
 
-        ChFrame<> aframe1 = this->frame1 >> (*this->Body1);
-        ChFrame<> aframe2 = this->frame2 >> (*this->Body2);
-        ChFrame<> aframe12;
-        aframe2.TransformParentToLocal(aframe1, aframe12);
-        // Now 'aframe12' contains the position/rotation of frame 1 respect to frame 2, in frame 2 coords.
+        ChFrame<> F1_W = this->frame1 >> (*this->Body1);
+        ChFrame<> F2_W = this->frame2 >> (*this->Body2);
+        ChFrame<> F1_wrt_F2;
+        F2_W.TransformParentToLocal(F1_W, F1_wrt_F2);
+        // Now 'F1_wrt_F2' contains the position/rotation of frame 1 respect to frame 2, in frame 2 coords.
 
-        ChMatrix33<> Jx1 = aframe2.GetA().transpose();
-        ChMatrix33<> Jx2 = -aframe2.GetA().transpose();
+        ChMatrix33<> Jx1 = F2_W.GetA().transpose();
+        ChMatrix33<> Jx2 = -F2_W.GetA().transpose();
 
-        ChMatrix33<> Jr1 = -aframe2.GetA().transpose() * Body1->GetA() * ChStarMatrix33<>(frame1.GetPos());
-        ChVector<> p2p1_base2 = Body2->GetA().transpose() * (aframe1.GetPos() - aframe2.GetPos());
-        ChMatrix33<> Jr2 = this->frame2.GetA().transpose() * ChStarMatrix33<>(frame2.GetPos() + p2p1_base2);
+        ChMatrix33<> Jr1 = -F2_W.GetA().transpose() * Body1->GetA() * ChStarMatrix33<>(frame1.GetPos());
+        ChVector<> r12_B2 = Body2->GetA().transpose() * (F1_W.GetPos() - F2_W.GetPos());
+        ChMatrix33<> Jr2 = this->frame2.GetA().transpose() * ChStarMatrix33<>(frame2.GetPos() + r12_B2);
 
-        // Premultiply by Jw1 and Jw2 by  0.5*[Fp(q_resid)]' to get residual as imaginary part of a quaternion.
-        // For small misalignment this effect is almost insignificant because [Fp(q_resid)]=[I],
-        // but otherwise it is needed (if you want to use the stabilization term - if not, you can live without).
-        this->P = 0.5 * (ChMatrix33<>(aframe12.GetRot().e0()) + ChStarMatrix33<>(aframe12.GetRot().GetVector()));
+        // Premultiply by Jw1 and Jw2 by P = 0.5 * [Fp(q_resid^*)]'.bottomRow(3) to get residual as imaginary part of a
+        // quaternion. For small misalignment this effect is almost insignificant because P ~= [I33], but otherwise it
+        // is needed (if you want to use the stabilization term - if not, you can live without).
+        this->P = 0.5 * (ChMatrix33<>(F1_wrt_F2.GetRot().e0()) + ChStarMatrix33<>(F1_wrt_F2.GetRot().GetVector()));
 
-        ChMatrix33<> Jw1 = this->P.transpose() * aframe2.GetA().transpose() * Body1->GetA();
-        ChMatrix33<> Jw2 = -this->P.transpose() * aframe2.GetA().transpose() * Body2->GetA();
+        ChMatrix33<> Jw1 = this->P.transpose() * F2_W.GetA().transpose() * Body1->GetA();
+        ChMatrix33<> Jw2 = -this->P.transpose() * F2_W.GetA().transpose() * Body2->GetA();
 
         // Another equivalent expression:
-        // ChMatrix33<> Jw1 = this->P * aframe1.GetA().transpose() * Body1->GetA();
-        // ChMatrix33<> Jw2 = -this->P * aframe1.GetA().transpose() * Body2->GetA();
+        // ChMatrix33<> Jw1 = this->P * F1_W.GetA().transpose() * Body1->GetA();
+        // ChMatrix33<> Jw2 = -this->P * F1_W.GetA().transpose() * Body2->GetA();
+
+        // The Jacobian matrix of constraint is:
+        // Cq = [ Jx1,  Jr1,  Jx2,  Jr2 ]
+        //      [   0,  Jw1,    0,  Jw2 ]
 
         int nc = 0;
 
         if (c_x) {
-            C(nc) = aframe12.GetPos().x();
+            C(nc) = F1_wrt_F2.GetPos().x();
             mask.Constr_N(nc).Get_Cq_a().segment(0, 3) = Jx1.row(0);
             mask.Constr_N(nc).Get_Cq_a().segment(3, 3) = Jr1.row(0);
             mask.Constr_N(nc).Get_Cq_b().segment(0, 3) = Jx2.row(0);
@@ -176,7 +180,7 @@ void ChLinkMateGeneric::Update(double mytime, bool update_assets) {
             nc++;
         }
         if (c_y) {
-            C(nc) = aframe12.GetPos().y();
+            C(nc) = F1_wrt_F2.GetPos().y();
             mask.Constr_N(nc).Get_Cq_a().segment(0, 3) = Jx1.row(1);
             mask.Constr_N(nc).Get_Cq_a().segment(3, 3) = Jr1.row(1);
             mask.Constr_N(nc).Get_Cq_b().segment(0, 3) = Jx2.row(1);
@@ -184,7 +188,7 @@ void ChLinkMateGeneric::Update(double mytime, bool update_assets) {
             nc++;
         }
         if (c_z) {
-            C(nc) = aframe12.GetPos().z();
+            C(nc) = F1_wrt_F2.GetPos().z();
             mask.Constr_N(nc).Get_Cq_a().segment(0, 3) = Jx1.row(2);
             mask.Constr_N(nc).Get_Cq_a().segment(3, 3) = Jr1.row(2);
             mask.Constr_N(nc).Get_Cq_b().segment(0, 3) = Jx2.row(2);
@@ -192,7 +196,7 @@ void ChLinkMateGeneric::Update(double mytime, bool update_assets) {
             nc++;
         }
         if (c_rx) {
-            C(nc) = aframe12.GetRot().e1();
+            C(nc) = F1_wrt_F2.GetRot().e1();
             mask.Constr_N(nc).Get_Cq_a().setZero();
             mask.Constr_N(nc).Get_Cq_b().setZero();
             mask.Constr_N(nc).Get_Cq_a().segment(3, 3) = Jw1.row(0);
@@ -200,7 +204,7 @@ void ChLinkMateGeneric::Update(double mytime, bool update_assets) {
             nc++;
         }
         if (c_ry) {
-            C(nc) = aframe12.GetRot().e2();
+            C(nc) = F1_wrt_F2.GetRot().e2();
             mask.Constr_N(nc).Get_Cq_a().setZero();
             mask.Constr_N(nc).Get_Cq_b().setZero();
             mask.Constr_N(nc).Get_Cq_a().segment(3, 3) = Jw1.row(1);
@@ -208,7 +212,7 @@ void ChLinkMateGeneric::Update(double mytime, bool update_assets) {
             nc++;
         }
         if (c_rz) {
-            C(nc) = aframe12.GetRot().e3();
+            C(nc) = F1_wrt_F2.GetRot().e3();
             mask.Constr_N(nc).Get_Cq_a().setZero();
             mask.Constr_N(nc).Get_Cq_b().setZero();
             mask.Constr_N(nc).Get_Cq_a().segment(3, 3) = Jw1.row(2);
@@ -328,13 +332,13 @@ void ChLinkMateGeneric::KRMmatricesLoad(double Kfactor, double Rfactor, double M
     if (this->Kmatr) {
         ChMatrix33<> R_B1_W = Body1->GetA();
         ChMatrix33<> R_B2_W = Body2->GetA();
-        //ChMatrix33<> R_F1_B1 = frame1.GetA();
-        //ChMatrix33<> R_F2_B2 = frame2.GetA();
+        // ChMatrix33<> R_F1_B1 = frame1.GetA();
+        // ChMatrix33<> R_F2_B2 = frame2.GetA();
         ChFrame<> F1_W = this->frame1 >> (*this->Body1);
         ChFrame<> F2_W = this->frame2 >> (*this->Body2);
         ChMatrix33<> R_F1_W = F1_W.GetA();
         ChMatrix33<> R_F2_W = F2_W.GetA();
-        ChVector<> P12_B2 = R_B2_W.transpose() * (F1_W.GetPos() - F2_W.GetPos());
+        ChVector<> r12_B2 = R_B2_W.transpose() * (F1_W.GetPos() - F2_W.GetPos());
         ChFrame<> F1_wrt_F2;
         F2_W.TransformParentToLocal(F1_W, F1_wrt_F2);
 
@@ -344,23 +348,23 @@ void ChLinkMateGeneric::KRMmatricesLoad(double Kfactor, double Rfactor, double M
         ChStarMatrix33<> rtilde_F2_B2(r_F2_B2);
 
         // Main part
-        ChMatrixDynamic<> Km;
-        Km.setZero(12, 12);
-        Km.block<3, 3>(0, 9) = -R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose() * R_B2_W;
-        Km.block<3, 3>(3, 3) =
+        ChMatrixDynamic<> Kcm;
+        Kcm.setZero(12, 12);
+        Kcm.block<3, 3>(0, 9) = -R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose() * R_B2_W;
+        Kcm.block<3, 3>(3, 3) =
             rtilde_F1_B1 * R_B1_W.transpose() * R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose() * R_B1_W +
             R_B1_W.transpose() * R_F2_W * ChStarMatrix33<>(this->P * gamma_m) * R_F2_W.transpose() * R_B1_W;
-        Km.block<3, 3>(3, 9) =
+        Kcm.block<3, 3>(3, 9) =
             -rtilde_F1_B1 * R_B1_W.transpose() * R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose() * R_B2_W -
             R_B1_W.transpose() * R_F2_W * ChStarMatrix33<>(this->P * gamma_m) * R_F2_W.transpose() * R_B2_W;
-        Km.block<3, 3>(6, 9) = R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose() * R_B2_W;
+        Kcm.block<3, 3>(6, 9) = R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose() * R_B2_W;
 
-        Km.block<3, 3>(9, 0) = R_B2_W.transpose() * R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose();
-        Km.block<3, 3>(9, 3) =
+        Kcm.block<3, 3>(9, 0) = R_B2_W.transpose() * R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose();
+        Kcm.block<3, 3>(9, 3) =
             -R_B2_W.transpose() * R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose() * R_B1_W * rtilde_F1_B1;
-        Km.block<3, 3>(9, 6) = -R_B2_W.transpose() * R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose();
-        Km.block<3, 3>(9, 9) = R_B2_W.transpose() * R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose() * R_B2_W *
-                               ChStarMatrix33<>(P12_B2 + r_F2_B2);
+        Kcm.block<3, 3>(9, 6) = -R_B2_W.transpose() * R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose();
+        Kcm.block<3, 3>(9, 9) = R_B2_W.transpose() * R_F2_W * ChStarMatrix33<>(gamma_f) * R_F2_W.transpose() * R_B2_W *
+                                ChStarMatrix33<>(r12_B2 + r_F2_B2);
 
         double s_F1_F2 = F1_wrt_F2.GetRot().e0();
         ChVector<> v_F1_F2 = F1_wrt_F2.GetRot().GetVector();
@@ -370,15 +374,15 @@ void ChLinkMateGeneric::KRMmatricesLoad(double Kfactor, double Rfactor, double M
                          0.25 * ChStarMatrix33<>(gamma_m) * (s_F1_F2 * I33 + ChStarMatrix33<>(v_F1_F2));
 
         // Stabilization part
-        ChMatrixDynamic<> Ks;
-        Ks.setZero(12, 12);
-        Ks.block<3, 3>(3, 3) = R_B1_W.transpose() * R_F2_W * G * R_F1_W.transpose() * R_B1_W;
-        Ks.block<3, 3>(3, 9) = -R_B1_W.transpose() * R_F2_W * G * R_F1_W.transpose() * R_B2_W;
-        Ks.block<3, 3>(9, 3) = -R_B2_W.transpose() * R_F2_W * G * R_F1_W.transpose() * R_B1_W;
-        Ks.block<3, 3>(9, 9) = R_B2_W.transpose() * R_F2_W * G * R_F1_W.transpose() * R_B2_W;
+        ChMatrixDynamic<> Kcs;
+        Kcs.setZero(12, 12);
+        Kcs.block<3, 3>(3, 3) = R_B1_W.transpose() * R_F2_W * G * R_F1_W.transpose() * R_B1_W;
+        Kcs.block<3, 3>(3, 9) = -R_B1_W.transpose() * R_F2_W * G * R_F1_W.transpose() * R_B2_W;
+        Kcs.block<3, 3>(9, 3) = -R_B2_W.transpose() * R_F2_W * G * R_F1_W.transpose() * R_B1_W;
+        Kcs.block<3, 3>(9, 9) = R_B2_W.transpose() * R_F2_W * G * R_F1_W.transpose() * R_B2_W;
 
         // The complete tangent stiffness matrix
-        this->Kmatr->Get_K() = (Km + Ks) * Kfactor;
+        this->Kmatr->Get_K() = (Kcm + Kcs) * Kfactor;
     }
 }
 
@@ -462,9 +466,24 @@ void ChLinkMateGeneric::IntStateScatterReactions(const unsigned int off_L, const
         nc++;
     }
 
+    // The transpose of the Jacobian matrix of constraint is:
+    // Cq.T = [ Jx1.T;  O      ]
+    //        [ Jr1.T;  Jw1.T  ]
+    //        [ Jx2.T;  O      ]
+    //        [ Jr2.T;  Jw2.T  ]
+    // The Lagrange multipliers are:
+    // gamma = [ gamma_f ]
+    //         [ gamma_m ]
+    //
+    // The forces and torques acting on Body1 and Body2 are simply calculated as: Cq.T*gamma,
+    // where the forces are expressed in the absolute frame,
+    // the torques are expressed in the local frame of B1,B2, respectively.
+    // This is consistent with the mixed basis of rigid bodies and nodes.
     react_force = gamma_f;
-    // convert from Lagrange multiplier to reaction torque
-    react_torque = this->P * gamma_m;
+    ChFrame<> F1_W = this->frame1 >> (*this->Body1);
+    ChFrame<> F2_W = this->frame2 >> (*this->Body2);
+    ChVector<> r12_F2 = F2_W.GetA().transpose() * (F1_W.GetPos() - F2_W.GetPos());
+    react_torque = ChStarMatrix33<>(r12_F2) * gamma_f + this->P * gamma_m;
 }
 
 void ChLinkMateGeneric::IntLoadResidual_CqL(const unsigned int off_L,
@@ -640,8 +659,11 @@ void ChLinkMateGeneric::ConstraintsFetch_react(double factor) {
     }
 
     react_force = gamma_f;
-    // convert from Lagrange multiplier to reaction torque
-    react_torque = this->P * gamma_m;
+
+    ChFrame<> F1_W = this->frame1 >> (*this->Body1);
+    ChFrame<> F2_W = this->frame2 >> (*this->Body2);
+    ChVector<> r12_F2 = F2_W.GetA().transpose() * (F1_W.GetPos() - F2_W.GetPos());
+    react_torque = ChStarMatrix33<>(r12_F2) * gamma_f + this->P * gamma_m;
 }
 
 void ChLinkMateGeneric::ArchiveOUT(ChArchiveOut& marchive) {
@@ -810,6 +832,130 @@ void ChLinkMateCoaxial::ArchiveOUT(ChArchiveOut& marchive) {
 void ChLinkMateCoaxial::ArchiveIN(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChLinkMateCoaxial>();
+
+    // deserialize parent class
+    ChLinkMateGeneric::ArchiveIN(marchive);
+
+    // deserialize all member data:
+    marchive >> CHNVP(flipped);
+}
+
+// -----------------------------------------------------------------------------
+
+// Register into the object factory, to enable run-time dynamic creation and persistence
+CH_FACTORY_REGISTER(ChLinkMateRevolute)
+
+ChLinkMateRevolute::ChLinkMateRevolute(const ChLinkMateRevolute& other) : ChLinkMateGeneric(other) {
+    flipped = other.flipped;
+}
+
+void ChLinkMateRevolute::SetFlipped(bool doflip) {
+    if (doflip != flipped) {
+        // swaps direction of X axis by flipping 180 deg the frame A (slave)
+
+        ChFrame<> frameRotator(VNULL, Q_from_AngAxis(CH_C_PI, VECT_Y));
+        this->frame1.ConcatenatePostTransformation(frameRotator);
+
+        flipped = doflip;
+    }
+}
+
+void ChLinkMateRevolute::Initialize(std::shared_ptr<ChBodyFrame> mbody1,
+                                   std::shared_ptr<ChBodyFrame> mbody2,
+                                   bool pos_are_relative,
+                                   ChVector<> mpt1,
+                                   ChVector<> mpt2,
+                                   ChVector<> mnorm1,
+                                   ChVector<> mnorm2) {
+    // set the two frames so that they have the X axis aligned when the
+    // two normals are opposed (default behavior, otherwise is considered 'flipped')
+
+    ChVector<> mnorm1_reversed;
+    if (!flipped)
+        mnorm1_reversed = mnorm1;
+    else
+        mnorm1_reversed = -mnorm1;
+
+    ChLinkMateGeneric::Initialize(mbody1, mbody2, pos_are_relative, mpt1, mpt2, mnorm1_reversed, mnorm2);
+}
+
+void ChLinkMateRevolute::ArchiveOUT(ChArchiveOut& marchive) {
+    // version number
+    marchive.VersionWrite<ChLinkMateRevolute>();
+
+    // serialize parent class
+    ChLinkMateGeneric::ArchiveOUT(marchive);
+
+    // serialize all member data:
+    marchive << CHNVP(flipped);
+}
+
+/// Method to allow de serialization of transient data from archives.
+void ChLinkMateRevolute::ArchiveIN(ChArchiveIn& marchive) {
+    // version number
+    /*int version =*/marchive.VersionRead<ChLinkMateRevolute>();
+
+    // deserialize parent class
+    ChLinkMateGeneric::ArchiveIN(marchive);
+
+    // deserialize all member data:
+    marchive >> CHNVP(flipped);
+}
+
+// -----------------------------------------------------------------------------
+
+// Register into the object factory, to enable run-time dynamic creation and persistence
+CH_FACTORY_REGISTER(ChLinkMatePrismatic)
+
+ChLinkMatePrismatic::ChLinkMatePrismatic(const ChLinkMatePrismatic& other) : ChLinkMateGeneric(other) {
+    flipped = other.flipped;
+}
+
+void ChLinkMatePrismatic::SetFlipped(bool doflip) {
+    if (doflip != flipped) {
+        // swaps direction of X axis by flipping 180 deg the frame A (slave)
+
+        ChFrame<> frameRotator(VNULL, Q_from_AngAxis(CH_C_PI, VECT_Y));
+        this->frame1.ConcatenatePostTransformation(frameRotator);
+
+        flipped = doflip;
+    }
+}
+
+void ChLinkMatePrismatic::Initialize(std::shared_ptr<ChBodyFrame> mbody1,
+                                     std::shared_ptr<ChBodyFrame> mbody2,
+                                     bool pos_are_relative,
+                                     ChVector<> mpt1,
+                                     ChVector<> mpt2,
+                                     ChVector<> mnorm1,
+                                     ChVector<> mnorm2) {
+    // set the two frames so that they have the X axis aligned when the
+    // two normals are opposed (default behavior, otherwise is considered 'flipped')
+
+    ChVector<> mnorm1_reversed;
+    if (!flipped)
+        mnorm1_reversed = mnorm1;
+    else
+        mnorm1_reversed = -mnorm1;
+
+    ChLinkMateGeneric::Initialize(mbody1, mbody2, pos_are_relative, mpt1, mpt2, mnorm1_reversed, mnorm2);
+}
+
+void ChLinkMatePrismatic::ArchiveOUT(ChArchiveOut& marchive) {
+    // version number
+    marchive.VersionWrite<ChLinkMatePrismatic>();
+
+    // serialize parent class
+    ChLinkMateGeneric::ArchiveOUT(marchive);
+
+    // serialize all member data:
+    marchive << CHNVP(flipped);
+}
+
+/// Method to allow de serialization of transient data from archives.
+void ChLinkMatePrismatic::ArchiveIN(ChArchiveIn& marchive) {
+    // version number
+    /*int version =*/marchive.VersionRead<ChLinkMatePrismatic>();
 
     // deserialize parent class
     ChLinkMateGeneric::ArchiveIN(marchive);
