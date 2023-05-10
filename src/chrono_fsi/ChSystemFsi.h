@@ -92,6 +92,9 @@ class CH_FSI_API ChSystemFsi {
     /// Destructor for the FSI system.
     ~ChSystemFsi();
 
+    /// Attach Chrono MBS system.
+    void AttachSystem(ChSystem* sysMBS);
+
     /// Function to integrate the FSI system in time.
     /// It uses a Runge-Kutta 2nd order algorithm to update both the fluid and multibody system dynamics. The midpoint
     /// data of MBS is needed for fluid dynamics update.
@@ -100,8 +103,8 @@ class CH_FSI_API ChSystemFsi {
     /// Get current estimated RTF (real time factor).
     double GetRTF() const { return m_RTF; }
 
-    /// Enable/disable m_verbose terminal output.
-    void SetVerbose(bool m_verbose);
+    /// Enable/disable verbose terminal output.
+    void SetVerbose(bool verbose);
 
     /// Read Chrono::FSI parameters from the specified JSON file.
     void ReadParametersFromFile(const std::string& json_file);
@@ -321,17 +324,16 @@ class CH_FSI_API ChSystemFsi {
     void AddWallBCE(std::shared_ptr<ChBody> body, const ChFrame<>& frame, const ChVector2<> size);
 
     /// Add BCE markers for a box container of specified dimensions and associate them with the given body.
-    /// The center of the container bottom face is at the origin of the given frame and the the container is aligned
-    /// with the frame axes. The 'faces' input vector specifies which faces of the container are to be created: for each
-    /// direction, a value of -1 indicates the face in the negative direction, a value of +1 indicates the face in the
-    /// positive direction, and a value of 2 indicates both faces. Setting a value of 0 does not create container faces
-    /// in that direction. 
+    /// The center of the box volume is at the origin of the given frame and the the container is aligned with the frame
+    /// axes. Such a container is assumed to be used as a boundary.
+    /// The 'faces' input vector specifies which faces of the container are to be created: for each direction, a value
+    /// of -1 indicates the face in the negative direction, a value of +1 indicates the face in the positive direction,
+    /// and a value of 2 indicates both faces. Setting a value of 0 does not create container faces in that direction.
     /// BCE markers are created in a number of layers corresponding to system parameters.
-    /// Such a container is assumed to be used as a boundary.
-    void AddContainerBCE(std::shared_ptr<ChBody> body,
-                         const ChFrame<>& frame,
-                         const ChVector<>& size,
-                         const ChVector<int> faces);
+    void AddBoxContainerBCE(std::shared_ptr<ChBody> body,
+                            const ChFrame<>& frame,
+                            const ChVector<>& size,
+                            const ChVector<int> faces);
 
     /// Add BCE markers for a box of specified dimensions and associate them with the given body.
     /// The box is assumed to be centered at the origin of the provided frame and aligned with its axes.
@@ -554,7 +556,7 @@ class CH_FSI_API ChSystemFsi {
     bool m_integrate_SPH;   ///< set to true if needs to integrate the fsi solver
     double m_time;          ///< current simulation time
 
-    ChTimer<double> m_timer_step;  ///< timer for integration step
+    ChTimer m_timer_step;  ///< timer for integration step
     double m_RTF;                  ///< real-time factor (simulation time / simulated time)
 
     friend class ChFsiVisualizationGL;

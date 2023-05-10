@@ -225,6 +225,7 @@ class CH_VEHICLE_API ChSuspensionTestRig {
     double m_plot_output_step;
     double m_next_plot_output_time;
     utils::CSV_writer* m_csv;
+    std::vector<int> m_csv_lengths;
 };
 
 // -----------------------------------------------------------------------------
@@ -272,8 +273,8 @@ class CH_VEHICLE_API ChSuspensionTestRigPlatform : public ChSuspensionTestRig {
     std::vector<std::shared_ptr<ChLinkMotorLinearPosition>> m_linact_L;  ///< left post linear actuators
     std::vector<std::shared_ptr<ChLinkMotorLinearPosition>> m_linact_R;  ///< right post linear actuators
 
-    static const double m_post_radius;   ///< radius of the post cylindrical platform
-    static const double m_post_hheight;  ///< half-height of the post cylindrical platform
+    static const double m_post_radius;  ///< radius of the post cylindrical platform
+    static const double m_post_height;  ///< height of the post cylindrical platform
 };
 
 // -----------------------------------------------------------------------------

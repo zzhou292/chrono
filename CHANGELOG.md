@@ -5,13 +5,20 @@ Change Log
 ==========
 
 - [Unreleased (development version)](#unreleased-development-branch)
+  - [Definition and use of primitive geometric shapes](#changed-definition-and-use-of-primitive-geometric-shapes)
+  - [Chrono::Vehicle engine and transmission templates](#changed-chronovehicle-engine-and-transmission-templates)
+  - [New generic template for wheeled suspension subsystems](#added-new-generic-template-for-wheeled-suspension-subsystems)
+  - [CMake configuration and utility build scripts](#changed-cmake-configuration-and-utility-build-scripts)
+  - [SPHTerrain - continuum representation method for deformable terrain](#added-sphterrain---continuum-representation-method-for-deformable-terrain)
+  - [TMSimple tire model](#added-tmsimple-tire-model)
+  - [Blender plug-in for post-process visualization](#added-blender-plug-in-for-post-process-visualization)
   - [VSG-based run-time visualization module](#added-vsg-based-run-time-visualization-module)
   - [Support for linear and nonlinear vehicle force elements](#changed-support-for-linear-and-nonlinear-vehicle-force-elements)
 - [Release 8.0.0](#release-800---2022-12-21)
   - [Chrono::Sensor features and updates](#added-chronosensor-features-and-updates)
   - [Closed-loop vehicle paths](#fixed-closed-loop-vehicle-paths)
   - [Miscellaneous Chrono::Vehicle extensions](#added-miscellaneous-chronovehicle-extensions)
-  - [Chrono:Fsi API changes](#changed-chronofsi-api-changes)
+  - [Chrono::Fsi API changes](#changed-chronofsi-api-changes)
   - [User-defined SMC contact force calculation](#added-user-defined-smc-contact-force-calculation)
   - [Redesigned run-time visualization system](#changed-redesigned-run-time-visualization-system)
   - [Vehicle inertia properties](#changed-vehicle-inertia-properties)
@@ -73,6 +80,166 @@ Change Log
 - [Release 4.0.0](#release-400---2019-02-22)
 
 ## Unreleased (development branch)
+
+### [Changed] Definition and use of primitive geometric shapes
+
+Specification of low-level geometric shapes and their use as collision and visualization shapes was changed for consistency and a more intuitive API.  The main changes can be described as follows:
+  - Geometric shapes with a directional axis (e.g., cylinder, cone, capsule) are always aligned with the Z axis.
+  - Size information is now provided through more intuitive quantities (full lengths for a box sides, axis lengths for an ellispoid, radius and length for a cylinder or a cone, etc).
+    Notable exceptions are:
+      - a sphere is specified by its radius,
+      - a capsule is specified by a radius and the length of its cylindrical portion.
+  - Geometric data for a shape contains no information on pose of that shape when used as a collision or visualization shape.  A transform (position and orientation) is specified only when a geometric shape is included in a visualization model or in a collision model. In particular, the specification of a cylinder by the coordinates of its end cap center points was removed. However, convenience functions are provided to facilitate this approach to constructing a cylindrical shape (see below).
+  - For classes derived from `ChVisualShape` we provide constructors that take relevant arguments specifying the shape size; as such, access to the low-lvel underlying geometry (through the `GetGeometry()` functions) is needed only in very special situations.
+
+While these changes affected a lot of the Chrono code base, user code must be updated only in a relatively few places:
+  - Specification of `ChVisualShape` objects and inclusion in a visual model:
+
+    Old code (visualization cylinder along Y axis):
+    ```cpp
+    auto cyl = chrono_types::make_shared<ChCylinderShape>();
+    cyl->GetCylinderGeometry().p1 = ChVector<>(2, -0.2, 0);
+    cyl->GetCylinderGeometry().p2 = ChVector<>(2, 0.5, 0);
+    cyl->GetCylinderGeometry().rad = 0.3;
+    cyl->AddMaterial(orange_mat);
+    body->AddVisualShape(cyl);
+    ```
+    New code:
+    ```cpp
+    auto cyl = chrono_types::make_shared<ChCylinderShape>(0.3, 0.7);
+    cyl->AddMaterial(orange_mat);
+    body->AddVisualShape(cyl, ChFrame<>(ChVector<>(2, 0.15, 0), Q_from_AngX(CH_C_PI_2)));
+    ```
+
+  - Addition of primitive collision shapes to a collision model:
+  
+    Old code (collision cylinder along Y axis):
+    ```cpp
+    object->GetCollisionModel()->ClearModel();
+    object->GetCollisionModel()->AddCylinder(object_mat, radius, radius, hlen, ChVector<>(0), ChMatrix33<>(1));
+    object->GetCollisionModel()->BuildModel();
+    ```
+    New code:
+    ```cpp
+    object->GetCollisionModel()->ClearModel();
+    object->GetCollisionModel()->AddCylinder(object_mat, radius, 2 * hlen, ChVector<>(0), Q_from_AngX(CH_C_PI_2));
+    object->GetCollisionModel()->BuildModel();
+    ```
+
+  - Creation of a `ChBodyEasyCylinder`:
+
+    Old code:
+    ```cpp
+    auto body = chrono_types::make_shared<ChBodyEasyCylinder>(radB, 0.4, 1000, true, false, mat);
+    ```
+    New code:
+    ```cpp
+    auto body = chrono_types::make_shared<ChBodyEasyCylinder>(geometry::ChAxis::Y, radB, 0.4, 1000, true, false, mat);
+    ```
+
+Consult the various Chrono demos for examples of specifying visualization and collision shapes using the new API.
+
+For convenience, the following mechanisms are provided to construct cylinders when the locations of the endcap centers are known:
+  - visualization cylinder shape defined through its endcaps -- construct a helper `ChLineSegment` object:
+  ```cpp
+  geometry::ChLineSegment seg(ChVector<>(0, -(hl - 0.2) * sina, (hl - 0.2) * cosa),
+                              ChVector<>(0, -(hl + 0.2) * sina, (hl + 0.2) * cosa));
+  auto cyl_2 = chrono_types::make_shared<ChCylinderShape>(0.3, seg.GetLength());
+  ground->AddVisualShape(cyl_2, seg.GetFrame());
+  ```       
+  - collision cylinder shape defined through its endcaps -- use the alternative version of `ChCollisionModel::AddCylinder`:
+  ```cpp
+  bool AddCylinder(                                   //
+        std::shared_ptr<ChMaterialSurface> material,  ///< surface contact material
+        double radius,                                ///< radius
+        const ChVector<>& p1,                         ///< first end point
+        const ChVector<>& p2                          ///< second end point
+    );
+  ```
+  
+In conjunction with the above changes to the basic primitive shapes, several other updates were made for a more consistent and intuitive API:
+  - all utility functions defined in `utils::ChUtilsCreators.h` were updated to follow the new conventions.
+  - the utility function `utils::AddBoxContainer` was modified to construct a box volume with given dimensions centered at the origin of the provided reference frame (previously, the center of the "bottom" wall was at the frame origin).
+  - the utility function `fsi::AddBoxContaionerBCE` (previously named `fsi::AddContainerBCE`) was modified to follow the same convention as above.
+
+For users of the `Chrono::Vehicle` module, note that these changes **do not** affect use of any of the vehicle subsystem templates nor do they require any changes to JSON specification files.
+
+### [Changed] Chrono::Vehicle engine and transmission templates
+
+New Chrono::Vehicle templates for the engine and transmission subsystems replace the old powertrain template. The new templates maintain the same modellling capabilities, but allow more flexibility in mixing and matching different models of engines with different transmission models. The coupling between an engine and a transmission is done at the motorshaft, with the engine providing the torque on this shaft and the transmission specifying the angular speed of the shaft. For interfacing with the vehicle system, an aggregate class, ChPowertrainAssembly, manages an engine and transmission and intermediates the coupling with a driveline vehicle subsystem through the driveshaft connecting the transmission to the driveline.
+
+The following engine templates are available:
+  - ChEngineShafts - template for modeling an engine using 1-D shaft elements and engine torque-speed maps including maps for engine losses.
+  - ChEngineSimpleMap - template for a kinematic engine model based on torque-speed maps.
+  - ChEngineSimple - template for a kinematic engine model based on a linear torque-speed dependency.
+
+The following templates for automatic transmissions are available:
+  - ChAutomaticTransmissionShafts - template for modelling an automatic transmission using 1-D shaft elements and a torque converter specified through the capacity factor and torque ratio maps.
+  - ChAutomaticTransmissionSimpleMap - template for a kinematic model of an automatic transmission using shift maps.
+
+Any of the above engine models can be coupled with either transmission model, as well with any Chrono::Vehicle driveline model (for either a wheeled or tracked vehicle).
+
+While currently only templates for autmatic transmissions are implemented, the new code design allows introduction of manual transmissions which will be implemented at a later date.
+
+This code change requires modifications to any existing vehicle model, whether specified through a set of C++ classes providing concrete instantiations of various subsystem templates or else specified through a set of JSON files. Consult the vehicle models in the Chrono::Vehicle models library and the sample JSON specification files distributed with Chrono.
+
+
+### [Added] New generic template for wheeled suspension subsystems
+
+A new Chrono::Vehicle template for modeling a wheeled vehicle suspension was added. The `ChGenericWheeledSuspension` class permits definition of a suspension subsystem with arbitrary, user-defined topology and sets of bodies, joints, and spring-damper elements. The only elements assumed to always exist in a suspension subsystem are the two spindles and the two axle shafts which connect the spindles to a driveline. A companion class, `GenericWheeledSuspension` allows definition of an arbitrary suspension subsystem based on a JSON specification file. 
+
+In this new template, modeling elements (bodies, joints, TSDAs, and RSDAs) are identified by their names. Positions and orientations are expected to be expressed relative to the suspension subsystem reference frame (except for collision and visualization shapes which must be provided relative to the associated physical modeling element). Any of the physical elements present in a suspension subsystem can be marked as "mirrored" or "non-mirrored"; in the former case, only the element on the left side (positive y) must be defined and two Chrono modeling elements are created, mirrored with respect to the x-z plane. Joints and spring-damper elements (TSDAs or RSDAs) can be connect any two bodies in the subsystem, as well as a suspension body to the chassis, a possible sub-chassis susbsystem, or a possible steering mechanism link. `ChGenericWheeledSuspension` provides a mechanism for identifying these three special bodies that are external to the suspension subsystem.
+
+This new template allows for more flexibility in defining non-standard or concept suspension subsystems without the restrictions imposed by the existing Chrono::Vehicle suspension templates (in terms of the number of bodies, joints, force elements, and their connectivity). In fact, any of the existing suspension templates can be replicated in the new framework and two examples are provided: the `HMMWV_DoubleWishboneFront_replica.json` file contains an exact replica of the HMMWV front double wishbone suspension defined in `HMMWV_DoubleWishboneFront.json`, while `UAZBUS_FrontSAELeafspringAxle_replica.json` replicates the front suspension defined in `UAZBUS_FrontSAELeafspringAxle.json`; the latter example illustrates the definition of a suspension subsystem that includes both mirrored and non-mirrored components.
+
+See `demo_VEH_WheeledVehicle` and `demo_VEH_SuspensionTestRig` which can be modified appropriately to use a HMMWV or UAZ vehicle with the new suspension specifications.
+
+### [Changed] CMake configuration and utility build scripts
+
+For consistency, the following changes were made to some of the Chrono CMake configuration scripts:
+  - Chrono::Irrlicht module: `IRRLICHT_INSTALL_DIR` replaces the old IRRLICHT_ROOT
+  - Chrono::Multicore module: `BLAZE_INSTALL_DIR` replaces the old BLAZE_DIR
+  - Chrono::Vehicle module: `IRRKLANG_INSTALL_DIR` and `IRRKLANG_LIBRARY` replace the old CH_IRRKLANG_SDKDIR and CH_IRRKLANGLIB, respectively
+  - Chrono::Synchrono module: `fastrtps_INSTALL_DIR` replaces the old fastrtps_ROOT
+  - Chrono::OpenGL module: finding the necessary GL dependencies (GLEW and GLFW) now relies on CMake project configuration scripts for these libraries. As such, unless automatically detected, the user must set the CMake variables `GLEW_DIR` and `GLFW3_DIR`. For systems where default packages for GLEW and GLFW do *not* install their CMake project configuration scripts (e.g., Ubuntu), see below for information on biulding these libraries from sources.  For the headers-only GLM dependency, the user must set `GLM_INCLUDE_DIR`.
+
+To help the configuration of certain Chrono modules, we added several scripts (for both Windows and Linux) to build dependencies from sources. The following scripts are available under contrib/build-scripts:
+  - `opencrg/buildOpenCRG.bat` and `opencrg/buildOpenCRG.sh` can be used to build and install the OpenCRG library. Optionally, the script can first download the sources for version 1.1.2 of OpenCRG from a GitHub repository.
+  - `opengl/buildGL.bat` and `opengl/buildGL.sh` can be used to build and install the GLEW, GLFW, and GLM dependencies for Chrono::OpenGL and Chrono::Sensor. The sources for these libraries are (optionally) downloaded from their respective SourceForce repositories. These scripts configure, build, and install all 3 necessary GL libraries under a common user-specified directory.
+  - `vsg/buildVSG.bat` and `vsg/buildVSG.sh` can be used to build and install all dependecies required for the Chrono::VSG module. Their sources can be optionally be downloaded from their respective GitHub repositories. These scripts are provided as a more flexible and robust alternative to the vsgFramework approach to installing the necessary VSG dependencies. The buildVSG scripts install all necessary VSG libraries (VulkanSceneGraph, vsgXchange, vsgImGui, ImGui, ImPlot, vsgExamples, and assimp) under a common, user-specified directory.
+Follow the instructions listed in comments at the top of each one of the above build scripts.
+
+Finally, the scripts `buildChrono.bat` (for Windows), `buildChrono.sh` (for Linux), and `buildChronoMac.sh` (for MacOS) are provided as examples of CMake configuration for the various Chrono modules. They should bve copied to a different directory and modified to reflect the setup on the user machine and to enable only those Chrono modules of interest. When executed, these scripts run the CMake configuration of Chrono and generate the files for building the Chrono libraries, as appropriate on each platform.
+
+
+### [Added] SPHTerrain - continuum representation method for deformable terrain
+
+A new Chrono::Vehicle terrain class, SPHTerrain, was added to model deformable terrain using the Continuum Representation Method (CRM), an SPH-based formulation that leverages the Chrono::FSI module.  An SPHTerrain can be created from data files with positions of SPH particles and BCE markers read from data files (these positions are assumed to be provided on an integer grid, in multiples of the initial separation of SPH particles) or from a heightmap image file.  In addition, this type of terrain permits definition of rigid obstacles that may be embedded, partially or fully, in the terrain volume (to model, for example, embedded rocks); currently, rigid obstacles must be specified with trimesh geometry read from a Wavefront OBJ file.  Run-time visualization is supported through `ChFsiVisualizationVSG` or `ChFsiVisualizationGL` which leverage the Chrono::VSG and Chrono::OpenGL modules, respectively. See `demo_VEH_SPHTerrain_Obstacles`, `demo_VEH_SPHTerrain_WheeledVehicle`, and `demo_VEH_SPHTerrain_Viper`.
+
+### [Added] TMSimple tire model
+
+A new tire model (`ChTMsimple`) was added to Chrono::Vehicle. This tire model is of "force element" type and shares part of its formulation with the TMeasy model (both of these tire models were developed by Wolfgang Hirscberg from TU Graz in Austria). The goal of TMsimple is to provide a simple handling tire model with fewer parameters than TMeasy while still providing realistic (albeit reduced) functionality.
+
+The TMsimple model
+- calculated horizontal patch forces based on single functions (whereas TMeasy requires three piece-wise definitions)
+- considers degressive influence of the vertical force Fz
+- calculates rolling resistance
+
+TMeasy requires 5 parameters to define its basic function for Fx and Fy: (1) slope at zero, (2) slip at force maximum, (3) maximal force, (4) slip at sliding initiation, and (5) sliding force. In contrast, TMsimple needs only 3 parameters: (1) slope, (2) maximal force, and (3) force at infinite slip.  A complete parameter set for Fx(sx,Fz) and Fy(sy,Fz) has 20 items for TMeasy and only 12 for TMsimple. Chrono’s TMsimple implementation has a new stand-still/low speed algorithm for friction forces. It is not part of TMsimple itself, and could be adapted to other handling tire models as well.
+
+### [Added] Blender plug-in for post-process visualization
+
+A new tool has been developed. It is an add-on for the [Blender](http://blender.org) rendering/modeling/animation software, that allows importing Chrono simulation in the GUI of Blender. From the C++ side, the only requirement is using some export functions of the POSTPROCESS module. This aims at replacing the old POVray post-processing pipeline.
+
+- Interactive 3D navigation of the scenes, and timeline scrubbing.
+- Allows rendering of high-quality photorealistic animations, using the Cycles physically-based unbiased path tracer that is available in Blender.
+- The user can optionally modify the Chrono assets, once imported, by attaching custom materials, special FXs, more detailed meshes, etc. 
+- Visualization of auxiliary references (cetenr of masses, link markers etc)
+- False color rendering of mesh attributes and glyph attributes, using colormaps
+- Speed optimizations for the ChParticleCloud shapes
+
+Details on this new tool is available at [the Chrono::Blender page](https://api.projectchrono.org/development/introduction_chrono_blender.html) on the projectchrono.org website.
+
 
 ### [Added] VSG-based run-time visualization module
 

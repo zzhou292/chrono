@@ -24,7 +24,7 @@
 
 #include "chrono_vehicle/wheeled_vehicle/tire/ChRigidTire.h"
 
-#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/terrain/SCMTerrain.h"
 
 namespace chrono {
 namespace vehicle {
@@ -54,7 +54,7 @@ void ChRigidTire::Initialize(std::shared_ptr<ChWheel> wheel) {
 
     wheel_body->GetCollisionModel()->ClearModel();
 
-    wheel_body->GetCollisionModel()->SetFamily(WheeledCollisionFamily::TIRES);
+    wheel_body->GetCollisionModel()->SetFamily(WheeledCollisionFamily::TIRE);
 
     if (m_use_contact_mesh) {
         // Mesh contact
@@ -72,8 +72,8 @@ void ChRigidTire::Initialize(std::shared_ptr<ChWheel> wheel) {
                                                          ChMatrix33<>(1), m_sweep_sphere_radius);
     } else {
         // Cylinder contact
-        wheel_body->GetCollisionModel()->AddCylinder(m_material, GetRadius(), GetRadius(), GetWidth() / 2,
-                                                     ChVector<>(0, GetOffset(), 0));
+        wheel_body->GetCollisionModel()->AddCylinder(m_material, GetRadius(), GetWidth(),
+                                                     ChVector<>(0, 0, GetOffset()), Q_from_AngX(CH_C_PI_2));
     }
 
     wheel_body->GetCollisionModel()->BuildModel();
@@ -118,12 +118,11 @@ void ChRigidTire::AddVisualizationAssets(VisualizationType vis) {
     if (vis == VisualizationType::NONE)
         return;
 
-    m_cyl_shape = chrono_types::make_shared<ChCylinderShape>();
-    m_cyl_shape->GetCylinderGeometry().rad = GetRadius();
-    m_cyl_shape->GetCylinderGeometry().p1 = ChVector<>(0, GetOffset() + GetWidth() / 2, 0);
-    m_cyl_shape->GetCylinderGeometry().p2 = ChVector<>(0, GetOffset() - GetWidth() / 2, 0);
+    m_cyl_shape = ChVehicleGeometry::AddVisualizationCylinder(m_wheel->GetSpindle(),                           //
+                                                              ChVector<>(0, GetOffset() + GetWidth() / 2, 0),  //
+                                                              ChVector<>(0, GetOffset() - GetWidth() / 2, 0),  //
+                                                              GetRadius());
     m_cyl_shape->SetTexture(GetChronoDataFile("textures/greenwhite.png"));
-    m_wheel->GetSpindle()->AddVisualShape(m_cyl_shape);
 }
 
 void ChRigidTire::RemoveVisualizationAssets() {
@@ -190,7 +189,7 @@ TerrainForce ChRigidTire::GetTireForce() const {
 TerrainForce ChRigidTire::ReportTireForce(ChTerrain* terrain) const {
     // If interacting with an SCM terrain, interrogate the terrain system
     // for the cumulative force on the associated rigid body.
-    if (auto scm = dynamic_cast<SCMDeformableTerrain*>(terrain)) {
+    if (auto scm = dynamic_cast<SCMTerrain*>(terrain)) {
         return scm->GetContactForce(m_wheel->GetSpindle());
     }
 

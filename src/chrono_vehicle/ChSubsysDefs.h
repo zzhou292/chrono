@@ -91,6 +91,7 @@ struct DriverInputs {
     double m_steering;  ///< steering input [-1, +1]
     double m_throttle;  ///< throttle input [0, 1]
     double m_braking;   ///< braking input [0, 1]
+    double m_clutch;    ///< clutch input [0, 1]
 };
 
 // -----------------------------------------------------------------------------
@@ -106,6 +107,9 @@ class CH_VEHICLE_API SpringForce : public ChLinkTSDA::ForceFunctor {
                    const std::vector<std::pair<double, double>>& data_rebound);
     void set_stops(double bump_coefficient, double rebound_coefficient);
     double evaluate_stops(double length);
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   protected:
     double m_P;  ///< pre-tension
@@ -127,6 +131,9 @@ class CH_VEHICLE_API LinearSpringForce : public SpringForce {
                             double length,
                             double vel,
                             const ChLinkTSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     double m_k;
@@ -144,6 +151,9 @@ class CH_VEHICLE_API NonlinearSpringForce : public SpringForce {
                             double length,
                             double vel,
                             const ChLinkTSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     ChFunction_Recorder m_mapK;
@@ -159,6 +169,9 @@ class CH_VEHICLE_API LinearDamperForce : public ChLinkTSDA::ForceFunctor {
                             double length,
                             double vel,
                             const ChLinkTSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     double m_c;
@@ -176,6 +189,9 @@ class CH_VEHICLE_API NonlinearDamperForce : public ChLinkTSDA::ForceFunctor {
                             double length,
                             double vel,
                             const ChLinkTSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     ChFunction_Recorder m_mapC;
@@ -201,6 +217,9 @@ class CH_VEHICLE_API DegressiveDamperForce : public ChLinkTSDA::ForceFunctor {
                             double length,
                             double vel,
                             const ChLinkTSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     double m_c_compression;
@@ -219,6 +238,9 @@ class CH_VEHICLE_API LinearSpringDamperForce : public SpringForce {
                             double length,
                             double vel,
                             const ChLinkTSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     double m_k;
@@ -240,6 +262,9 @@ class CH_VEHICLE_API NonlinearSpringDamperForce : public SpringForce {
                             double length,
                             double vel,
                             const ChLinkTSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     ChFunction_Recorder m_mapK;
@@ -262,6 +287,10 @@ class CH_VEHICLE_API MapSpringDamperForce : public SpringForce {
                             double length,
                             double vel,
                             const ChLinkTSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
+
     void print_data();
 
   private:
@@ -279,28 +308,30 @@ class CH_VEHICLE_API MapSpringDamperForce : public SpringForce {
 /// Utility class for specifying a linear rotational spring torque.
 class CH_VEHICLE_API LinearSpringTorque : public ChLinkRSDA::TorqueFunctor {
   public:
-    LinearSpringTorque(double k, double rest_angle = 0, double preload = 0);
-    virtual double evaluate(double time, double angle, double vel, const ChLinkRSDA& link) override;
+    LinearSpringTorque(double k, double preload = 0);
+    virtual double evaluate(double time, double rest_angle, double angle, double vel, const ChLinkRSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     double m_k;
-    double m_rest_angle;
     double m_P;
 };
 
 /// Utility class for specifying a nonlinear rotational spring torque.
 class CH_VEHICLE_API NonlinearSpringTorque : public ChLinkRSDA::TorqueFunctor {
   public:
-    NonlinearSpringTorque(double rest_angle = 0, double preload = 0);
-    NonlinearSpringTorque(const std::vector<std::pair<double, double>>& dataK,
-                          double rest_angle = 0,
-                          double preload = 0);
+    NonlinearSpringTorque(double preload = 0);
+    NonlinearSpringTorque(const std::vector<std::pair<double, double>>& dataK, double preload = 0);
     void add_pointK(double x, double y);
-    virtual double evaluate(double time, double angle, double vel, const ChLinkRSDA& link) override;
+    virtual double evaluate(double time, double rest_angle, double angle, double vel, const ChLinkRSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     ChFunction_Recorder m_mapK;
-    double m_rest_angle;
     double m_P;
 };
 
@@ -308,7 +339,10 @@ class CH_VEHICLE_API NonlinearSpringTorque : public ChLinkRSDA::TorqueFunctor {
 class CH_VEHICLE_API LinearDamperTorque : public ChLinkRSDA::TorqueFunctor {
   public:
     LinearDamperTorque(double c);
-    virtual double evaluate(double time, double angle, double vel, const ChLinkRSDA& link) override;
+    virtual double evaluate(double time, double rest_angle, double angle, double vel, const ChLinkRSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     double m_c;
@@ -320,7 +354,10 @@ class CH_VEHICLE_API NonlinearDamperTorque : public ChLinkRSDA::TorqueFunctor {
     NonlinearDamperTorque();
     NonlinearDamperTorque(const std::vector<std::pair<double, double>>& dataC);
     void add_pointC(double x, double y);
-    virtual double evaluate(double time, double angle, double vel, const ChLinkRSDA& link) override;
+    virtual double evaluate(double time, double rest_angle, double angle, double vel, const ChLinkRSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     ChFunction_Recorder m_mapC;
@@ -329,32 +366,35 @@ class CH_VEHICLE_API NonlinearDamperTorque : public ChLinkRSDA::TorqueFunctor {
 /// Utility class for specifying a linear rotational spring-damper torque.
 class CH_VEHICLE_API LinearSpringDamperTorque : public ChLinkRSDA::TorqueFunctor {
   public:
-    LinearSpringDamperTorque(double k, double c, double rest_angle = 0, double preload = 0);
-    virtual double evaluate(double time, double angle, double vel, const ChLinkRSDA& link) override;
+    LinearSpringDamperTorque(double k, double c, double preload = 0);
+    virtual double evaluate(double time, double rest_angle, double angle, double vel, const ChLinkRSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     double m_k;
     double m_c;
-    double m_rest_angle;
     double m_P;
 };
 
 /// Utility class for specifying a nonlinear rotational spring-damper torque.
 class CH_VEHICLE_API NonlinearSpringDamperTorque : public ChLinkRSDA::TorqueFunctor {
   public:
-    NonlinearSpringDamperTorque(double rest_angle = 0, double preload = 0);
+    NonlinearSpringDamperTorque(double preload = 0);
     NonlinearSpringDamperTorque(const std::vector<std::pair<double, double>>& dataK,
                                 const std::vector<std::pair<double, double>>& dataC,
-                                double rest_angle = 0,
                                 double preload = 0);
     void add_pointK(double x, double y);
     void add_pointC(double x, double y);
-    virtual double evaluate(double time, double angle, double vel, const ChLinkRSDA& link) override;
+    virtual double evaluate(double time, double rest_angle, double angle, double vel, const ChLinkRSDA& link) override;
+#ifndef SWIG
+    virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) override;
+#endif
 
   private:
     ChFunction_Recorder m_mapK;
     ChFunction_Recorder m_mapC;
-    double m_rest_angle;
     double m_P;
 };
 
@@ -380,15 +420,20 @@ enum class TireModelType {
     PAC89,       ///< Pacejka 89 (magic formula) tire
     TMEASY,      ///< Tire Model Made Easy tire (G. Rill)
     PAC02,       ///< Pacejka 02 (magic formula) tire
-    TMSIMPLE     ///< Tire Model Simple (W. Hirschberger)
+    TMSIMPLE     ///< Tire Model Simple (W. Hirschberg)
 };
 
-/// Enum for available powertrain model templates.
-enum class PowertrainModelType {
-    SHAFTS,      ///< powertrain based on ChShaft elements
-    SIMPLE_MAP,  ///< simple powertrain model (based on engine-map)
-    SIMPLE,      ///< simple powertrain model (similar to a DC motor)
-    SIMPLE_CVT   ///< simple cvt powertrain model (like a DC motor / CVT gearbox)
+/// Enum for available engine model templates.
+enum class EngineModelType {
+    SHAFTS,      ///< engine model based on ChShaft elements
+    SIMPLE_MAP,  ///< simple model based on engine maps
+    SIMPLE       ///< simple engine model (similar to a DC motor)
+};
+
+/// Enum for available transmission model templates.
+enum class TransmissionModelType {
+    SHAFTS,     ///< transmission model based of ChShaft elements
+    SIMPLE_MAP  ///< transmission model based on TC maps
 };
 
 /// Enum for available wheeled-vehicle suspension model templates.
@@ -408,7 +453,9 @@ enum class SuspensionTypeWV {
     SOLID_BELLCRANK_THREE_LINK_AXLE,  ///< rigid suspension + 3 guiding links + bellcrank steering mechanism
     THREE_LINK_IRS,                   ///< three-link independent rear suspension
     TOE_BAR_LEAF_SPRING_AXLE,         ///< steerable leaf-spring solid axle
-    SAE_TOE_BAR_LEAF_SPRING_AXLE      ///< steerable leaf-spring solid axle with kinematic leaf-spring model
+    SAE_TOE_BAR_LEAF_SPRING_AXLE,     ///< steerable leaf-spring solid axle with kinematic leaf-spring model
+    PUSHPIPE_AXLE,                    ///< solid axle with pushpipe and panhard rod
+    TOEBAR_PUSHPIPE_AXLE              ///< steerable solid axle with pushpipe and panhard rod
 };
 
 /// Enum for available brake model templates.
@@ -446,7 +493,8 @@ namespace WheeledCollisionFamily {
 // Note: we cannot use strongly typed enums, since these are passed as integers
 enum Enum {
     CHASSIS = 0,  ///< chassis collision family
-    TIRES = 1     ///< collision family for tire systems
+    TIRE = 1,     ///< collision family for tire systems
+    WHEEL = 2     ///< collision family for wheel systems
 };
 }  // namespace WheeledCollisionFamily
 

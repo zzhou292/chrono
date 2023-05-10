@@ -73,6 +73,8 @@ void ChThreeLinkIRS::Initialize(std::shared_ptr<ChChassis> chassis,
                                 const ChVector<>& location,
                                 double left_ang_vel,
                                 double right_ang_vel) {
+    ChSuspension::Initialize(chassis, subchassis, steering, location, left_ang_vel, right_ang_vel);
+
     m_parent = chassis;
     m_rel_loc = location;
 
@@ -299,18 +301,15 @@ double ChThreeLinkIRS::GetTrack() {
 // -----------------------------------------------------------------------------
 // Return current suspension forces
 // -----------------------------------------------------------------------------
-ChSuspension::Force ChThreeLinkIRS::ReportSuspensionForce(VehicleSide side) const {
-    ChSuspension::Force force;
+std::vector<ChSuspension::ForceTSDA> ChThreeLinkIRS::ReportSuspensionForce(VehicleSide side) const {
+    std::vector<ChSuspension::ForceTSDA> forces(2);
 
-    force.spring_force = m_spring[side]->GetForce();
-    force.spring_length = m_spring[side]->GetLength();
-    force.spring_velocity = m_spring[side]->GetVelocity();
+    forces[0] = ChSuspension::ForceTSDA("Spring", m_spring[side]->GetForce(), m_spring[side]->GetLength(),
+                                        m_spring[side]->GetVelocity());
+    forces[1] = ChSuspension::ForceTSDA("Shock", m_shock[side]->GetForce(), m_shock[side]->GetLength(),
+                                        m_shock[side]->GetVelocity());
 
-    force.shock_force = m_shock[side]->GetForce();
-    force.shock_length = m_shock[side]->GetLength();
-    force.shock_velocity = m_shock[side]->GetVelocity();
-
-    return force;
+    return forces;
 }
 
 // -----------------------------------------------------------------------------
@@ -442,32 +441,16 @@ void ChThreeLinkIRS::AddVisualizationArm(std::shared_ptr<ChBody> body,
     ChVector<> p_U = body->TransformPointParentToLocal(pt_U);
     ChVector<> p_L = body->TransformPointParentToLocal(pt_L);
 
-    auto cyl_1 = chrono_types::make_shared<ChCylinderShape>();
-    cyl_1->GetCylinderGeometry().p1 = p_C;
-    cyl_1->GetCylinderGeometry().p2 = p_CM;
-    cyl_1->GetCylinderGeometry().rad = radius;
-    body->AddVisualShape(cyl_1);
+    ChVehicleGeometry::AddVisualizationCylinder(body, p_C, p_CM, radius);
 
-    auto cyl_2 = chrono_types::make_shared<ChCylinderShape>();
-    cyl_2->GetCylinderGeometry().p1 = p_S;
-    cyl_2->GetCylinderGeometry().p2 = p_CM;
-    cyl_2->GetCylinderGeometry().rad = radius;
-    body->AddVisualShape(cyl_2);
+    ChVehicleGeometry::AddVisualizationCylinder(body, p_S, p_CM, radius);
 
     if ((p_S - p_U).Length2() > threshold2) {
-        auto cyl_U = chrono_types::make_shared<ChCylinderShape>();
-        cyl_U->GetCylinderGeometry().p1 = p_S;
-        cyl_U->GetCylinderGeometry().p2 = p_U;
-        cyl_U->GetCylinderGeometry().rad = radius;
-        body->AddVisualShape(cyl_U);
+        ChVehicleGeometry::AddVisualizationCylinder(body, p_S, p_U, radius);
     }
 
     if ((p_S - p_L).Length2() > threshold2) {
-        auto cyl_L = chrono_types::make_shared<ChCylinderShape>();
-        cyl_L->GetCylinderGeometry().p1 = p_S;
-        cyl_L->GetCylinderGeometry().p2 = p_L;
-        cyl_L->GetCylinderGeometry().rad = radius;
-        body->AddVisualShape(cyl_L);
+        ChVehicleGeometry::AddVisualizationCylinder(body, p_S, p_L, radius);
     }
 }
 
@@ -481,17 +464,8 @@ void ChThreeLinkIRS::AddVisualizationLink(std::shared_ptr<ChBody> body,
     ChVector<> p_2 = body->TransformPointParentToLocal(pt_2);
     ChVector<> p_CM = body->TransformPointParentToLocal(pt_CM);
 
-    auto cyl_1 = chrono_types::make_shared<ChCylinderShape>();
-    cyl_1->GetCylinderGeometry().p1 = p_1;
-    cyl_1->GetCylinderGeometry().p2 = p_CM;
-    cyl_1->GetCylinderGeometry().rad = radius;
-    body->AddVisualShape(cyl_1);
-
-    auto cyl_2 = chrono_types::make_shared<ChCylinderShape>();
-    cyl_2->GetCylinderGeometry().p1 = p_2;
-    cyl_2->GetCylinderGeometry().p2 = p_CM;
-    cyl_2->GetCylinderGeometry().rad = radius;
-    body->AddVisualShape(cyl_2);
+    ChVehicleGeometry::AddVisualizationCylinder(body, p_1, p_CM, radius);
+    ChVehicleGeometry::AddVisualizationCylinder(body, p_2, p_CM, radius);
 }
 
 // -----------------------------------------------------------------------------
@@ -508,12 +482,12 @@ void ChThreeLinkIRS::ExportComponentList(rapidjson::Document& jsonDocument) cons
     bodies.push_back(m_upper[1]);
     bodies.push_back(m_lower[0]);
     bodies.push_back(m_lower[1]);
-    ChPart::ExportBodyList(jsonDocument, bodies);
+    ExportBodyList(jsonDocument, bodies);
 
     std::vector<std::shared_ptr<ChShaft>> shafts;
     shafts.push_back(m_axle[0]);
     shafts.push_back(m_axle[1]);
-    ChPart::ExportShaftList(jsonDocument, shafts);
+    ExportShaftList(jsonDocument, shafts);
 
     std::vector<std::shared_ptr<ChLink>> joints;
     std::vector<std::shared_ptr<ChLoadBodyBody>> bushings;
@@ -539,15 +513,15 @@ void ChThreeLinkIRS::ExportComponentList(rapidjson::Document& jsonDocument) cons
                                        : bushings.push_back(m_universalLower[0]->GetAsBushing());
     m_universalLower[1]->IsKinematic() ? joints.push_back(m_universalLower[1]->GetAsLink())
                                        : bushings.push_back(m_universalLower[1]->GetAsBushing());
-    ChPart::ExportJointList(jsonDocument, joints);
-    ChPart::ExportBodyLoadList(jsonDocument, bushings);
+    ExportJointList(jsonDocument, joints);
+    ExportBodyLoadList(jsonDocument, bushings);
 
     std::vector<std::shared_ptr<ChLinkTSDA>> springs;
     springs.push_back(m_spring[0]);
     springs.push_back(m_spring[1]);
     springs.push_back(m_shock[0]);
     springs.push_back(m_shock[1]);
-    ChPart::ExportLinSpringList(jsonDocument, springs);
+    ExportLinSpringList(jsonDocument, springs);
 }
 
 void ChThreeLinkIRS::Output(ChVehicleOutput& database) const {
