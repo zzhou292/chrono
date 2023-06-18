@@ -80,17 +80,23 @@ class  ChArchiveOutBinary : public ChArchiveOut {
 
       virtual void out_ref          (ChValue& bVal, bool already_inserted, size_t obj_ID, size_t ext_ID) 
       {
-          const char* classname = bVal.GetClassRegisteredName().c_str();
+          std::string classname = bVal.GetClassRegisteredName();
+          if (classname.length()>0){
+              std::string str("typ");
+              (*ostream) << str << classname;
+          }
+
           if (!already_inserted) {
             // New Object, we have to full serialize it
-            std::string str(classname); 
-            (*ostream) << str;    
+            std::string str("oID");
+            (*ostream) << str;       // serialize 'this was already saved' info as "oID" string
+            (*ostream) << obj_ID;    // serialize obj_ID in pointers vector as ID
             bVal.CallArchiveOutConstructor(*this);
             bVal.CallArchiveOut(*this);
           } else {
               if (obj_ID || bVal.IsNull() ) {
                 // Object already in list. Only store obj_ID as ID
-                std::string str("oID");
+                std::string str("rID");
                 (*ostream) << str;       // serialize 'this was already saved' info as "oID" string
                 (*ostream) << obj_ID;    // serialize obj_ID in pointers vector as ID
               }
@@ -176,39 +182,50 @@ class  ChArchiveInBinary : public ChArchiveIn {
       {
           void* new_ptr = nullptr;
 
-          std::string cls_name;
-          (*istream) >> cls_name;
+          std::string entry;
+          (*istream) >> entry;
 
-          if (cls_name == "oID") {
+          std::string cls_name;
+          if (entry == "typ") {
+            (*istream) >> cls_name;
+            (*istream) >> entry;
+
+          }
+
+          if (entry == "rID") {
             size_t obj_ID = 0;
             //  Was a shared object: just get the pointer to already-retrieved
             (*istream) >> obj_ID;
 
             if (this->internal_id_ptr.find(obj_ID) == this->internal_id_ptr.end()) 
-                    throw (ChExceptionArchive( "In object '" + std::string(bVal.name()) +"' the reference ID " + std::to_string((int)obj_ID) +" is not a valid number." ));
-
-            bVal.value().SetRawPtr(internal_id_ptr[obj_ID]);
+                throw (ChExceptionArchive( "In object '" + std::string(bVal.name()) +"' the reference ID " + std::to_string((int)obj_ID) +" is not a valid number." ));
+            
+            bVal.value().SetRawPtr(ChCastingMap::Convert(cls_name, bVal.value().GetObjectPtrTypeindex(), internal_id_ptr[obj_ID]));
           }
-          else if (cls_name == "eID") {
+          else if (entry == "eID") {
             size_t ext_ID = 0;
             // Was an external object: just get the pointer to external
             (*istream) >> ext_ID;
 
             if (this->external_id_ptr.find(ext_ID) == this->external_id_ptr.end()) 
                     throw (ChExceptionArchive( "In object '" + std::string(bVal.name()) +"' the external reference ID " + std::to_string((int)ext_ID) +" cannot be rebuilt." ));
-
-            bVal.value().SetRawPtr(external_id_ptr[ext_ID]);
+            
+            bVal.value().SetRawPtr(ChCastingMap::Convert(cls_name, bVal.value().GetObjectPtrTypeindex(), external_id_ptr[ext_ID]));
           }
-          else {
-            // Dynamically create (no class factory will be invoked for non-polymorphic obj):
-            // call new(), or deserialize constructor params+call new():
-            bVal.value().CallConstructor(*this, cls_name.c_str()); 
+          else if (entry == "oID"){
+            size_t oID_temp = 0;
+            (*istream) >> oID_temp;
 
-            if (bVal.value().GetRawPtr()) {
+            // see ChArchiveJSON for further details
+            bVal.value().CallConstructor(*this, cls_name.c_str());
+
+            void* new_ptr_void = bVal.value().GetRawPtr();
+
+            if (new_ptr_void) {
                 bool already_stored; size_t obj_ID;
-                PutPointer(bVal.value().GetRawPtr(), already_stored, obj_ID);
+                PutPointer(new_ptr_void, already_stored, obj_ID);
                 // 3) Deserialize
-                bVal.value().CallArchiveIn(*this);
+                bVal.value().CallArchiveIn(*this, cls_name.c_str());
             } else {
                 throw(ChExceptionArchive("Archive cannot create object" + cls_name + "\n"));
             }

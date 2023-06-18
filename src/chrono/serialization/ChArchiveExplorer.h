@@ -14,13 +14,14 @@
 #define CHARCHIVEEXPLORER_H
 
 #include "chrono/serialization/ChArchive.h"
+#include <typeindex>
 
 namespace chrono {
 
 
 /// A helper class to provide some basic mechanism of C++ reflection (introspection).
 /// Properties of objects can be accessed/listed as name-value pairs. Names are those
-/// provided in the CHNVP pairs in ArchiveOUT/ArchiveIN. 
+/// provided in the CHNVP pairs in ArchiveOut/ArchiveIn. 
 /// As this is a quite simple reflection system, the value is always passed as void*,
 /// it is up to you to do the proper static_cast<> to the class of the object. There 
 /// are some shortcuts though, to access double, int and other fundamental types with
@@ -47,7 +48,7 @@ class  ChArchiveExplorer : public ChArchiveOut {
 
       /// Search a property in "root" and directly assign it to "vl". 
       /// The property is searched by the "property_name", returning true if it matches
-      /// the names you used in the CHNVP macros of ArchiveOUT of your classes, and if
+      /// the names you used in the CHNVP macros of ArchiveOut of your classes, and if
       /// the type of "val" is the same of the property (exactly the same type: no superclass/subclass).
       /// Note: the "root" object should be a class with sub properties and/or sub objects, and
       /// the root is not part of the search.
@@ -56,13 +57,13 @@ class  ChArchiveExplorer : public ChArchiveOut {
       /// In case of multiple matching properties it returns at the first found property.
       template<class T, class P>
       bool FetchValue(P& val, const T& root, const std::string& property_name) {
-
+          // TODO: update this method to use getVoidPointer so to avoid PointerUpCast
           this->PrepareSearch(property_name);
           
           this->operator<<( CHNVP(root,"") ); // SCAN! 
 
           if (found) {
-              if (*this->results[0]->GetTypeid() == typeid(P)) { 
+              if (this->results[0]->GetTypeid() == std::type_index(typeid(P))) { 
                   val = *(static_cast<P*> (this->results[0]->GetRawPtr()));
                   return true;
               }
@@ -78,7 +79,7 @@ class  ChArchiveExplorer : public ChArchiveOut {
 
       /// Search one or more values in "root" and return reference to a vector with results. 
       /// The properties are searched by the "value_name", returning true if it matches
-      /// the names you used in the CHNVP macros of ArchiveOUT of your classes
+      /// the names you used in the CHNVP macros of ArchiveOut of your classes
       /// Note: the "root" object should be a class with sub properties and/or sub objects, and
       /// the root is not part of the search.
       /// Wildcards * and ? can be used. For example use property_name = "*" to ge the list
@@ -102,7 +103,7 @@ class  ChArchiveExplorer : public ChArchiveOut {
       /// Access the results of the last search, ex. after FetchValues()
       std::vector<ChValue*>& GetFetchResults() {return this->results;}
 
-      /// Tell if "root" has sub values (i.e. "root" is a class with ArchiveOUT
+      /// Tell if "root" has sub values (i.e. "root" is a class with ArchiveOut
       /// implemented or a std container such as std::vector).
       template<class T>
       bool IsObject(const T& root) {
@@ -114,7 +115,7 @@ class  ChArchiveExplorer : public ChArchiveOut {
           else 
               return false;
       }
-      /// Tell if "root" has sub values (i.e. "root" is a class with ArchiveOUT
+      /// Tell if "root" has sub values (i.e. "root" is a class with ArchiveOut
       /// implemented or a std container such as std::vector).
       bool IsObject(ChValue& root) {
 

@@ -111,30 +111,37 @@ void ChPhysicsItem::Update(double mytime, bool update_assets) {
     }
 }
 
-void ChPhysicsItem::ArchiveOUT(ChArchiveOut& marchive) {
+void ChPhysicsItem::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChPhysicsItem>();
 
     // serialize parent class
-    ChObj::ArchiveOUT(marchive);
+    ChObj::ArchiveOut(marchive);
 
     // serialize all member data:
     // marchive << CHNVP(system); ***TODO***
+    marchive << CHNVP(GetVisualModel(), "visual_model");
+    marchive << CHNVP(cameras);
     // marchive << CHNVP(offset_x);
     // marchive << CHNVP(offset_w);
     // marchive << CHNVP(offset_L);
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChPhysicsItem::ArchiveIN(ChArchiveIn& marchive) {
+void ChPhysicsItem::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/marchive.VersionRead<ChPhysicsItem>();
 
     // deserialize parent class
-    ChObj::ArchiveIN(marchive);
+    ChObj::ArchiveIn(marchive);
 
     // stream in all member data:
     // marchive >> CHNVP(system); ***TODO***
+    std::shared_ptr<ChVisualModel> visual_model;
+    marchive >> CHNVP(visual_model);
+    if (visual_model)
+        AddVisualModel(visual_model);
+    marchive >> CHNVP(cameras);
     // marchive >> CHNVP(offset_x);
     // marchive >> CHNVP(offset_w);
     // marchive >> CHNVP(offset_L);

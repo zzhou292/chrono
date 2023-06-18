@@ -226,7 +226,9 @@ class  ChArchiveOutJSON : public ChArchiveOut {
 
 
       virtual void out_ref          (ChValue& bVal,  bool already_inserted, size_t obj_ID, size_t ext_ID)  {
-          const char* classname = bVal.GetClassRegisteredName().c_str();
+          // the returned classname refers not to the type of the pointer itself, but to the *true* type of the object
+          // i.e. the most derived type for inherited classes
+          std::string classname = bVal.GetClassRegisteredName();
           comma_cr();
 		  if (is_array.top() == false) {
 			  indent();
@@ -239,10 +241,10 @@ class  ChArchiveOutJSON : public ChArchiveOut {
           nitems.push(0);
           is_array.push(false);
 
-          if(strlen(classname)>0) {
+          if(classname.length()>0) {
               comma_cr();
               indent();
-              (*ostream) << "\"_type\"\t: "  << "\"" << classname << "\"";
+              (*ostream) << "\"_type\"\t: "  << "\"" << classname.c_str() << "\"";
               ++nitems.top();
           }
           
@@ -463,33 +465,46 @@ class  ChArchiveInJSON : public ChArchiveIn {
                 is_reference = true;
             }
 
+
             if (!is_reference) {
-                // 2) Dynamically create 
-                // call new(), or deserialize constructor params+call new():
+                // 2) Dynamically create: call new(), or deserialize constructor params+call new()
+                // The constructor to be called will be the one specified by cls_name (i.e. the true type of the object),
+                // not by the type of bVal.value() which is just the type of the pointer
                 bVal.value().CallConstructor(*this, cls_name.c_str());
             
-                if (bVal.value().GetRawPtr()) {
+                // Calling bVal.value().GetRawPtr() will retrieve the true address of the object
+                void* new_ptr_void = bVal.value().GetRawPtr();
+
+                if (new_ptr_void) {
                     bool already_stored; size_t obj_ID;
-                    PutPointer(bVal.value().GetRawPtr(), already_stored, obj_ID);
+                    PutPointer(new_ptr_void, already_stored, obj_ID);
                     // 3) Deserialize
-                    bVal.value().CallArchiveIn(*this);
+                    // It is required to specify the "cls_name" since the bValue.value() might be of a different type compared to the true object,
+                    // while we need to call the ArchiveIn of the proper derived class.
+                    bVal.value().CallArchiveIn(*this, cls_name.c_str());
                 } else {
                     throw(ChExceptionArchive("Archive cannot create object " + std::string(bVal.name()) +"\n"));
                 }
+
                 new_ptr = bVal.value().GetRawPtr();
             } 
             else {
-                if (this->internal_id_ptr.find(ref_ID) == this->internal_id_ptr.end()) {
-                    throw (ChExceptionArchive( "In object '" + std::string(bVal.name()) +"' the _reference_ID " + std::to_string((int)ref_ID) +" is not a valid number." ));
-                }
-                bVal.value().SetRawPtr(internal_id_ptr[ref_ID]);
+                if (ref_ID){
+                    if (this->internal_id_ptr.find(ref_ID) == this->internal_id_ptr.end()) {
+                        throw (ChExceptionArchive( "In object '" + std::string(bVal.name()) +"' the _reference_ID " + std::to_string((int)ref_ID) +" is not a valid number." ));
+                    }
+                    bVal.value().SetRawPtr(ChCastingMap::Convert(cls_name, bVal.value().GetObjectPtrTypeindex(), internal_id_ptr[ref_ID]));
 
-                if (ext_ID) {
+                }
+                else if (ext_ID) {
                     if (this->external_id_ptr.find(ext_ID) == this->external_id_ptr.end()) {
                         throw (ChExceptionArchive( "In object '" + std::string(bVal.name()) +"' the _external_ID " + std::to_string((int)ext_ID) +" is not valid." ));
                     }
-                    bVal.value().SetRawPtr(external_id_ptr[ext_ID]);
+                    bVal.value().SetRawPtr(ChCastingMap::Convert(cls_name, bVal.value().GetObjectPtrTypeindex(), external_id_ptr[ext_ID]));
+
                 }
+                else
+                    bVal.value().SetRawPtr(nullptr);
             }
             this->levels.pop();
             this->level = this->levels.top();
