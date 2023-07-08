@@ -18,10 +18,10 @@
 // Hans B. Pacejka's "Tire and Vehicle Dynamics" Third Edition, Elsevier 2012
 // ISBN: 978-0-08-097016-5
 //
-// This implementation is a subset of the commercial product MFtire:
+// This implementation is a small subset of the commercial product MFtire:
 //  - only steady state force/torque calculations
 //  - uncombined (use_mode = 3)
-//  - combined (use_mode = 4) via Pacejka method
+//  - combined (use_mode = 4) via Friction Ellipsis (default) or Pacejka method
 //  - parametration is given by a TIR file (Tiem Orbit Format,
 //    ADAMS/Car compatible)
 //  - unit conversion is implemented but only tested for SI units
@@ -106,8 +106,7 @@ class CH_VEHICLE_API ChPac02Tire : public ChForceElementTire {
                    double kappa,
                    double alpha,
                    double Fz,
-                   double gamma,
-                   bool combined = false);
+                   double gamma);
     double CalcSigmaK(double Fz);   // relaxation length longitudinal
     double CalcSigmaA(double Fz);   // relaxation length lateral
     void CombinedCoulombForces(double& fx, double& fy, double fz);
@@ -132,7 +131,7 @@ class CH_VEHICLE_API ChPac02Tire : public ChForceElementTire {
 
     ChFunction_Recorder m_bott_map;
 
-    /// Set the parameters in the Pac89 model.
+    /// Set the parameters in the Pac02 model.
     virtual void SetMFParams() = 0;
 
     double m_gamma_limit;  ///< limit camber angle
@@ -149,6 +148,10 @@ class CH_VEHICLE_API ChPac02Tire : public ChForceElementTire {
     bool m_tire_conditions_found = false;
     bool m_vertical_table_found = false;
     bool m_bottoming_table_found = false;
+    
+    bool m_use_friction_ellipsis = true;
+    
+    double m_g = 9.81;  // gravitational constant on earth m/s
 
     unsigned int m_use_mode;
 
