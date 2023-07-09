@@ -40,6 +40,15 @@ source_group("viper" FILES ${CRM_VIPER_FILES})
 
 #-----------------------------------------------------------------------------
 
+set(CRM_COBRA_FILES
+    cobra/Cobra.cpp
+    cobra/Cobra.h
+)
+
+source_group("cobra" FILES ${CRM_COBRA_FILES})
+
+#-----------------------------------------------------------------------------
+
 set(CRM_TURTLEBOT_FILES
     turtlebot/Turtlebot.cpp
     turtlebot/Turtlebot.h
@@ -85,6 +94,7 @@ add_library(ChronoModels_robot SHARED
             ${CRM_ROBOSIMIAN_FILES}
             ${CRM_CURIOSITY_FILES}
             ${CRM_VIPER_FILES}
+            ${CRM_COBRA_FILES}
             ${CRM_TURTLEBOT_FILES}
             ${CRM_COPTERS_FILES}
             )
