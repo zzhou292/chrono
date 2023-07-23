@@ -41,6 +41,12 @@ namespace cobra {
 
 // =============================================================================
 
+const double Cobra::m_max_steer_angle = CH_C_PI / 6;
+
+// =============================================================================
+
+// =============================================================================
+
 // Default contact material for rover parts
 std::shared_ptr<ChMaterialSurface> DefaultContactMaterial(ChContactMethod contact_method) {
     float mu = 0.4f;   // coefficient of friction
@@ -460,7 +466,7 @@ void Cobra::Initialize(const ChFrame<>& pos) {
     // initialize steering motors
     for (int i = 0; i < 4; i++) {
         m_steer_motor_funcs[i] = chrono_types::make_shared<ChFunction_Const>(0.0);
-        m_steer_motors[i] = AddMotorSpeed(m_steerhubs[i]->GetBody(), m_steerstructs[i]->GetBody(), m_chassis,
+        m_steer_motors[i] = AddMotorAngle(m_steerhubs[i]->GetBody(), m_steerstructs[i]->GetBody(), m_chassis,
                                           steer_motor_rel_pos[i], QUNIT);
         m_steer_motors[i]->SetMotorFunction(m_steer_motor_funcs[i]);
     }
@@ -526,26 +532,48 @@ double Cobra::GetWheelMass() const {
 }
 
 void Cobra::Update() {
-    /*
     double time = m_system->GetChTime();
     m_driver->Update(time);
 
     for (int i = 0; i < 4; i++) {
         // Extract driver inputs
         double driving = m_driver->drive_speeds[i];
+        double steering = m_driver->steer_angles[i];
+
+        // Enforce maximum steering angle
+        ChClampValue(steering, -m_max_steer_angle, +m_max_steer_angle);
 
         // Set motor functions
+        m_steer_motor_funcs[i]->Set_yconst(steering);
         if (m_driver->GetDriveMotorType() == CobraDriver::DriveMotorType::SPEED)
-            m_drive_motor_funcs[i]->SetSetpoint(driving, time);
+            m_drive_motor_funcs[i]->Set_yconst(driving);
     }
-    */
 }
 
 // =============================================================================
 
-CobraDriver::CobraDriver() : drive_speeds({0, 0, 0, 0}), cobra(nullptr) {}
+CobraDriver::CobraDriver() : drive_speeds({0, 0, 0, 0}), steer_angles({0, 0, 0, 0}), cobra(nullptr) {}
+
+void CobraDriver::SetSteering(double angle) {
+    for (int i = 0; i < 4; i++) {
+        if (i == 0 || i == 1) {
+            steer_angles[i] = -angle;
+        } else {
+            steer_angles[i] = angle;
+        }
+    }
+}
+
+void CobraDriver::SetSteering(double angle, CobraWheelID id) {
+    steer_angles[id] = angle;
+}
 
 CobraSpeedDriver::CobraSpeedDriver(double time_ramp, double speed) : m_ramp(time_ramp), m_speed(speed) {}
+
+/// Set current drive motor speed input.
+void CobraSpeedDriver::SetMotorSpeed(double speed) {
+    m_speed = speed;
+}
 
 void CobraSpeedDriver::Update(double time) {
     double speed = m_speed;

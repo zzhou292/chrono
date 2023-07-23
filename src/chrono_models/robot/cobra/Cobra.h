@@ -291,6 +291,8 @@ class CH_MODELS_API Cobra {
 
     std::shared_ptr<ChMaterialSurface> m_default_material;  ///< common contact material for all non-wheel parts
     std::shared_ptr<ChMaterialSurface> m_wheel_material;    ///< wheel contact material (shared across limbs)
+
+    static const double m_max_steer_angle;  ///< maximum steering angle
 };
 
 // -----------------------------------------------------------------------------
@@ -311,6 +313,13 @@ class CH_MODELS_API CobraDriver {
     /// Indicate the control type for the drive motors.
     virtual DriveMotorType GetDriveMotorType() const = 0;
 
+    /// Set current steering input (angle: negative for left, positive for right).
+    void SetSteering(double angle);
+
+    /// Set current steering input (angle: negative for left turn, positive for right turn).
+    /// This function sets the steering angle for the specified wheel.
+    void SetSteering(double angle, CobraWheelID id);
+
   protected:
     CobraDriver();
 
@@ -319,6 +328,7 @@ class CH_MODELS_API CobraDriver {
     Cobra* cobra;  ///< associated Cobra rover
 
     std::array<double, 4> drive_speeds;  ///< angular speeds for drive motors
+    std::array<double, 4> steer_angles;  ///< angles for steer motors
 
     friend class Cobra;
 };
@@ -329,6 +339,9 @@ class CH_MODELS_API CobraSpeedDriver : public CobraDriver {
   public:
     CobraSpeedDriver(double time_ramp, double speed);
     ~CobraSpeedDriver() {}
+
+    /// Set current drive motor speed input.
+    void SetMotorSpeed(double speed);
 
   private:
     virtual DriveMotorType GetDriveMotorType() const override { return DriveMotorType::SPEED; }

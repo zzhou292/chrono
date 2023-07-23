@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
     if (use_custom_mat)
         cobra.SetWheelContactMaterial(CustomWheelMaterial(ChContactMethod::NSC));
 
-    cobra.Initialize(ChFrame<>(ChVector<>(0, 0, 0.5), QUNIT));
+    cobra.Initialize(ChFrame<>(ChVector<>(0, 0, 0.1), QUNIT));
 
     // Create the run-time visualization interface
 #ifndef CHRONO_IRRLICHT
@@ -174,6 +174,16 @@ int main(int argc, char* argv[]) {
 
         // Set current steering angle
         double time = cobra.GetSystem()->GetChTime();
+
+        if (time > 2.0 && time < 4.0)
+            driver->SetSteering(0.5);
+        else if (time > 4.0 && time < 6.0)
+            driver->SetSteering(-0.5);
+        else
+            driver->SetSteering(0.0);
+
+        if (time > 6.0)
+            driver->SetMotorSpeed(0.0);
 
         // Update Cobra controls
         cobra.Update();
