@@ -231,6 +231,7 @@ void CobraPart::Construct(ChSystem* system) {
         trimesh_shape->SetMesh(trimesh_vis);
         trimesh_shape->SetName(m_mesh_name);
         trimesh_shape->SetMutable(false);
+        trimesh_shape->SetColor(m_color);
         m_body->AddVisualShape(trimesh_shape);
     }
 
@@ -281,7 +282,7 @@ void CobraPart::Initialize(std::shared_ptr<ChBodyAuxRef> chassis) {
 CobraChassis::CobraChassis(const std::string& name, std::shared_ptr<ChMaterialSurface> mat)
     : CobraPart(name, ChFrame<>(VNULL, QUNIT), mat, true) {
     m_mesh_name = "cobra_chassis";
-    m_color = ChColor(1.0f, 1.0f, 1.0f);
+    m_color = ChColor(0.7f, 0.4f, 0.4f);
     CalcMassProperties(165);
 }
 
@@ -297,7 +298,7 @@ void CobraChassis::Initialize(ChSystem* system, const ChFrame<>& pos) {
 CobraSteerHub::CobraSteerHub(const std::string& name, const ChFrame<>& rel_pos, std::shared_ptr<ChMaterialSurface> mat)
     : CobraPart(name, rel_pos, mat, false) {
     m_mesh_name = "steering_hub";
-    m_color = ChColor(0.7f, 0.4f, 0.4f);
+    m_color = ChColor(0.7f, 0.7f, 0.9f);
     CalcMassProperties(30);
 }
 
@@ -577,8 +578,9 @@ void CobraSpeedDriver::SetMotorSpeed(double speed) {
 
 void CobraSpeedDriver::Update(double time) {
     double speed = m_speed;
-    if (time < m_ramp)
+    if (time < m_ramp) {
         speed = m_speed * (time / m_ramp);
+    }
     drive_speeds = {speed, speed, speed, speed};
 }
 
