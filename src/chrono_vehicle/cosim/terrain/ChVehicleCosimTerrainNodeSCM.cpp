@@ -37,6 +37,9 @@
 #ifdef CHRONO_IRRLICHT
     #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #endif
+#ifdef CHRONO_VSG
+    #include "chrono_vsg/ChVisualSystemVSG.h"
+#endif
 
 using std::cout;
 using std::endl;
@@ -56,9 +59,9 @@ static const double max_sinkage = 0.15;
 // -----------------------------------------------------------------------------
 ChVehicleCosimTerrainNodeSCM::ChVehicleCosimTerrainNodeSCM(double length, double width)
     : ChVehicleCosimTerrainNodeChrono(Type::SCM, length, width, ChContactMethod::SMC),
+      m_terrain(nullptr),
       m_radius_p(5e-3),
       m_use_checkpoint(false) {
-
     // Create system and set default method-specific solver settings
     m_system = new ChSystemSMC;
 
@@ -70,13 +73,17 @@ ChVehicleCosimTerrainNodeSCM::ChVehicleCosimTerrainNodeSCM(double length, double
 }
 
 ChVehicleCosimTerrainNodeSCM::ChVehicleCosimTerrainNodeSCM(const std::string& specfile)
-    : ChVehicleCosimTerrainNodeChrono(Type::SCM, 0, 0, ChContactMethod::SMC), m_use_checkpoint(false) {
-
+    : ChVehicleCosimTerrainNodeChrono(Type::SCM, 0, 0, ChContactMethod::SMC),
+      m_terrain(nullptr),
+      m_use_checkpoint(false) {
     // Create system and set default method-specific solver settings
     m_system = new ChSystemSMC;
 
     // Solver settings independent of method type
     m_system->Set_G_acc(ChVector<>(0, 0, m_gacc));
+
+    // Set default number of threads
+    m_system->SetNumThreads(1, 1, 1);
 
     // Read SCM parameters from provided specfile
     SetFromSpecfile(specfile);
@@ -161,6 +168,8 @@ void ChVehicleCosimTerrainNodeSCM::Construct() {
                                  m_Mohr_cohesion, m_Mohr_friction, m_Janosi_shear,  //
                                  m_elastic_K, m_damping_R);
     m_terrain->SetPlotType(vehicle::SCMTerrain::PLOT_SINKAGE, 0, max_sinkage);
+    m_terrain->SetMeshWireframe(false);
+    m_terrain->SetCosimulationMode(true);
     m_terrain->Initialize(m_dimX, m_dimY, m_spacing);
 
     // If indicated, set node heights from checkpoint file
@@ -233,22 +242,6 @@ void ChVehicleCosimTerrainNodeSCM::Construct() {
         m_system->AddBody(body);
     }
 
-#ifdef CHRONO_IRRLICHT
-    // Create the visualization window
-    if (m_render) {
-        m_vsys = chrono_types::make_shared<irrlicht::ChVisualSystemIrrlicht>();
-        m_vsys->AttachSystem(m_system);
-        m_vsys->SetCameraVertical(CameraVerticalDir::Z);
-        m_vsys->SetWindowSize(1280, 720);
-        m_vsys->SetWindowTitle("Terrain Node (SCM)");
-        m_vsys->Initialize();
-        m_vsys->AddLogo();
-        m_vsys->AddSkyBox();
-        m_vsys->AddTypicalLights();
-        m_vsys->AddCamera(ChVector<>(m_dimX / 2, 1.4, 1.0), ChVector<>(0, 0, 0));
-    }
-#endif
-
     // Write file with terrain node settings
     std::ofstream outf;
     outf.open(m_node_out_dir + "/settings.info", std::ios::out);
@@ -275,19 +268,70 @@ void ChVehicleCosimTerrainNodeSCM::Construct() {
 // Add all proxy bodies to the same collision family and disable collision between any
 // two members of this family.
 void ChVehicleCosimTerrainNodeSCM::CreateMeshProxy(unsigned int i) {
-    //// TODO
+    // Get shape associated with the given object
+    int i_shape = m_obj_map[i];
 
-#ifdef CHRONO_IRRLICHT
-    // Bind Irrlicht assets
-    if (m_render) {
-        m_vsys->BindAll();
+    // Create the proxy associated with the given object
+    auto proxy = chrono_types::make_shared<ProxyMesh>();
+
+    // Note: it is assumed that there is one and only one mesh defined!
+    auto trimesh_shape = m_geometry[i_shape].m_coll_meshes[0];
+    auto trimesh = trimesh_shape.m_trimesh;
+    auto nt = trimesh->getNumTriangles();
+    auto material = m_geometry[i_shape].m_materials[trimesh_shape.m_matID].CreateMaterial(m_method);
+
+    //// RADU TODO:  better approximation of mass / inertia?
+    double mass_p = m_load_mass[i_shape] / nt;
+
+    // Create a contact surface mesh constructed from the provided trimesh
+    auto surface = chrono_types::make_shared<fea::ChContactSurfaceMesh>(material);
+    surface->ConstructFromTrimesh(trimesh, m_radius_p);
+
+    // Create maps from pointer-based to index-based for the nodes in the mesh contact surface.
+    // Note that here, the contact surface includes all faces in the geometry trimesh..
+    int vertex_index = 0;
+    for (const auto& tri : surface->GetTriangleList()) {
+        if (proxy->ptr2ind_map.insert({tri->GetNode(0), vertex_index}).second) {
+            proxy->ind2ptr_map.insert({vertex_index, tri->GetNode(0)});
+            ++vertex_index;
+        }
+        if (proxy->ptr2ind_map.insert({tri->GetNode(1), vertex_index}).second) {
+            proxy->ind2ptr_map.insert({vertex_index, tri->GetNode(1)});
+            ++vertex_index;
+        }
+        if (proxy->ptr2ind_map.insert({tri->GetNode(2), vertex_index}).second) {
+            proxy->ind2ptr_map.insert({vertex_index, tri->GetNode(2)});
+            ++vertex_index;
+        }
     }
-#endif
+
+    assert(proxy->ptr2ind_map.size() == surface->GetNumVertices());
+    assert(proxy->ind2ptr_map.size() == surface->GetNumVertices());
+
+    // Construct the FEA mesh and add to it the contact surface.
+    // Do not add nodes to the mesh, else they will be polluted during integration
+    proxy->mesh = chrono_types::make_shared<fea::ChMesh>();
+    proxy->mesh->AddContactSurface(surface);
+
+    auto vis_mesh = chrono_types::make_shared<ChVisualShapeFEA>(proxy->mesh);
+    vis_mesh->SetFEMdataType(ChVisualShapeFEA::DataType::CONTACTSURFACES);
+    vis_mesh->SetWireframe(true);
+    proxy->mesh->AddVisualShapeFEA(vis_mesh);
+
+    m_system->AddMesh(proxy->mesh);
+
+    m_proxies[i] = proxy;
+
+    ////auto aabb_center = m_aabb[i_shape].m_center;
+    ////auto aabb_dims = m_aabb[i_shape].m_dims;
 }
 
 void ChVehicleCosimTerrainNodeSCM::CreateRigidProxy(unsigned int i) {
     // Get shape associated with the given object
     int i_shape = m_obj_map[i];
+
+    // Create the proxy associated with the given object
+    auto proxy = chrono_types::make_shared<ProxyBodySet>();
 
     // Create wheel proxy body
     auto body = std::shared_ptr<ChBody>(m_system->NewBody());
@@ -308,60 +352,130 @@ void ChVehicleCosimTerrainNodeSCM::CreateRigidProxy(unsigned int i) {
     body->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(1);
 
     m_system->AddBody(body);
-    m_proxies[i].push_back(ProxyBody(body, 0));
+    proxy->AddBody(body, 0);
+
+    m_proxies[i] = proxy;
 
     // Add corresponding moving patch to SCM terrain
     //// RADU TODO: this may be overkill for tracked vehicles!
     m_terrain->AddMovingPatch(body, m_aabb[i_shape].m_center, m_aabb[i_shape].m_dims);
+}
 
-#ifdef CHRONO_IRRLICHT
-    // Bind Irrlicht assets
-    if (m_render) {
-        m_vsys->BindAll();
-    }
+// Once all proxy bodies are created, complete construction of the underlying system.
+void ChVehicleCosimTerrainNodeSCM::OnInitialize(unsigned int num_objects) {
+    ChVehicleCosimTerrainNodeChrono::OnInitialize(num_objects);
+
+    // Create the visualization window
+    if (m_renderRT) {
+#if defined(CHRONO_VSG)
+        auto vsys_vsg = chrono_types::make_shared<vsg3d::ChVisualSystemVSG>();
+        vsys_vsg->AttachSystem(m_system);
+        vsys_vsg->SetWindowTitle("Terrain Node (SCM)");
+        vsys_vsg->SetWindowSize(ChVector2<int>(1280, 720));
+        vsys_vsg->SetWindowPosition(ChVector2<int>(100, 100));
+        vsys_vsg->SetUseSkyBox(false);
+        vsys_vsg->SetClearColor(ChColor(0.455f, 0.525f, 0.640f));
+        vsys_vsg->AddCamera(m_cam_pos, ChVector<>(0, 0, 0));
+        vsys_vsg->SetCameraAngleDeg(40);
+        vsys_vsg->SetLightIntensity(1.0f);
+        ////vsys_vsg->AddGuiColorbar("Sinkage (m)", 0.0, 0.1);
+        vsys_vsg->SetImageOutputDirectory(m_node_out_dir + "/images");
+        vsys_vsg->SetImageOutput(m_writeRT);
+        vsys_vsg->Initialize();
+
+        m_vsys = vsys_vsg;
+#elif defined(CHRONO_IRRLICHT)
+        auto vsys_irr = chrono_types::make_shared<irrlicht::ChVisualSystemIrrlicht>();
+        vsys_irr->AttachSystem(m_system);
+        vsys_irr->SetWindowTitle("Terrain Node (SCM)");
+        vsys_irr->SetCameraVertical(CameraVerticalDir::Z);
+        vsys_irr->SetWindowSize(1280, 720);
+        vsys_irr->Initialize();
+        vsys_irr->AddLogo();
+        vsys_irr->AddSkyBox();
+        vsys_irr->AddTypicalLights();
+        vsys_irr->AddCamera(m_cam_pos, ChVector<>(0, 0, 0));
+
+        m_vsys = vsys_irr;
 #endif
+    }
 }
 
 // Set position, orientation, and velocity of proxy bodies based on mesh faces.
 void ChVehicleCosimTerrainNodeSCM::UpdateMeshProxy(unsigned int i, MeshState& mesh_state) {
-    //// TODO
+    // Get the proxy (contact surface) associated with this object
+    auto proxy = std::static_pointer_cast<ProxyMesh>(m_proxies[i]);
+
+    int num_vertices = (int)mesh_state.vpos.size();
+
+    for (int in = 0; in < num_vertices; in++) {
+        auto& node = proxy->ind2ptr_map[in];
+        node->SetPos(mesh_state.vpos[in]);
+        node->SetPos_dt(mesh_state.vvel[in]);
+    }
 }
 
 // Set state of proxy rigid body.
 void ChVehicleCosimTerrainNodeSCM::UpdateRigidProxy(unsigned int i, BodyState& rigid_state) {
-    auto& proxies = m_proxies[i];  // proxies for the i-th rigid
-
-    proxies[0].m_body->SetPos(rigid_state.pos);
-    proxies[0].m_body->SetPos_dt(rigid_state.lin_vel);
-    proxies[0].m_body->SetRot(rigid_state.rot);
-    proxies[0].m_body->SetWvel_par(rigid_state.ang_vel);
+    auto proxy = std::static_pointer_cast<ProxyBodySet>(m_proxies[i]);
+    proxy->bodies[0]->SetPos(rigid_state.pos);
+    proxy->bodies[0]->SetPos_dt(rigid_state.lin_vel);
+    proxy->bodies[0]->SetRot(rigid_state.rot);
+    proxy->bodies[0]->SetWvel_par(rigid_state.ang_vel);
 }
 
 // Collect contact forces on the (face) proxy bodies that are in contact.
 // Load mesh vertex forces and corresponding indices.
 void ChVehicleCosimTerrainNodeSCM::GetForceMeshProxy(unsigned int i, MeshContact& mesh_contact) {
-    //// TODO
+    auto proxy = std::static_pointer_cast<ProxyMesh>(m_proxies[i]);
+
+    ChVector<> force;
+    mesh_contact.nv = 0;
+    for (auto node : proxy->ptr2ind_map) {
+        bool in_contact = m_terrain->GetContactForceNode(node.first, force);
+        if (in_contact) {
+            mesh_contact.vidx.push_back(node.second);
+            mesh_contact.vforce.push_back(force);
+            mesh_contact.nv++;
+        }
+    }
 }
 
 // Collect resultant contact force and torque on rigid proxy body.
 void ChVehicleCosimTerrainNodeSCM::GetForceRigidProxy(unsigned int i, TerrainForce& rigid_contact) {
-    const auto& proxies = m_proxies[i];  // proxies for the i-th rigid
+    auto proxy = std::static_pointer_cast<ProxyBodySet>(m_proxies[i]);
+    
+    ChVector<> force;
+    ChVector<>torque;
+    m_terrain->GetContactForceBody(proxy->bodies[0], force, torque);
 
-    rigid_contact = m_terrain->GetContactForce(proxies[0].m_body);
+    rigid_contact.point = proxy->bodies[0]->GetPos();
+    rigid_contact.force = force;
+    rigid_contact.moment = torque;
 }
 
 // -----------------------------------------------------------------------------
 
-void ChVehicleCosimTerrainNodeSCM::Render(double time) {
-#ifdef CHRONO_IRRLICHT
-    if (!m_vsys->Run()) {
+void ChVehicleCosimTerrainNodeSCM::OnRender() {
+    if (!m_vsys)
+        return;
+    if (!m_vsys->Run())
         MPI_Abort(MPI_COMM_WORLD, 1);
+
+    if (m_track) {
+        ChVector<> cam_point;
+        if (auto proxy_b = std::dynamic_pointer_cast<ProxyBodySet>(m_proxies[0])) {
+            cam_point = proxy_b->bodies[0]->GetPos();
+        } else if (auto proxy_m = std::dynamic_pointer_cast<ProxyMesh>(m_proxies[0])) {
+            cam_point = proxy_m->ind2ptr_map[0]->GetPos();
+        }
+
+        m_vsys->UpdateCamera(m_cam_pos, cam_point);
     }
+
     m_vsys->BeginScene();
     m_vsys->Render();
-    irrlicht::tools::drawColorbar(m_vsys.get(), 0, max_sinkage, "Sinkage [m]", 1180);
     m_vsys->EndScene();
-#endif
 }
 
 // -----------------------------------------------------------------------------

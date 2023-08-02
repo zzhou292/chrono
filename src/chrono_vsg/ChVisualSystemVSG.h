@@ -71,6 +71,11 @@ class CH_VSG_API ChVisualSystemVSG : virtual public ChVisualSystem {
     /// visualization assets occur.
     virtual void BindAll() override;
 
+    /// Process the visual assets for the specified physics item.
+    /// This function must be called if a new physics item is added to the system or if changes to its visual model
+    /// occur after the call to Initialize().
+    virtual void BindItem(std::shared_ptr<ChPhysicsItem> item) override;
+
     /// Check if rendering is running.
     /// Returns `false` if the viewer was closed.
     virtual bool Run() override;
@@ -107,12 +112,12 @@ class CH_VSG_API ChVisualSystemVSG : virtual public ChVisualSystem {
     // Terminate the VSG visualization.
     void Quit();
 
-    void SetWindowSize(ChVector2<int> size);
+    void SetWindowSize(const ChVector2<int>& size);
     void SetWindowSize(int width, int height);
-    void SetWindowPosition(ChVector2<int> pos);
+    void SetWindowPosition(const ChVector2<int>& pos);
     void SetWindowPosition(int from_left, int from_top);
-    void SetWindowTitle(std::string title);
-    void SetClearColor(ChColor color);
+    void SetWindowTitle(const std::string& title);
+    void SetClearColor(const ChColor& color);
     void SetOutputScreen(int screenNum = 0);
     void SetFullscreen(bool yesno = false);
     void SetUseSkyBox(bool yesno);
@@ -291,6 +296,12 @@ class CH_VSG_API ChVisualSystemVSG : virtual public ChVisualSystem {
 
     /// Bind the visual asset assoicated with a distance constraint.
     void BindLinkDistance(const std::shared_ptr<ChLinkDistance>& dist);
+
+    /// Bind the body COG frame.
+    void BindBodyFrame(const std::shared_ptr<ChBody>& body);
+
+    /// Bind the joint frames.
+    void BindLinkFrame(const std::shared_ptr<ChLinkBase>& link);
 
     /// Utility function to populate a VSG group with shape groups (from the given visual model).
     /// The visual model may or may not be associated with a Chrono physics item.

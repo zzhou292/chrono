@@ -19,6 +19,8 @@
 //
 // =============================================================================
 
+#include <iomanip>
+
 #include "chrono_vehicle/cosim/ChVehicleCosimBaseNode.h"
 
 using std::cout;
@@ -82,6 +84,14 @@ ChVehicleCosimBaseNode::ChVehicleCosimBaseNode(const std::string& name)
       m_step_size(1e-4),
       m_cum_sim_time(0),
       m_verbose(true),
+      m_renderRT(false),
+      m_renderRT_step(0.01),
+      m_writeRT(false),
+      m_renderPP(false),
+      m_renderPP_step(0.01),
+      m_track(true),
+      m_cam_pos({1, 0, 0}),
+      m_cam_target({0, 0, 0}),
       m_num_wheeled_mbs_nodes(0),
       m_num_tracked_mbs_nodes(0),
       m_num_terrain_nodes(0),
@@ -198,6 +208,10 @@ void ChVehicleCosimBaseNode::SetOutDir(const std::string& dir_name, const std::s
         std::cout << "Error creating directory " << m_node_out_dir + "/visualization" << std::endl;
         return;
     }
+    if (!filesystem::create_directory(filesystem::path(m_node_out_dir + "/images"))) {
+        std::cout << "Error creating directory " << m_node_out_dir + "/images" << std::endl;
+        return;
+    }
 
     // Create results output file
     m_outf.open(m_node_out_dir + "/results.dat", std::ios::out);
@@ -241,6 +255,70 @@ std::string ChVehicleCosimBaseNode::GetNodeTypeString() const {
             return "Terrain";
         default:
             return "Unknown";
+    }
+}
+
+void ChVehicleCosimBaseNode::EnableRuntimeVisualization(double render_fps, bool save_img) {
+    m_renderRT = true;
+    m_writeRT = save_img;
+    if (render_fps <= 0) {
+        m_renderRT_all = true;
+        m_renderRT_step = 0;
+    } else {
+        m_renderRT_all = false;
+        m_renderRT_step = 1.0 / render_fps;
+    }
+}
+
+void ChVehicleCosimBaseNode::EnablePostprocessVisualization(double render_fps) {
+    m_renderPP = true;
+    if (render_fps <= 0) {
+        m_renderPP_all = true;
+        m_renderPP_step = 0;
+    } else {
+        m_renderPP_all = false;
+        m_renderPP_step = 1.0 / render_fps;
+    }
+}
+
+void ChVehicleCosimBaseNode::SetCameraPosition(const ChVector<>& cam_pos, const ChVector<>& cam_target) {
+    m_cam_pos = cam_pos;
+    m_cam_target = cam_target;
+}
+
+void ChVehicleCosimBaseNode::Render(double step_size) {
+    static double sim_time = 0;
+    static double renderRT_time = 0;
+    static double renderPP_time = 0;
+    static bool renderPP_initialized = false;
+
+    sim_time += step_size;
+
+    if (m_renderRT) {
+        if (m_renderRT_all || sim_time >= renderRT_time) {
+            OnRender();
+            renderRT_time += m_renderRT_step;
+        }
+    }
+
+    if (m_renderPP && GetSystemPostprocess()) {
+#ifdef CHRONO_POSTPROCESS
+        if (!renderPP_initialized) {
+            m_blender = chrono_types::make_shared<postprocess::ChBlender>(GetSystemPostprocess());
+            m_blender->SetBlenderUp_is_ChronoZ();
+            m_blender->SetBasePath(m_node_out_dir + "/blender");
+            m_blender->SetRank(m_rank);
+            m_blender->AddAll();
+            m_blender->ExportScript();
+            renderPP_initialized = true;
+        }
+        if (m_renderPP_all || sim_time >= renderPP_time) {
+            if (m_verbose)
+                cout << "[" << GetNodeTypeString() << "] Blender export at t = " << sim_time << endl;
+            m_blender->ExportData();
+            renderPP_time += m_renderPP_step;
+        }
+#endif
     }
 }
 
@@ -468,6 +546,21 @@ void ChVehicleCosimBaseNode::RecvGeometry(ChVehicleGeometry& geom, int source) c
 
         geom.m_coll_meshes.push_back(ChVehicleGeometry::TrimeshShape(pos, trimesh, 0.0, matID));
     }
+}
+
+void ChVehicleCosimBaseNode::ProgressBar(unsigned int x, unsigned int n, unsigned int w) {
+    if ((x != n) && (x % (n / 100 + 1) != 0))
+        return;
+
+    float ratio = x / (float)n;
+    unsigned int c = (unsigned int)(ratio * w);
+
+    std::cout << std::setw(3) << (int)(ratio * 100) << "% [";
+    for (unsigned int ix = 0; ix < c; ix++)
+        std::cout << "=";
+    for (unsigned int ix = c; ix < w; ix++)
+        std::cout << " ";
+    std::cout << "]\r" << std::flush;
 }
 
 }  // end namespace vehicle

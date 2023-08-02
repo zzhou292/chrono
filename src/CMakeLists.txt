@@ -498,7 +498,7 @@ if(ENABLE_HDF5)
         if (HDF5_FOUND)
             set(HDF5_INCLUDE_DIRS ${HDF5_INCLUDE_DIR})
             set(HDF5_C_LIBRARIES ${HDF5_C_${LIB_TYPE}_LIBRARY})
-            set(HDF5_CXX_LIBRARIES ${HDF5_CXX_${LIB_TYPE}_LIBRARY)
+            set(HDF5_CXX_LIBRARIES ${HDF5_CXX_${LIB_TYPE}_LIBRARY})
         endif()
     endif()
 
@@ -639,6 +639,7 @@ include_directories(${CH_INCLUDES})
 
 # Add directories to build various optional modules.  Each module is supposed
 # to provide an option for enabling that particular module.
+add_subdirectory(chrono_parsers)
 add_subdirectory(chrono_pardisomkl)
 add_subdirectory(chrono_mumps)
 add_subdirectory(chrono_matlab)
@@ -655,14 +656,11 @@ add_subdirectory(chrono_fsi)
 add_subdirectory(chrono_gpu)
 add_subdirectory(chrono_distributed)
 add_subdirectory(chrono_vehicle)
+add_subdirectory(chrono_models)
 add_subdirectory(chrono_sensor)
 add_subdirectory(chrono_synchrono)
-add_subdirectory(chrono_pyparser)
 add_subdirectory(chrono_swig/chrono_python)
 add_subdirectory(chrono_swig/chrono_csharp)
-
-# Add directories for model libraries
-add_subdirectory(chrono_models)
 
 # Add directories for demo programs, unit test programs, and benchmark test programs.
 if(BUILD_DEMOS)
@@ -753,12 +751,6 @@ else()
   set(CHRONO_CASCADE "#undef CHRONO_CASCADE")
 endif()
 
-if(ENABLE_MODULE_MODAL)
-  set(CHRONO_MODAL "#define CHRONO_MODAL")
-else()
-  set(CHRONO_MODAL "#undef CHRONO_MODAL")
-endif()
-
 if(ENABLE_MODULE_COSIMULATION)
   set(CHRONO_COSIMULATION "#define CHRONO_COSIMULATION")
 else()
@@ -783,16 +775,10 @@ else()
   set(CHRONO_VSG "#undef CHRONO_VSG")
 endif()
 
-if(ENABLE_MODULE_MATLAB)
-  set(CHRONO_MATLAB "#define CHRONO_MATLAB")
+if(ENABLE_MODULE_MODAL)
+  set(CHRONO_MODAL "#define CHRONO_MODAL")
 else()
-  set(CHRONO_MATLAB "#undef CHRONO_MATLAB")
-endif()
-
-if(ENABLE_MODULE_PARDISO_MKL)
-  set(CHRONO_PARDISO_MKL "#define CHRONO_PARDISO_MKL")
-else()
-  set(CHRONO_PARDISO_MKL "#undef CHRONO_PARDISO_MKL")
+  set(CHRONO_MODAL "#undef CHRONO_MODAL")
 endif()
 
 if(ENABLE_MODULE_MUMPS)
@@ -811,6 +797,24 @@ if(ENABLE_MODULE_OPENGL)
   set(CHRONO_OPENGL "#define CHRONO_OPENGL")
 else()
   set(CHRONO_OPENGL "#undef CHRONO_OPENGL")
+endif()
+
+if(ENABLE_MODULE_MATLAB)
+  set(CHRONO_MATLAB "#define CHRONO_MATLAB")
+else()
+  set(CHRONO_MATLAB "#undef CHRONO_MATLAB")
+endif()
+
+if(ENABLE_MODULE_PARDISO_MKL)
+  set(CHRONO_PARDISO_MKL "#define CHRONO_PARDISO_MKL")
+else()
+  set(CHRONO_PARDISO_MKL "#undef CHRONO_PARDISO_MKL")
+endif()
+
+if(ENABLE_MODULE_PARSERS)
+  set(CHRONO_PARSERS "#define CHRONO_PARSERS")
+else()
+  set(CHRONO_PARSERS "#undef CHRONO_PARSERS")
 endif()
 
 if(ENABLE_MODULE_POSTPROCESS)
@@ -935,8 +939,8 @@ set(CH_INCLUDE_DIRS ${CH_INCLUDE_DIRS} "${THRUST_INCLUDE_DIR}")
 set(CH_BINARY_DIR "${PROJECT_BINARY_DIR}")
 set(CH_DATA_DIR "${PROJECT_SOURCE_DIR}/data/")
 
-configure_file("${PROJECT_SOURCE_DIR}/cmake/ChronoConfig.cmake.in"
-               "${PROJECT_BINARY_DIR}/cmake/ChronoConfig.cmake"
+configure_file("${PROJECT_SOURCE_DIR}/cmake/chrono-config.cmake.in"
+               "${PROJECT_BINARY_DIR}/cmake/chrono-config.cmake"
                @ONLY)
 
 # For the INSTALL tree
@@ -954,8 +958,8 @@ set(CH_INCLUDE_DIRS ${CH_INCLUDE_DIRS} "${THRUST_INCLUDE_DIR}")
 set(CH_BINARY_DIR ${CMAKE_INSTALL_PREFIX})
 set(CH_DATA_DIR "${CMAKE_INSTALL_PREFIX}/${CH_INSTALL_DATA}/")
 
-configure_file("${PROJECT_SOURCE_DIR}/cmake/ChronoConfig.cmake.in"
-               "${PROJECT_BINARY_DIR}/cmake/ChronoConfig.cmake.install"
+configure_file("${PROJECT_SOURCE_DIR}/cmake/chrono-config.cmake.in"
+               "${PROJECT_BINARY_DIR}/cmake/chrono-config.cmake.install"
                @ONLY)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -964,6 +968,6 @@ else()
     set(CH_CONFIG_INSTALL_PATH "lib/cmake/Chrono")
 endif()
 
-install(FILES "${PROJECT_BINARY_DIR}/cmake/ChronoConfig.cmake.install"
+install(FILES "${PROJECT_BINARY_DIR}/cmake/chrono-config.cmake.install"
         DESTINATION ${CH_CONFIG_INSTALL_PATH}
-        RENAME ChronoConfig.cmake)
+        RENAME chrono-config.cmake)

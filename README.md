@@ -1,12 +1,14 @@
 ATTENTION
 =========
 
-The structure of the Chrono git repository was changed as follows:
+This Fork of Chrono contains untested/unmerged features of Chrono authored by Jason Zhou (zzhou292@wisc.edu).
 
-- The main development branch is now called `main` (previously `develop`)
-- The `master` branch, now obsolete, was deleted
-- Releases are located in branches named `release/*.*` and have tags of the form `*.*.*`
+These features are not in the main repo for a reason. They might be undocumented, untested, unstable, and there is no guarantee anything will work, even the orginal chrono structure. ORDINARY USERS ARE STRONGLY ENCOURAGED TO USE THE OFFICIAL CHRONO RELEASE, NOT THIS FORK!!!!
 
+This fork is structured as follows:
+1. 'main' branch matches the official 'main' branch of Project Chrono
+2. 'jz-main' branch contains all features merged and developed in this fork
+3. 'feature' branches contain various fix/feature development INP
 
 Project CHRONO
 ==============

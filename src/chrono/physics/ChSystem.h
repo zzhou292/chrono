@@ -216,6 +216,13 @@ class ChApi ChSystem : public ChIntegrableIIorder {
     /// Set (overwrite) the simulation time of this system.
     void SetChTime(double time) { ch_time = time; }
 
+    /// Remove redundant constraints present in ChSystem through QR decomposition of constraints Jacobian matrix.
+    int RemoveRedundantConstraints(
+        bool remove_zero_constr = false,    ///< false: just DEACTIVATE redundant links; true: actually REMOVE redundant from system link list
+        double qr_tol = 1e-6,               ///< tolerance in QR decomposition to identify linearly dependent constraint
+        bool verbose = false                ///< set verbose output from method
+    );
+
     /// Set the number of OpenMP threads used by Chrono itself, Eigen, and the collision detection system.
     /// <pre>
     ///   num_threads_chrono    - used in FEA (parallel evaluation of internal forces and Jacobians) and
@@ -319,25 +326,25 @@ class ChApi ChSystem : public ChIntegrableIIorder {
     }
 
     /// Search a body by its name.
-    std::shared_ptr<ChBody> SearchBody(const char* name) { return assembly.SearchBody(name); }
+    std::shared_ptr<ChBody> SearchBody(const std::string& name) const { return assembly.SearchBody(name); }
     /// Search a body by its ID
-    std::shared_ptr<ChBody> SearchBodyID(int bodyID) { return assembly.SearchBodyID(bodyID); }
+    std::shared_ptr<ChBody> SearchBodyID(int id) const { return assembly.SearchBodyID(id); }
     /// Search a shaft by its name.
-    std::shared_ptr<ChShaft> SearchShaft(const char* name) { return assembly.SearchShaft(name); }
+    std::shared_ptr<ChShaft> SearchShaft(const std::string& name) const { return assembly.SearchShaft(name); }
     /// Search a link by its name.
-    std::shared_ptr<ChLinkBase> SearchLink(const char* name) { return assembly.SearchLink(name); }
+    std::shared_ptr<ChLinkBase> SearchLink(const std::string& name) const { return assembly.SearchLink(name); }
     /// Search a mesh by its name.
-    std::shared_ptr<fea::ChMesh> SearchMesh(const char* name) { return assembly.SearchMesh(name); }
+    std::shared_ptr<fea::ChMesh> SearchMesh(const std::string& name) const { return assembly.SearchMesh(name); }
     /// Search from other ChPhysics items (not bodies, links, or meshes) by name.
-    std::shared_ptr<ChPhysicsItem> SearchOtherPhysicsItem(const char* name) {
+    std::shared_ptr<ChPhysicsItem> SearchOtherPhysicsItem(const std::string& name) const {
         return assembly.SearchOtherPhysicsItem(name);
     }
     /// Search a marker by its name.
-    std::shared_ptr<ChMarker> SearchMarker(const char* name) { return assembly.SearchMarker(name); }
+    std::shared_ptr<ChMarker> SearchMarker(const std::string& name) const { return assembly.SearchMarker(name); }
     /// Search a marker by its unique ID.
-    std::shared_ptr<ChMarker> SearchMarker(int markID) { return assembly.SearchMarker(markID); }
+    std::shared_ptr<ChMarker> SearchMarker(int id) const { return assembly.SearchMarker(id); }
     /// Search an item (body, link or other ChPhysics items) by name.
-    std::shared_ptr<ChPhysicsItem> Search(const char* name) { return assembly.Search(name); }
+    std::shared_ptr<ChPhysicsItem> Search(const std::string& name) const { return assembly.Search(name); }
 
     /// Get the number of active bodies (excluding those that are sleeping or are fixed to ground).
     int GetNbodies() const { return assembly.GetNbodies(); }
@@ -417,10 +424,6 @@ class ChApi ChSystem : public ChIntegrableIIorder {
     /// Note that the body is *not* attached to this system.
     virtual ChBodyAuxRef* NewBodyAuxRef();
 
-    /// Given inserted markers and links, restores the
-    /// pointers of links to markers given the information
-    /// about the marker IDs. Will be made obsolete in future with new serialization systems.
-    void Reference_LM_byID();
 
     //
     // STATISTICS
@@ -888,10 +891,10 @@ class ChApi ChSystem : public ChIntegrableIIorder {
     //
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive);
+    virtual void ArchiveOut(ChArchiveOut& marchive);
 
     /// Method to allow deserialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive);
+    virtual void ArchiveIn(ChArchiveIn& marchive);
 
     /// Process a ".chr" binary file containing the full system object
     /// hierarchy as exported -for example- by the R3D modeler, with chrono plug-in version,
@@ -968,7 +971,7 @@ class ChApi ChSystem : public ChIntegrableIIorder {
     ChTimer timer_collision;  ///< timer for collision detection
     ChTimer timer_setup;      ///< timer for system setup
     ChTimer timer_update;     ///< timer for system update
-    double m_RTF;                     ///< real-time factor (simulation time / simulated time)
+    double m_RTF;             ///< real-time factor (simulation time / simulated time)
 
     std::shared_ptr<ChTimestepper> timestepper;  ///< time-stepper object
 

@@ -21,12 +21,10 @@
 namespace chrono {
 namespace vehicle {
 
+#define CHRONO_NEUTRAL_GEAR_RATIO 1e-20
+
 ChTransmission::ChTransmission(const std::string& name)
-    : ChPart(name),
-      m_mode(Mode::AUTOMATIC),
-      m_drive_mode(DriveMode::FORWARD),
-      m_current_gear(-1),
-      m_current_gear_ratio(1e20) {}
+    : ChPart(name), m_current_gear(-1), m_current_gear_ratio(CHRONO_NEUTRAL_GEAR_RATIO) {}
 
 void ChTransmission::Initialize(std::shared_ptr<ChChassis> chassis) {
     // Let the derived class specify the gear ratios
@@ -55,32 +53,29 @@ void ChTransmission::InitializeInertiaProperties() {
 
 void ChTransmission::UpdateInertiaProperties() {}
 
-void ChTransmission::ShiftUp() {
-    if (m_mode == Mode::MANUAL &&              //
-        m_drive_mode == DriveMode::FORWARD &&  //
-        m_current_gear < m_gear_ratios.size() - 1) {
-        SetGear(m_current_gear + 1);
-    }
-}
-
-void ChTransmission::ShiftDown() {
-    if (m_mode == Mode::MANUAL &&              //
-        m_drive_mode == DriveMode::FORWARD &&  //
-        m_current_gear > 1) {
-        SetGear(m_current_gear - 1);
-    }
-}
-
 void ChTransmission::SetGear(int gear) {
-    assert(gear >= 0);
+    assert(gear >= -1);
     assert(gear < m_gear_ratios.size());
 
+    if (m_current_gear == gear)
+        return;
+
     m_current_gear = gear;
-    m_current_gear_ratio = m_gear_ratios[m_current_gear];
-    OnGearShift();
+    if (m_current_gear < 0) {
+        m_current_gear_ratio = m_gear_ratios[0];
+        OnGearShift();
+    }
+    else if (m_current_gear > 0 && m_current_gear < m_gear_ratios.size()) {
+        m_current_gear_ratio = m_gear_ratios[m_current_gear];
+        OnGearShift();
+    }
+    else {
+        m_current_gear_ratio = CHRONO_NEUTRAL_GEAR_RATIO;
+        OnNeutralShift();
+    }
 }
 
-void ChTransmission::SetDriveMode(DriveMode mode) {
+void ChAutomaticTransmission::SetDriveMode(DriveMode mode) {
     if (m_drive_mode == mode)
         return;
 
@@ -91,12 +86,48 @@ void ChTransmission::SetDriveMode(DriveMode mode) {
             SetGear(1);
             break;
         case DriveMode::NEUTRAL:
-            m_current_gear_ratio = 1e20;
-            OnNeutralShift();
-            break;
-        case DriveMode::REVERSE:
             SetGear(0);
             break;
+        case DriveMode::REVERSE:
+            SetGear(-1);
+            break;
+    }
+}
+
+// -----------------------------------------------------------------------------
+
+ChAutomaticTransmission::ChAutomaticTransmission(const std::string& name)
+    : ChTransmission(name), m_drive_mode(DriveMode::FORWARD), m_shift_mode(ShiftMode::AUTOMATIC) {}
+
+void ChAutomaticTransmission::ShiftUp() {
+    if (m_shift_mode == ShiftMode::MANUAL &&   //
+        m_drive_mode == DriveMode::FORWARD &&  //
+        m_current_gear < GetMaxGear()) {
+        SetGear(m_current_gear + 1);
+    }
+}
+
+void ChAutomaticTransmission::ShiftDown() {
+    if (m_shift_mode == ShiftMode::MANUAL &&   //
+        m_drive_mode == DriveMode::FORWARD &&  //
+        m_current_gear > 1) {
+        SetGear(m_current_gear - 1);
+    }
+}
+
+// -----------------------------------------------------------------------------
+
+ChManualTransmission::ChManualTransmission(const std::string& name) : ChTransmission(name) {}
+
+void ChManualTransmission::ShiftUp() {
+    if (m_current_gear < GetMaxGear()) {
+        SetGear(m_current_gear + 1);
+    }
+}
+
+void ChManualTransmission::ShiftDown() {
+    if (m_current_gear >= 0) {
+        SetGear(m_current_gear - 1);
     }
 }
 

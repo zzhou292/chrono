@@ -25,12 +25,10 @@
 #include "chrono/ChConfig.h"
 #include "chrono/physics/ChSystemSMC.h"
 #include "chrono_fsi/ChSystemFsi.h"
+#include "chrono_fsi/visualization/ChFsiVisualization.h"
 
+#include "chrono_vehicle/terrain/SPHTerrain.h"
 #include "chrono_vehicle/cosim/terrain/ChVehicleCosimTerrainNodeChrono.h"
-
-#ifdef CHRONO_OPENGL
-    #include "chrono_opengl/ChVisualSystemOpenGL.h"
-#endif
 
 #include "chrono_thirdparty/rapidjson/document.h"
 
@@ -43,7 +41,7 @@ namespace vehicle {
 /// Definition of the SPH continuum representation of granular terrain node (using Chrono::FSI).
 class CH_VEHICLE_API ChVehicleCosimTerrainNodeGranularSPH : public ChVehicleCosimTerrainNodeChrono {
   public:
-    /// Create a Chrono::FSI granular SPH terrain node. 
+    /// Create a Chrono::FSI granular SPH terrain node.
     /// No SPH parameters are set.
     ChVehicleCosimTerrainNodeGranularSPH(double length, double width);
 
@@ -60,11 +58,12 @@ class CH_VEHICLE_API ChVehicleCosimTerrainNodeGranularSPH : public ChVehicleCosi
     void SetFromSpecfile(const std::string& specfile);
 
     /// Specify the SPH terrain properties.
-    void SetPropertiesSPH(const std::string& filename, double depth);
+    void SetPropertiesSPH(const std::string& specfile, double depth);
 
     /// Set properties of granular material.
-    void SetGranularMaterial(double radius,  ///< particle radius (default: 0.01)
-                             double density  ///< particle material density (default: 2000)
+    void SetGranularMaterial(double radius,   ///< particle radius (default: 0.01)
+                             double density,  ///< particle material density (default: 2000)
+                             double cohesion  ///< particle material cohesion (default: 0)
     );
 
     /// Initialize this Chrono terrain node.
@@ -75,17 +74,31 @@ class CH_VEHICLE_API ChVehicleCosimTerrainNodeGranularSPH : public ChVehicleCosi
     virtual void OutputVisualizationData(int frame) override final;
 
   private:
-    ChSystemSMC* m_system;          ///< containing system
-    fsi::ChSystemFsi* m_systemFSI;  ///< containing FSI system
+    enum class SphTerrainType { PATCH, FILES };
 
-#ifdef CHRONO_OPENGL
-    opengl::ChVisualSystemOpenGL* m_vsys;  ///< OpenGL visualization system
-#endif
+    ChSystemSMC* m_system;                            ///< containing system
+    SPHTerrain* m_terrain;                            ///< SPH terrain
+    std::string m_specfile;                           ///< SPH specification file
+    std::shared_ptr<fsi::ChFsiVisualization> m_vsys;  ///< run-time visualization system
 
-    double m_depth;  ///< SPH soil depth
+    SphTerrainType m_terrain_type;  ///< construction method for SPHTerrain
+    double m_depth;                 ///< SPH soil depth (PATCH type)
+    std::string m_sph_filename;     ///< name of file with SPH particle positions (FILES type)
+    std::string m_bce_filename;     ///< name of file with BCE marker positions (FILES type)
 
-    double m_radius_g;  ///< radius of one particle of granular material
-    double m_rho_g;     ///< particle material density
+    double m_radius;    ///< radius of one particle of granular material
+    double m_density;   ///< particle material density
+    double m_cohesion;  ///< granular material cohesion
+
+    ChVector<> m_aabb_min;     ///< particles AABB corner
+    ChVector<> m_aabb_max;     ///< particles AABB corner
+    double m_active_box_size;  ///< size of FSI active domain
+
+    virtual ChSystem* GetSystemPostprocess() const override {
+        if (m_vsys)
+            return m_vsys->GetSystem();
+        return nullptr;
+    }
 
     virtual bool SupportsMeshInterface() const override { return true; }
 
@@ -101,7 +114,7 @@ class CH_VEHICLE_API ChVehicleCosimTerrainNodeGranularSPH : public ChVehicleCosi
     virtual void GetForceRigidProxy(unsigned int i, TerrainForce& rigid_contact) override;
 
     virtual void OnOutputData(int frame) override;
-    virtual void Render(double time) override;
+    virtual void OnRender() override;
 
     /// Advance simulation.
     /// This function is called after a synchronization to allow the node to advance

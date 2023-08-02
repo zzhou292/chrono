@@ -75,6 +75,14 @@ class ChApi ChTriangleMeshConnected : public ChTriangleMesh {
     /// Load a Wavefront OBJ file into this triangle mesh.
     bool LoadWavefrontMesh(const std::string& filename, bool load_normals = true, bool load_uv = false);
 
+    /// Create and return a ChTriangleMeshConnected from an STL file.
+    /// If an error occurrs during loading, an empty shared pointer is returned.
+    static std::shared_ptr<ChTriangleMeshConnected> CreateFromSTLFile(const std::string& filename,
+                                                                      bool load_normals = true);
+
+    /// Load an STL file into this triangle mesh.
+    bool LoadSTLMesh(const std::string& filename, bool load_normals = true);
+
     /// Write the specified meshes in a Wavefront .obj file
     static void WriteWavefront(const std::string& filename, const std::vector<ChTriangleMeshConnected>& meshes);
 
@@ -212,10 +220,10 @@ class ChApi ChTriangleMeshConnected : public ChTriangleMesh {
     virtual Type GetClassType() const override { return Type::TRIANGLEMESH_CONNECTED; }
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
 
     /// Method to allow de-serialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 
   public:
     std::vector<ChVector<double>> m_vertices;

@@ -19,6 +19,7 @@
 				"BUILD_TESTING": "ON",
 				"BUILD_BENCHMARKING": "ON",
 				"ENABLE_HDF5": "ON",
+				"ENABLE_MODULE_PARSERS": "ON",
 				"ENABLE_MODULE_POSTPROCESS": "ON",
 				"ENABLE_MODULE_PYTHON": "ON",
 				"ENABLE_MODULE_IRRLICHT": "ON",
@@ -49,6 +50,7 @@
 				"CMAKE_C_COMPILER": "$env{C_COMPILER}",
 				"CMAKE_CXX_COMPILER": "$env{CXX_COMPILER}",
 				"CMAKE_INSTALL_PREFIX": "$env{INSTALL_DIR}",
+				"ENABLE_MODULE_PARSERS": "ON",
 				"ENABLE_MODULE_IRRLICHT": "ON",
 				"ENABLE_MODULE_VSG": "OFF",
 				"ENABLE_MODULE_OPENGL": "ON",
@@ -89,7 +91,12 @@
 				"USE_CUDA_NVRTC": "ON",
 				"USE_FAST_DDS": "ON",
 				"CMAKE_BUILD_TYPE": "Release",
-				"CUDA_ARCH_NAME": "All"
+				"CUDA_ARCH_NAME": "All",
+				"IRRLICHT_INSTALL_DIR": "$env{HOME}/Packages/irrlicht-1.8.5", 
+				"urdfdom_DIR": "$env{HOME}/Packages/urdf/$env{LIB_DIR}/urdfdom/cmake",
+				"urdfdom_headers_DIR": "$env{HOME}/Packages/urdf/$env{LIB_DIR}/urdfdom_headers/cmake",
+				"console_bridge_DIR": "$env{HOME}/Packages/urdf/$env{LIB_DIR}/console_bridge/cmake",
+				"tinyxml2_DIR": "$env{HOME}/Packages/urdf/CMake"
 			}
 		},
 		{
@@ -103,6 +110,7 @@
 			"cacheVariables": {
 				"BUILD_BENCHMARKING": "OFF",
 				"BUILD_TESTING": "ON",
+				"ENABLE_MODULE_PARSERS": "ON",				
 				"ENABLE_MODULE_POSTPROCESS": "ON",
 				"ENABLE_MODULE_IRRLICHT": "ON",
 				"ENABLE_MODULE_MULTICORE": "ON",
@@ -114,7 +122,7 @@
 				"ENABLE_MODULE_PYTHON": "ON",
 				"ENABLE_MODULE_CSHARP": "ON",
 				"CMAKE_INSTALL_PREFIX": "$env{HOME}/install/chrono",
-				"OpenMP_CXX_FLAGS": "-Xclang -fopenmp -I $env{HOMEBREW_PREFIX}/Cellar/libomp/15.0.7/include",
+				"OpenMP_CXX_FLAGS": "-Xclang -fopenmp -I $env{HOMEBREW_PREFIX}/Cellar/libomp/16.0.3/include",
 				"OpenMP_C_FLAGS": "-Xclang -fopenmp",
 				"OpenMP_C_INCLUDE_DIR": "-L $env{HOMEBREW_PREFIX}/opt/libomp/lib",
 				"OpenMP_CXX_INCLUDE_DIR": "$env{HOMEBREW_PREFIX}/include",
@@ -140,8 +148,9 @@
 			"inherits": "genericci-base",
 			"cacheVariables": {
 				"CMAKE_INSTALL_PREFIX": "$env{CI_PROJECT_DIR}/install",
+				"ENABLE_MODULE_PARSERS": "ON",				
 				"ENABLE_MODULE_IRRLICHT": "ON",
-				"ENABLE_MODULE_VSG": "OFF",
+				"ENABLE_MODULE_VSG": "ON",
 				"ENABLE_MODULE_OPENGL": "ON",
 				"ENABLE_MODULE_VEHICLE": "ON",
 				"ENABLE_MODULE_POSTPROCESS": "ON",
@@ -183,18 +192,6 @@
 				"CMAKE_PREFIX_PATH": "C:/Program Files/eProsima/fastrtps 2.4.0/cmake",
 				"PYTHON_EXECUTABLE": "C:/Users/builder/miniconda3/python.exe"
 			}
-		},
-		{
-			"name": "windowsci-vs2019",
-			"displayName": "Windows CI Configuration for Visual Studio 2022 (as 2019)",
-			"description": "Options for Windows with Visual Studio 2019 toolchain",
-			"generator": "Visual Studio 17 2022",
-			"architecture": "x64",
-			"toolset": "v142",
-			"inherits": [
-				"windowsci-base",
-				"genericci-base"
-			]
 		},
 		{
 			"name": "windowsci-vs2022",

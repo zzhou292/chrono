@@ -23,14 +23,11 @@
 #define TESTRIG_TERRAIN_NODE_GRANULAR_OMP_H
 
 #include "chrono/ChConfig.h"
+#include "chrono/assets/ChVisualSystem.h"
 #include "chrono/utils/ChUtilsSamplers.h"
 #include "chrono_multicore/physics/ChSystemMulticore.h"
 
 #include "chrono_vehicle/cosim/terrain/ChVehicleCosimTerrainNodeChrono.h"
-
-#ifdef CHRONO_OPENGL
-    #include "chrono_opengl/ChVisualSystemOpenGL.h"
-#endif
 
 #include "chrono_thirdparty/rapidjson/document.h"
 
@@ -123,6 +120,10 @@ class CH_VEHICLE_API ChVehicleCosimTerrainNodeGranularOMP : public ChVehicleCosi
     /// generated checkpointing file.
     void Settle();
 
+    /// Initialize this Chrono terrain node.
+    /// Construct the terrain system and the proxy bodies, then finalize the underlying system.
+    virtual void OnInitialize(unsigned int num_objects) override;
+
     /// Write checkpoint to the specified file (which will be created in the output directory).
     virtual void WriteCheckpoint(const std::string& filename) const override;
 
@@ -138,9 +139,7 @@ class CH_VEHICLE_API ChVehicleCosimTerrainNodeGranularOMP : public ChVehicleCosi
     ChSystemMulticore* m_system;  ///< containing system
     bool m_constructed;           ///< system construction completed?
 
-#ifdef CHRONO_OPENGL
-    opengl::ChVisualSystemOpenGL* m_vsys;  ///< OpenGL visualization system
-#endif
+    std::shared_ptr<ChVisualSystem> m_vsys;  ///< run-time visualization system
 
     double m_thick;  ///< container wall thickness
 
@@ -164,6 +163,8 @@ class CH_VEHICLE_API ChVehicleCosimTerrainNodeGranularOMP : public ChVehicleCosi
     bool m_settling_output;          ///< output files during settling?
     double m_settling_fps;           ///< frequency of output during settling phase
 
+    virtual ChSystem* GetSystemPostprocess() const override { return m_system; }
+
     virtual bool SupportsMeshInterface() const override { return true; }
 
     virtual void Construct() override;
@@ -182,7 +183,7 @@ class CH_VEHICLE_API ChVehicleCosimTerrainNodeGranularOMP : public ChVehicleCosi
 
     virtual void OnAdvance(double step_size) override;
     virtual void OnOutputData(int frame) override;
-    virtual void Render(double time) override;
+    virtual void OnRender() override;
 
     /// Calculate current height of granular terrain.
     double CalcCurrentHeight();
