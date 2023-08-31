@@ -9,72 +9,76 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Alessandro Tasora, Radu Serban
+// Authors: Dario Fusai
 // =============================================================================
 
-#include "chrono/motion_functions/ChFunction_Poly345.h"
+#include "chrono/motion_functions/ChFunction_Cycloidal.h"
 
 namespace chrono {
 
 // Register into the object factory, to enable run-time dynamic creation and persistence
-CH_FACTORY_REGISTER(ChFunction_Poly345)
+CH_FACTORY_REGISTER(ChFunction_Cycloidal)
 
-ChFunction_Poly345::ChFunction_Poly345(double m_h, double m_end) : h(m_h) {
+ChFunction_Cycloidal::ChFunction_Cycloidal(double m_h, double m_end)
+    : h(m_h)
+{
     Set_end(m_end);
 }
 
-ChFunction_Poly345::ChFunction_Poly345(const ChFunction_Poly345& other) {
+ChFunction_Cycloidal::ChFunction_Cycloidal(const ChFunction_Cycloidal& other) {
     h = other.h;
     end = other.end;
 }
 
-double ChFunction_Poly345::Get_y(double x) const {
-    double ret = 0;
+double ChFunction_Cycloidal::Get_y(double x) const {
     if (x <= 0)
         return 0;
-    if (x >= end)
+    else if (x >= end)
         return h;
-    double a = x / end;
-    ret = h * (10 * pow(a, 3) - 15 * pow(a, 4) + 6 * pow(a, 5));
+    double ret = h * (x / end - 1. / CH_C_2PI * sin(CH_C_2PI * x / end));
     return ret;
 }
 
-double ChFunction_Poly345::Get_y_dx(double x) const {
-    double ret = 0;
+double ChFunction_Cycloidal::Get_y_dx(double x) const {
     if (x <= 0)
         return 0;
-    if (x >= end)
+    else if (x >= end)
         return 0;
-    double a = x / end;
-    ret = h * (1 / end) * (30 * pow(a, 2) - 60 * pow(a, 3) + 30 * pow(a, 4));
+    double ret = h / end * (1 - cos(CH_C_2PI * x / end));
     return ret;
 }
 
-double ChFunction_Poly345::Get_y_dxdx(double x) const {
-    double ret = 0;
+double ChFunction_Cycloidal::Get_y_dxdx(double x) const {
     if (x <= 0)
         return 0;
-    if (x >= end)
+    else if (x >= end)
         return 0;
-    double a = x / end;
-    ret = h * (1 / (end * end)) * (60 * a - 180 * pow(a, 2) + 120 * pow(a, 3));
+    double ret = CH_C_2PI * h / end / end * sin(CH_C_2PI * x / end);
     return ret;
 }
 
-double ChFunction_Poly345::Get_y_dxdxdx(double x) const {
-    double ret = 0;
+double ChFunction_Cycloidal::Get_y_dxdxdx(double x) const {
     if (x <= 0)
         return 0;
-    if (x >= end)
+    else if (x >= end)
         return 0;
-    double a = x / end;
-    ret = h / pow(end, 3) * (60 - 360 * a + 360 * pow(a, 2));
+    double ret = pow(CH_C_2PI, 2) * h / pow(end, 3) * cos(CH_C_2PI * x / end);
     return ret;
 }
 
-void ChFunction_Poly345::ArchiveOut(ChArchiveOut& marchive) {
-    // version number
-    marchive.VersionWrite<ChFunction_Poly345>();
+void ChFunction_Cycloidal::Set_end(double m_end) {
+    if (m_end < 0)
+        m_end = 0;
+    end = m_end;
+}
+
+
+void ChFunction_Cycloidal::Estimate_x_range(double& xmin, double& xmax) const {
+    xmin = 0.0;
+    xmax = end;
+}
+
+void ChFunction_Cycloidal::ArchiveOut(ChArchiveOut& marchive) {
     // serialize parent class
     ChFunction::ArchiveOut(marchive);
     // serialize all member data:
@@ -82,9 +86,7 @@ void ChFunction_Poly345::ArchiveOut(ChArchiveOut& marchive) {
     marchive << CHNVP(end);
 }
 
-void ChFunction_Poly345::ArchiveIn(ChArchiveIn& marchive) {
-    // version number
-    /*int version =*/ marchive.VersionRead<ChFunction_Poly345>();
+void ChFunction_Cycloidal::ArchiveIn(ChArchiveIn& marchive) {
     // deserialize parent class
     ChFunction::ArchiveIn(marchive);
     // stream in all member data:
