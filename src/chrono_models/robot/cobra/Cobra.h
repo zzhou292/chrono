@@ -48,7 +48,9 @@ enum CobraWheelID {
 
 /// Cobra wheel type.
 enum class CobraWheelType {
-    RealWheel  ///< actual geometry of the Cobra wheel
+    RealWheel,    ///< actual geometry of the Cobra wheel
+    SimpleWheel,  ///< simplified geometry of the Cobra wheel
+    CylWheel      ///< cylindrical wheel geometry
 };
 
 // -----------------------------------------------------------------------------
@@ -177,6 +179,9 @@ class CH_MODELS_API CobraWheel : public CobraPart {
     ~CobraWheel() {}
 
     friend class Cobra;
+
+  private:
+    CobraWheelType m_wheel_type;  ///< wheel type
 };
 
 class CobraDriver;

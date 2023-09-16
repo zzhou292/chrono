@@ -55,7 +55,7 @@ CuriosityChassisType chassis_type = CuriosityChassisType::FullRover;
 
 // Specify rover wheel type
 // The options are RealWheel, SimpleWheel, and CylWheel
-CuriosityWheelType wheel_type = CuriosityWheelType::RealWheel;
+CuriosityWheelType wheel_type = CuriosityWheelType::CylWheel;
 
 // Simulation time step
 double time_step = 1e-3;

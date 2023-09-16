@@ -216,12 +216,16 @@ CobraPart::CobraPart(const std::string& name,
 void CobraPart::Construct(ChSystem* system) {
     m_body = std::shared_ptr<ChBodyAuxRef>(system->NewBodyAuxRef());
     m_body->SetNameString(m_name + "_body");
-    m_body->SetMass(m_mass);
-    m_body->SetInertiaXX(m_inertia);
-    m_body->SetFrame_COG_to_REF(m_cog);
+    if (m_mesh_name != "cobra_wheel_cyl") {
+        m_body->SetMass(m_mass);
+        m_body->SetInertiaXX(m_inertia);
+        m_body->SetFrame_COG_to_REF(m_cog);
+    } else {
+        m_body->SetMass(m_mass);
+    }
 
     // Add visualization shape
-    if (m_visualize) {
+    if (m_visualize && m_mesh_name != "cobra_wheel_cyl") {
         auto vis_mesh_file = GetChronoDataFile("robot/cobra/obj/" + m_mesh_name + ".obj");
         auto trimesh_vis = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(vis_mesh_file, true, true);
         trimesh_vis->Transform(m_mesh_xform.GetPos(), m_mesh_xform.GetA());  // translate/rotate/scale mesh
@@ -233,10 +237,13 @@ void CobraPart::Construct(ChSystem* system) {
         trimesh_shape->SetMutable(false);
         trimesh_shape->SetColor(m_color);
         m_body->AddVisualShape(trimesh_shape);
+    } else if (m_visualize && m_mesh_name == "cobra_wheel_cyl") {
+        auto cyl = chrono_types::make_shared<ChCylinderShape>(0.1125, 2 * 0.025);
+        m_body->AddVisualShape(cyl, ChFrame<>(VNULL, Q_from_AngX(CH_C_PI_2)));
     }
 
     // Add collision shape
-    if (m_collide) {
+    if (m_collide && m_mesh_name != "cobra_wheel_cyl") {
         auto col_mesh_file = GetChronoDataFile("robot/cobra/obj/" + m_mesh_name + ".obj");
         auto trimesh_col = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(col_mesh_file, false, false);
         trimesh_col->Transform(m_mesh_xform.GetPos(), m_mesh_xform.GetA());  // translate/rotate/scale mesh
@@ -246,6 +253,12 @@ void CobraPart::Construct(ChSystem* system) {
         m_body->GetCollisionModel()->AddTriangleMesh(m_mat, trimesh_col, false, false, VNULL, ChMatrix33<>(1), 0.005);
         m_body->GetCollisionModel()->BuildModel();
         m_body->SetCollide(m_collide);
+    } else if (m_collide && m_mesh_name == "cobra_wheel_cyl") {
+        m_body->GetCollisionModel()->ClearModel();
+        m_body->GetCollisionModel()->AddCylindricalShell(m_mat, 0.1125, 2 * 0.025, ChVector<>(0),
+                                                         Q_from_AngX(CH_C_PI_2));
+        m_body->GetCollisionModel()->BuildModel();
+        m_body->SetCollide(m_collide);
     }
 
     system->AddBody(m_body);
@@ -253,6 +266,9 @@ void CobraPart::Construct(ChSystem* system) {
 
 void CobraPart::CalcMassProperties(double density) {
     auto mesh_filename = GetChronoDataFile("robot/cobra/obj/" + m_mesh_name + ".obj");
+    if (m_mesh_name == "cobra_wheel_cyl") {
+        mesh_filename = GetChronoDataFile("robot/cobra/obj/cobra_wheel.obj");
+    }
     auto trimesh_col = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(mesh_filename, false, false);
     trimesh_col->Transform(m_mesh_xform.GetPos(), m_mesh_xform.GetA());  // translate/rotate/scale mesh
     trimesh_col->RepairDuplicateVertexes(1e-9);                          // if meshes are not watertight
@@ -280,7 +296,7 @@ void CobraPart::Initialize(std::shared_ptr<ChBodyAuxRef> chassis) {
 
 // Rover Chassis
 CobraChassis::CobraChassis(const std::string& name, std::shared_ptr<ChMaterialSurface> mat)
-    : CobraPart(name, ChFrame<>(VNULL, QUNIT), mat, true) {
+    : CobraPart(name, ChFrame<>(VNULL, QUNIT), mat, false) {
     m_mesh_name = "cobra_chassis";
     m_color = ChColor(0.7f, 0.4f, 0.4f);
     CalcMassProperties(165);
@@ -325,6 +341,15 @@ CobraWheel::CobraWheel(const std::string& name,
     switch (wheel_type) {
         case CobraWheelType::RealWheel:
             m_mesh_name = "cobra_wheel";
+            m_wheel_type = CobraWheelType::RealWheel;
+            break;
+        case CobraWheelType::SimpleWheel:
+            m_mesh_name = "cobra_simplewheel";
+            m_wheel_type = CobraWheelType::SimpleWheel;
+            break;
+        case CobraWheelType::CylWheel:
+            m_mesh_name = "cobra_wheel_cyl";
+            m_wheel_type = CobraWheelType::CylWheel;
             break;
     }
 
@@ -391,7 +416,7 @@ void Cobra::Create(CobraWheelType wheel_type) {
 
     // initialize rover wheels
     double wx = 0.1968;
-    double wy = 0.26341 + 0.0125;
+    double wy = 0.26341 + 0.031;
     double wz = 0.0355;
 
     m_wheels[V_LF] = chrono_types::make_shared<CobraWheel>("Wheel_LF", ChFrame<>(ChVector<>(+wx, +wy, wz), QUNIT),
