@@ -70,10 +70,10 @@ ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
 bool use_custom_mat = false;
 
 // Define Cobra rover wheel type
-CobraWheelType wheel_type = CobraWheelType::RealWheel;
+CobraWheelType wheel_type = CobraWheelType::SimpleWheel;
 
 // Simulation time step
-double time_step = 5e-4;
+double time_step = 1e-3;
 
 // -----------------------------------------------------------------------------
 
@@ -388,14 +388,14 @@ int main(int argc, char* argv[]) {
         // Set current steering angle
         double time = cobra.GetSystem()->GetChTime();
 
-        if (time > 2.0 && time < 4.0)
+        if (time > 2.0 && time < 6.0)
             driver->SetSteering(0.5);
-        else if (time > 4.0 && time < 6.0)
+        else if (time > 6.0 && time < 10.0)
             driver->SetSteering(-0.5);
         else
             driver->SetSteering(0.0);
 
-        if (time > 6.0)
+        if (time > 10.0)
             driver->SetMotorSpeed(0.0);
 
         // Update Cobra controls
@@ -403,7 +403,7 @@ int main(int argc, char* argv[]) {
 
         sys.DoStepDynamics(time_step);
 
-        manager->Update();
+        // manager->Update();
     }
 
     return 0;
@@ -427,7 +427,7 @@ void addCones(ChSystem& sys, std::vector<std::string>& cone_files, std::vector<C
 
         auto body = chrono_types::make_shared<ChBodyAuxRef>();
         sys.Add(body);
-        body->SetBodyFixed(false);
+        body->SetBodyFixed(true);
         body->SetFrame_REF_to_abs(ChFrame<>(ChVector<>(cone_pos[i]), QUNIT));
         body->SetFrame_COG_to_REF(ChFrame<>(cog, principal_inertia_rot));
         body->SetMass(mass * cone_density);
@@ -436,7 +436,7 @@ void addCones(ChSystem& sys, std::vector<std::string>& cone_files, std::vector<C
         body->GetCollisionModel()->ClearModel();
         body->GetCollisionModel()->AddTriangleMesh(rock_mat, mesh, false, false, VNULL, ChMatrix33<>(1), 0.005);
         body->GetCollisionModel()->BuildModel();
-        body->SetCollide(true);
+        body->SetCollide(false);
 
         auto mesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
         mesh_shape->SetMesh(mesh);
