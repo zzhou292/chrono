@@ -403,7 +403,7 @@ int main(int argc, char* argv[]) {
 
         sys.DoStepDynamics(time_step);
 
-        // manager->Update();
+        manager->Update();
     }
 
     return 0;
