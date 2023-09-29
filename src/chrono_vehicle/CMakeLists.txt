@@ -149,9 +149,6 @@ if(ENABLE_MODULE_VSG)
     find_package(vsg REQUIRED)
     find_package(vsgImGui REQUIRED)
     find_package(vsgXchange REQUIRED)
-    
-    # set the use of C++17 here as VSG requires it
-    set(CMAKE_CXX_STANDARD 17)
 endif()
 
 # ----------------------------------------------------------------------------
@@ -891,6 +888,7 @@ endif()
 if(HAVE_OPENCRG)
     include_directories(${OpenCRG_INCLUDE_DIR})
     list(APPEND LIBRARIES ${OpenCRG_LIBRARY})
+    set(CHRONO_OPENCRG_INCLUDES "${OpenCRG_INCLUDE_DIR}" PARENT_SCOPE)
 endif()
 
 if(ENABLE_MODULE_FSI)
@@ -978,6 +976,7 @@ if(ENABLE_MODULE_IRRLICHT)
         target_include_directories(ChronoEngine_vehicle_irrlicht PUBLIC ${CH_IRRKLANG_INCLUDES})
         list(APPEND LIBRARIES ${IRRKLANG_LIBRARY})
         set(CH_IRRLICHT_INCLUDES ${CH_IRRLICHT_INCLUDES} ${CH_IRRKLANG_INCLUDES} PARENT_SCOPE)
+        set(CH_IRRKLANG_INCLUDES "${CH_IRRKLANG_INCLUDES}" PARENT_SCOPE)
     endif()
     
     set_target_properties(ChronoEngine_vehicle_irrlicht PROPERTIES
@@ -1107,5 +1106,9 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
             "${PROJECT_BINARY_DIR}/bin/$<CONFIGURATION>")
       install(FILES "${OpenCRG_DLL}" DESTINATION bin)
     endif()
+
+  # Make variable visible from outside this directory
+  SET(CH_IRRKLANG_DLL "${CH_IRRKLANG_DLL}" PARENT_SCOPE)
+  SET(CH_OPENCRG_DLL "${OpenCRG_DLL}" PARENT_SCOPE)
 
 endif()
