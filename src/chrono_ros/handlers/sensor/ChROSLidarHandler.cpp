@@ -48,7 +48,7 @@ bool ChROSLidarHandler::Initialize(std::shared_ptr<ChROSInterface> interface) {
 
     m_publisher = interface->GetNode()->create_publisher<sensor_msgs::msg::PointCloud2>(m_topic_name, 1);
 
-    // m_lidar_msg.header.frame_id = ; // TODO
+    m_lidar_msg.header.frame_id = "lidar"; // TODO
     m_lidar_msg.width = m_lidar->GetWidth();
     m_lidar_msg.height = m_lidar->GetHeight();
     m_lidar_msg.is_bigendian = false;

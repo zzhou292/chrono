@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
     // Simulation
     double time = 0;
     double step_size = 2e-3;
-    double time_end = 30;
+    double time_end = 30000;
 
     // Give the ground body some rotational velocity so that the sensors attached to it appear to be moving
     // Note how the gyroscopes angular velocity in ROS will read 0.1 on the z-axis

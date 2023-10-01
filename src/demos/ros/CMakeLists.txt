@@ -7,6 +7,7 @@ message(STATUS "Demo programs for Chrono::ROS...")
 
 set(DEMOS
     demo_ROS_viper
+    demo_ROS_cobra
 )
 
 if(ENABLE_MODULE_VEHICLE AND ENABLE_MODULE_VEHICLE_MODELS)
