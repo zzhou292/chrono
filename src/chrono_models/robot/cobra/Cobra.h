@@ -40,10 +40,10 @@ namespace cobra {
 
 /// Cobra wheel/suspension identifiers.
 enum CobraWheelID {
-    V_LF = 0,  ///< left front
-    V_RF = 1,  ///< right front
-    V_LB = 2,  ///< left back
-    V_RB = 3   ///< right back
+    CO_LF = 0,  ///< left front
+    CO_RF = 1,  ///< right front
+    CO_LB = 2,  ///< left back
+    CO_RB = 3   ///< right back
 };
 
 /// Cobra wheel type.

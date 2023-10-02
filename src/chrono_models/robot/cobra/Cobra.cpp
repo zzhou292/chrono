@@ -385,51 +385,51 @@ void Cobra::Create(CobraWheelType wheel_type) {
     double shy = 0.12644;
     double shz = 0.1196;
 
-    m_steerhubs[V_LF] = chrono_types::make_shared<CobraSteerHub>(
+    m_steerhubs[CO_LF] = chrono_types::make_shared<CobraSteerHub>(
         "SteerHub_LF", ChFrame<>(ChVector<>(+shx, +shy, shz), QUNIT), m_default_material);
-    m_steerhubs[V_RF] = chrono_types::make_shared<CobraSteerHub>(
+    m_steerhubs[CO_RF] = chrono_types::make_shared<CobraSteerHub>(
         "SteerHub_RF", ChFrame<>(ChVector<>(+shx, -shy, shz), QUNIT), m_default_material);
-    m_steerhubs[V_LB] = chrono_types::make_shared<CobraSteerHub>(
+    m_steerhubs[CO_LB] = chrono_types::make_shared<CobraSteerHub>(
         "SteerHub_LB", ChFrame<>(ChVector<>(-shx, +shy, shz), QUNIT), m_default_material);
-    m_steerhubs[V_RB] = chrono_types::make_shared<CobraSteerHub>(
+    m_steerhubs[CO_RB] = chrono_types::make_shared<CobraSteerHub>(
         "SteerHub_RB", ChFrame<>(ChVector<>(-shx, -shy, shz), QUNIT), m_default_material);
 
-    m_steerhubs[V_RF]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
-    m_steerhubs[V_RB]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
+    m_steerhubs[CO_RF]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
+    m_steerhubs[CO_RB]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
 
     // initialize rover steering struct
     double ssx = 0.1968;
     double ssy = 0.26341;
     double ssz = 0.0355;
 
-    m_steerstructs[V_LF] = chrono_types::make_shared<CobraSteerStruct>(
+    m_steerstructs[CO_LF] = chrono_types::make_shared<CobraSteerStruct>(
         "SteerStruct_LF", ChFrame<>(ChVector<>(+ssx, +ssy, ssz), QUNIT), m_default_material);
-    m_steerstructs[V_RF] = chrono_types::make_shared<CobraSteerStruct>(
+    m_steerstructs[CO_RF] = chrono_types::make_shared<CobraSteerStruct>(
         "SteerStruct_RF", ChFrame<>(ChVector<>(+ssx, -ssy, ssz), QUNIT), m_default_material);
-    m_steerstructs[V_LB] = chrono_types::make_shared<CobraSteerStruct>(
+    m_steerstructs[CO_LB] = chrono_types::make_shared<CobraSteerStruct>(
         "SteerStruct_LB", ChFrame<>(ChVector<>(-ssx, +ssy, ssz), QUNIT), m_default_material);
-    m_steerstructs[V_RB] = chrono_types::make_shared<CobraSteerStruct>(
+    m_steerstructs[CO_RB] = chrono_types::make_shared<CobraSteerStruct>(
         "SteerStruct_RB", ChFrame<>(ChVector<>(-ssx, -ssy, ssz), QUNIT), m_default_material);
 
-    m_steerstructs[V_RF]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
-    m_steerstructs[V_RB]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
+    m_steerstructs[CO_RF]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
+    m_steerstructs[CO_RB]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
 
     // initialize rover wheels
     double wx = 0.1968;
     double wy = 0.26341 + 0.031;
     double wz = 0.0355;
 
-    m_wheels[V_LF] = chrono_types::make_shared<CobraWheel>("Wheel_LF", ChFrame<>(ChVector<>(+wx, +wy, wz), QUNIT),
+    m_wheels[CO_LF] = chrono_types::make_shared<CobraWheel>("Wheel_LF", ChFrame<>(ChVector<>(+wx, +wy, wz), QUNIT),
                                                            m_wheel_material, wheel_type);
-    m_wheels[V_RF] = chrono_types::make_shared<CobraWheel>("Wheel_RF", ChFrame<>(ChVector<>(+wx, -wy, wz), QUNIT),
+    m_wheels[CO_RF] = chrono_types::make_shared<CobraWheel>("Wheel_RF", ChFrame<>(ChVector<>(+wx, -wy, wz), QUNIT),
                                                            m_wheel_material, wheel_type);
-    m_wheels[V_LB] = chrono_types::make_shared<CobraWheel>("Wheel_LB", ChFrame<>(ChVector<>(-wx, +wy, wz), QUNIT),
+    m_wheels[CO_LB] = chrono_types::make_shared<CobraWheel>("Wheel_LB", ChFrame<>(ChVector<>(-wx, +wy, wz), QUNIT),
                                                            m_wheel_material, wheel_type);
-    m_wheels[V_RB] = chrono_types::make_shared<CobraWheel>("Wheel_RB", ChFrame<>(ChVector<>(-wx, -wy, wz), QUNIT),
+    m_wheels[CO_RB] = chrono_types::make_shared<CobraWheel>("Wheel_RB", ChFrame<>(ChVector<>(-wx, -wy, wz), QUNIT),
                                                            m_wheel_material, wheel_type);
 
-    m_wheels[V_RF]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
-    m_wheels[V_RB]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
+    m_wheels[CO_RF]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
+    m_wheels[CO_RB]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
 }
 
 void Cobra::Initialize(const ChFrame<>& pos) {
