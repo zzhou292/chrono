@@ -248,7 +248,6 @@ using namespace chrono::cobra;
 %include "../../../chrono_models/robot/turtlebot/Turtlebot.h"
 %include "../../../chrono_models/robot/cobra/Cobra.h"
 
-
 %include "../../../chrono_models/robot/copters/Copter.h"
 %template(ChCopter6) chrono::copter::Copter<6>;
 %template(ChCopter4) chrono::copter::Copter<4>;
