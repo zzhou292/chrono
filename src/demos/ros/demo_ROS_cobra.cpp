@@ -50,6 +50,10 @@
 #include "chrono_ros/handlers/sensor/ChROSLidarHandler.h"
 #include "chrono_ros/handlers/sensor/ChROSGPSHandler.h"
 
+#include "chrono_ros/handlers/ChROSBodyHandler.h"
+#include "chrono_ros/handlers/robot/cobra/ChROSCobraDCMotorControlHandler.h"
+
+
 #include "chrono_sensor/ChSensorManager.h"
 #include "chrono_sensor/sensors/ChCameraSensor.h"
 #include "chrono_sensor/sensors/ChLidarSensor.h"
@@ -432,6 +436,20 @@ int main(int argc, char* argv[]) {
     auto lidar_handler = chrono_types::make_shared<ChROSLidarHandler>(lidar, lidar_topic_name);
     ros_manager->RegisterHandler(lidar_handler);
 
+    // Create a subscriber for the driver inputs
+    auto driver_inputs_rate = 25;
+    auto driver_inputs_topic_name = "~/input/driver_inputs";
+    auto driver_inputs_handler = chrono_types::make_shared<ChROSCobraSpeedDriverHandler>(driver_inputs_rate, driver,
+                                                                                            driver_inputs_topic_name);
+    ros_manager->RegisterHandler(driver_inputs_handler);
+
+    // Create a publisher for the rover state
+    auto rover_state_rate = 25;
+    auto rover_state_topic_name = "~/output/rover/state";
+    auto rover_state_handler = chrono_types::make_shared<ChROSBodyHandler>(
+        rover_state_rate, cobra.GetChassis()->GetBody(), rover_state_topic_name);
+    ros_manager->RegisterHandler(rover_state_handler);
+
     // Finally, initialize the ros manager
     ros_manager->Initialize();
     // ---------------
@@ -447,15 +465,15 @@ int main(int argc, char* argv[]) {
         // Set current steering angle
         double time = cobra.GetSystem()->GetChTime();
 
-        if (time > 2.0 && time < 6.0)
-            driver->SetSteering(0.5);
-        else if (time > 6.0 && time < 10.0)
-            driver->SetSteering(-0.5);
-        else
-            driver->SetSteering(0.0);
+        // if (time > 2.0 && time < 6.0)
+        //     driver->SetSteering(0.5);
+        // else if (time > 6.0 && time < 10.0)
+        //     driver->SetSteering(-0.5);
+        // else
+        //     driver->SetSteering(0.0);
 
-        if (time > 10.0)
-            driver->SetMotorSpeed(0.0);
+        // if (time > 10.0)
+        //     driver->SetMotorSpeed(0.0);
 
         // Update Cobra controls
         cobra.Update();

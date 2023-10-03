@@ -116,6 +116,10 @@ set(CH_ROS_ROBOT_HANDLER_FILES
   # viper
   handlers/robot/viper/ChROSViperDCMotorControlHandler.h
   handlers/robot/viper/ChROSViperDCMotorControlHandler.cpp
+
+  # cobra
+  handlers/robot/cobra/ChROSCobraDCMotorControlHandler.h
+  handlers/robot/cobra/ChROSCobraDCMotorControlHandler.cpp
 )
 source_group("robot_handler" FILES ${CH_ROS_ROBOT_HANDLER_FILES})
 
