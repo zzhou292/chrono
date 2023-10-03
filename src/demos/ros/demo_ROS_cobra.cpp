@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Jason Zhou
+// Authors: Sriram Ashokkumar
 // =============================================================================
 //
 // Demo to show Cobra Rover operated on Rigid Terrain
