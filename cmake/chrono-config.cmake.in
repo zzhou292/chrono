@@ -143,6 +143,7 @@ set(Chrono_HAS_synchrono @ENABLE_MODULE_SYNCHRONO@)
 set(Chrono_HAS_modal @ENABLE_MODULE_MODAL@)
 set(Chrono_HAS_distributed @ENABLE_MODULE_DISTRIBUTED@)
 set(Chrono_HAS_vsg @ENABLE_MODULE_VSG@)
+set(Chrono_HAS_ros @ENABLE_MODULE_ROS@)
 
 set(Chrono_USE_irrklang @ENABLE_IRRKLANG@)
 set(Chrono_USE_opencrg @HAVE_OPENCRG@)
@@ -439,6 +440,16 @@ foreach(COMPONENT ${Chrono_FIND_COMPONENTS})
       if (NOT CHRONO_STATIC)
         list(APPEND CHRONO_DLL_NAMES "ChronoEngine_synchrono.dll")
       endif()
+
+    elseif(${COMPONENT_UPPER} MATCHES ROS)
+
+      find_package(ROS2 REQUIRED)
+
+      list(APPEND CHRONO_INCLUDE_DIRS "@CH_ROS_INCLUDES@")
+      list(APPEND CHRONO_LIBRARIES "@CH_ROS_LIBRARIES@")
+
+      list(PREPEND CHRONO_LIB_NAMES "ChronoEngine_ros")
+      list(APPEND CHRONO_DLL_NAMES "ChronoEngine_ros.dll")
 
     elseif(${COMPONENT_UPPER} MATCHES "GPU")
 
