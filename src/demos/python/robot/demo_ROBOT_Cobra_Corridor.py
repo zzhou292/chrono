@@ -97,6 +97,28 @@ lidar.PushFilter(sens.ChFilterXYZIAccess())
 lidar.PushFilter(sens.ChFilterVisualizePointCloud(1280, 720, 1))
 sens_manager.AddSensor(lidar)
 
+light_pos_1 = chrono.ChVectorD(0.0,0.0,1.89)
+intensity = 1.0
+sens_manager.scene.AddPointLight(chrono.ChVectorF(light_pos_1.x,light_pos_1.y,light_pos_1.z), chrono.ChColor(intensity, intensity, intensity), 500.0)
+
+light_pos_2 = chrono.ChVectorD(12.0,0.0,1.89)
+intensity = 1.0
+sens_manager.scene.AddPointLight(chrono.ChVectorF(light_pos_2.x,light_pos_2.y,light_pos_2.z), chrono.ChColor(intensity, intensity, intensity), 500.0)
+
+
+#lp_contact_material = chrono.ChMaterialSurfaceNSC()
+#lp_mat = chrono.ChVisualMaterial()
+#lp_mat.SetAmbientColor(chrono.ChColor(1., 0., 0.))
+#lp_mat.SetDiffuseColor(chrono.ChColor(1., 0., 0.))
+
+#light_body = chrono.ChBodyEasySphere(
+#            0.2, 1000, True, False, lp_contact_material)
+
+#light_body.SetPos(light_pos_2)
+#light_body.SetBodyFixed(True)
+#light_body.GetVisualShape(0).SetMaterial(0, lp_mat)
+#system.Add(light_body)
+
 
 # Create run-time visualization
 vis = chronoirr.ChVisualSystemIrrlicht()
