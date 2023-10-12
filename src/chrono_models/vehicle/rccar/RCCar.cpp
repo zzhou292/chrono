@@ -93,6 +93,8 @@ void RCCar::Initialize() {
     auto engine = chrono_types::make_shared<RCCar_EngineSimpleMap>("Engine");
     auto transmission = chrono_types::make_shared<RCCar_AutomaticTransmissionSimpleMap>("Transmission");
     auto powertrain = chrono_types::make_shared<ChPowertrainAssembly>(engine, transmission);
+    engine->m_voltage_ratio = m_voltage_ratio;
+    engine->m_stall_torque = m_stall_torque;
     m_vehicle->InitializePowertrain(powertrain);
 
     // Create the tires and set parameters depending on type.
