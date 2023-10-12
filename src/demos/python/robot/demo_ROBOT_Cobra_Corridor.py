@@ -21,7 +21,6 @@ import math
 import numpy as np
 import pychrono as chrono
 import pychrono.robot as robot_chrono
-import pychrono.ros as chros
 import pychrono.sensor as sens
 
 try:
@@ -35,7 +34,7 @@ system.Set_G_acc(chrono.ChVectorD(0, 0, -9.81))
 chrono.ChCollisionModel.SetDefaultSuggestedEnvelope(0.0025)
 chrono.ChCollisionModel.SetDefaultSuggestedMargin(0.0025)
 
-contact_method = chrono.ChMaterialSurfaceNSC()
+ground_mat = chrono.ChMaterialSurfaceNSC()
 
 
 room_mmesh = chrono.ChTriangleMeshConnected()
@@ -53,7 +52,7 @@ room_mesh_body.AddVisualShape(room_trimesh_shape)
 room_mesh_body.SetBodyFixed(True)
 room_mesh_body.GetCollisionModel().ClearModel()
 
-room_mesh_body.GetCollisionModel().AddTriangleMesh(contact_method, room_mmesh, False, False)
+room_mesh_body.GetCollisionModel().AddTriangleMesh(ground_mat, room_mmesh, False, False)
 room_mesh_body.GetCollisionModel().BuildModel()
 room_mesh_body.SetCollide(True)
 
@@ -78,21 +77,47 @@ rover.Initialize(chrono.ChFrameD(chrono.ChVectorD(0, -0.2, -0.3), chrono.ChQuate
 # Create the sensor 
 sens_manager = sens.ChSensorManager(system)
 
-offset_pose = chrono.ChFrameD(chrono.ChVectorD(-8, 0, 2),
-                              chrono.Q_from_AngAxis(.2, chrono.ChVectorD(0, 1, 0)))
+cam_offset_pose = chrono.ChFrameD(chrono.ChVectorD(0.18, 0, 0.35),
+                              chrono.Q_from_AngAxis(0, chrono.ChVectorD(0, 1, 0)))
 
-cam = sens.ChCameraSensor(rover.GetChassis().GetBody(), 30, offset_pose, 1280,  720, 1.408)
+
+lidar_offset_pose = chrono.ChFrameD(chrono.ChVectorD(0.0, 0, 0.4),
+                              chrono.Q_from_AngAxis(0, chrono.ChVectorD(0, 1, 0)))
+
+cam = sens.ChCameraSensor(rover.GetChassis().GetBody(), 30, cam_offset_pose, 1280,  720, 1.408,2)
 cam.PushFilter(sens.ChFilterVisualize(1280, 720))
 cam.PushFilter(sens.ChFilterRGBA8Access())
 sens_manager.AddSensor(cam)
 
-lidar = sens.ChLidarSensor(rover.GetChassis().GetBody(), 5., offset_pose, 90, 300,
+lidar = sens.ChLidarSensor(rover.GetChassis().GetBody(), 5., lidar_offset_pose, 90, 300,
                             2*chrono.CH_C_PI, chrono.CH_C_PI / 12, -chrono.CH_C_PI / 6, 100., 0)
 lidar.PushFilter(sens.ChFilterDIAccess())
 lidar.PushFilter(sens.ChFilterPCfromDepth())
 lidar.PushFilter(sens.ChFilterXYZIAccess())
 lidar.PushFilter(sens.ChFilterVisualizePointCloud(1280, 720, 1))
 sens_manager.AddSensor(lidar)
+
+light_pos_1 = chrono.ChVectorD(0.0,0.0,1.89)
+intensity = 1.0
+sens_manager.scene.AddPointLight(chrono.ChVectorF(light_pos_1.x,light_pos_1.y,light_pos_1.z), chrono.ChColor(intensity, intensity, intensity), 500.0)
+
+light_pos_2 = chrono.ChVectorD(12.0,0.0,1.89)
+intensity = 1.0
+sens_manager.scene.AddPointLight(chrono.ChVectorF(light_pos_2.x,light_pos_2.y,light_pos_2.z), chrono.ChColor(intensity, intensity, intensity), 500.0)
+
+
+#lp_contact_material = chrono.ChMaterialSurfaceNSC()
+#lp_mat = chrono.ChVisualMaterial()
+#lp_mat.SetAmbientColor(chrono.ChColor(1., 0., 0.))
+#lp_mat.SetDiffuseColor(chrono.ChColor(1., 0., 0.))
+
+#light_body = chrono.ChBodyEasySphere(
+#            0.2, 1000, True, False, lp_contact_material)
+
+#light_body.SetPos(light_pos_2)
+#light_body.SetBodyFixed(True)
+#light_body.GetVisualShape(0).SetMaterial(0, lp_mat)
+#system.Add(light_body)
 
 
 # Create run-time visualization
@@ -107,18 +132,6 @@ vis.AddSkyBox()
 vis.AddCamera(chrono.ChVectorD(0, 2.5, 1.5), chrono.ChVectorD(0, 0, 1))
 vis.AddTypicalLights()
 vis.AddLightWithShadow(chrono.ChVectorD(1.5, -2.5, 5.5), chrono.ChVectorD(0, 0, 0.5), 3, 4, 10, 40, 512)
-
-# Create ROS manager
-ros_manager = chros.ChROSManager()
-ros_manager.RegisterHandler(chros.ChROSClockHandler())
-ros_manager.RegisterHandler(chros.ChROSCameraHandler(
-        cam.GetUpdateRate() / 4, cam, "~/output/camera/data/image"))
-ros_manager.RegisterHandler(chros.ChROSLidarHandler(
-    lidar, "~/output/lidar/data/pointcloud"))
-ros_manager.RegisterHandler(chros.ChROSCobraSpeedDriverHandler(25, driver, "~/input/driver_inputs"))
-ros_manager.RegisterHandler(chros.ChROSBodyHandler(25, rover.GetChassis().GetBody(), "~/output/cobra/state"))
-ros_manager.Initialize()
-
 ####vis.EnableShadows()
 
 time_step = 1e-3
@@ -132,6 +145,7 @@ step = 0
 while (vis.Run()) :
     time = time + time_step
     steering = 0
+    driver.SetMotorSpeed(1.0)
     # if time > 7:
     # 	if abs(rover.GetTurnAngle()) < 1e-8:
     # 		steering = 0
@@ -143,8 +157,7 @@ while (vis.Run()) :
     
     rover.Update()
     sens_manager.Update()
-    if not ros_manager.Update(time, time_step):
-        break
+
     if step%20==0 :
       vis.BeginScene()
       vis.Render()
