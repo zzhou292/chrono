@@ -111,10 +111,10 @@ void RCCar::Initialize() {
             m_vehicle->InitializeTire(tire_RL, m_vehicle->GetAxle(1)->m_wheels[LEFT], VisualizationType::NONE);
             m_vehicle->InitializeTire(tire_RR, m_vehicle->GetAxle(1)->m_wheels[RIGHT], VisualizationType::NONE);
             
-            tire_FL->SetRollingResistanceCoefficients(m_rolling_friction_coeff, m_rolling_friction_coeff);
-            tire_FR->SetRollingResistanceCoefficients(m_rolling_friction_coeff, m_rolling_friction_coeff);
-            tire_RL->SetRollingResistanceCoefficients(m_rolling_friction_coeff, m_rolling_friction_coeff);
-            tire_RR->SetRollingResistanceCoefficients(m_rolling_friction_coeff, m_rolling_friction_coeff);
+            tire_FL->SetRollingResistanceCoefficient(m_rolling_friction_coeff);
+            tire_FR->SetRollingResistanceCoefficient(m_rolling_friction_coeff);
+            tire_RL->SetRollingResistanceCoefficient(m_rolling_friction_coeff);
+            tire_RR->SetRollingResistanceCoefficient(m_rolling_friction_coeff);
 
             m_tire_mass = tire_FL->GetMass();
             break;
