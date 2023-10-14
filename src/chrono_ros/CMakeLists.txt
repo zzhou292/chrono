@@ -77,6 +77,10 @@ set(CH_ROS_HANDLER_FILES
 
   handlers/ChROSHandlerUtilities.h
   handlers/ChROSHandlerUtilities.cpp
+
+  handlers/ChROSTFHandler.h
+  handlers/ChROSTFHandler.cpp
+
 )
 source_group("handler" FILES ${CH_ROS_HANDLER_FILES})
 

@@ -49,6 +49,7 @@
 #include "chrono_ros/handlers/sensor/ChROSMagnetometerHandler.h"
 #include "chrono_ros/handlers/sensor/ChROSLidarHandler.h"
 #include "chrono_ros/handlers/sensor/ChROSGPSHandler.h"
+#include "chrono_ros/handlers/ChROSTFHandler.h"
 
 #include "chrono_ros/handlers/ChROSBodyHandler.h"
 #include "chrono_ros/handlers/robot/cobra/ChROSCobraDCMotorControlHandler.h"
@@ -310,8 +311,8 @@ int main(int argc, char* argv[]) {
         chrono_types::make_shared<ChLidarSensor>(cobra.GetChassis()->GetBody(),          // body lidar is attached to
                                                  10,                                     // scanning rate in Hz
                                                  offset_pose2,                           // offset pose
-                                                 640,                                    // number of horizontal samples
-                                                 320,                                    // number of vertical channels
+                                                 128,                                    // number of horizontal samples
+                                                 32,                                    // number of vertical channels
                                                  horizontal_fov,                         // horizontal field of view
                                                  max_vert_angle, min_vert_angle, 100.0f  // vertical field of view
         );
@@ -489,6 +490,12 @@ int main(int argc, char* argv[]) {
     auto driver_inputs_handler = chrono_types::make_shared<ChROSCobraSpeedDriverHandler>(driver_inputs_rate, driver,
                                                                                             driver_inputs_topic_name);
     ros_manager->RegisterHandler(driver_inputs_handler);
+
+    // Create baselink lidar tf pubisher
+    auto lidar_baselink_tf_rate = 25;
+    auto lidar_baselink_tf_topic_name = "~/output/lidar/data/tf";
+    auto lidar_baselink_tf_handler = chrono_types::make_shared<ChROSTFHandler>(lidar_baselink_tf_rate, lidar, cobra.GetChassis()->GetBody(), lidar_baselink_tf_topic_name);
+    ros_manager->RegisterHandler(lidar_baselink_tf_handler);
 
     // Create a publisher for the rover state
     auto rover_state_rate = 25;

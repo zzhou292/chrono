@@ -61,7 +61,7 @@ class LaserScanImpl : public ChROSLidarHandlerImpl {
 
         m_publisher = interface->GetNode()->create_publisher<sensor_msgs::msg::LaserScan>(topic_name, 1);
 
-        // m_msg.header.frame_id = ; // TODO
+        m_msg.header.frame_id = "lidar"; // TODO
         m_msg.angle_min = lidar->GetHFOV() / 2.0;
         m_msg.angle_max = lidar->GetHFOV() / 2.0;
         m_msg.angle_increment = lidar->GetHFOV() / lidar->GetWidth();
@@ -108,7 +108,7 @@ class PointCloud2Impl : public ChROSLidarHandlerImpl {
     virtual bool Initialize(std::shared_ptr<ChROSInterface> interface) override {
         m_publisher = interface->GetNode()->create_publisher<sensor_msgs::msg::PointCloud2>(topic_name, 1);
 
-        // m_msg.header.frame_id = ; // TODO
+        m_msg.header.frame_id = "lidar"; // TODO
         m_msg.width = lidar->GetWidth();
         m_msg.height = lidar->GetHeight();
         m_msg.is_bigendian = false;
