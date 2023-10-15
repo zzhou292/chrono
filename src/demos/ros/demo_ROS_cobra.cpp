@@ -53,7 +53,6 @@
 #include "chrono_ros/handlers/ChROSBodyHandler.h"
 #include "chrono_ros/handlers/robot/cobra/ChROSCobraDCMotorControlHandler.h"
 
-
 #include "chrono_sensor/ChSensorManager.h"
 #include "chrono_sensor/sensors/ChCameraSensor.h"
 #include "chrono_sensor/sensors/ChLidarSensor.h"
@@ -81,7 +80,6 @@ using namespace chrono::cobra;
 using namespace chrono::sensor;
 using namespace chrono::geometry;
 using namespace chrono::ros;
-
 
 // -----------------------------------------------------------------------------
 
@@ -168,7 +166,6 @@ int main(int argc, char* argv[]) {
 
     sys.AddBody(room_mesh_body);
 
-
     // room_mmesh = chrono.ChTriangleMeshConnected()
     // room_mmesh.LoadWavefrontMesh(chrono.GetChronoDataFile("sensor/textures/hallway.obj"), False, True)
     // room_mmesh.Transform(chrono.ChVectorD(0, 0, 0), chrono.ChMatrix33D(1))
@@ -190,7 +187,6 @@ int main(int argc, char* argv[]) {
 
     // # vehicle.GetSystem().Add(room_mesh_body)
     // system.Add(room_mesh_body)
-
 
     // Create the ground.
     // auto ground_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
@@ -246,7 +242,8 @@ int main(int argc, char* argv[]) {
     // Create a camera and add it to the sensor manager
     // ------------------------------------------------
     chrono::ChFrame<double> offset_pose1({0, 0, 1.2}, Q_from_AngAxis(CH_C_PI / 18, {0, 1, 0}));
-    // auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(),  // body camera is attached to
+    // auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(),  // body camera is attached
+    // to
     //                                                      20,                             // update rate in Hz
     //                                                      offset_pose1,                   // offset pose
     //                                                      640,                            // image width
@@ -281,7 +278,8 @@ int main(int argc, char* argv[]) {
     // manager->AddSensor(cam);
 
     // Create a camera that's placed on the hood
-    // auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(),  // body camera is attached to
+    // auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(),  // body camera is attached
+    // to
     //                                                      20,                             // update rate in Hz
     //                                                      offset_pose1,                   // offset pose
     //                                                      640,                            // image width
@@ -291,7 +289,8 @@ int main(int argc, char* argv[]) {
     //                                                      CameraLensModelType::PINHOLE,  // lens model type
     //                                                      true, 2.2);
 
-    auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(), 30, offset_pose1, 1280, 720, CH_C_PI / 3.);
+    auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(), 30, offset_pose1, 1280, 720,
+                                                         CH_C_PI / 3.);
     cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
     cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(1280, 720));
     manager->AddSensor(cam);
@@ -304,14 +303,14 @@ int main(int argc, char* argv[]) {
     float min_vert_angle = (float)-CH_C_PI / 6;   // 30 degrees down
     chrono::ChFrame<double> offset_pose2({0.2, 0, 0.5}, Q_from_AngAxis(0, {0, 1, 0}));
     // Number of horizontal and vertical samples
-    unsigned int horizontal_samples = 4500;
+    unsigned int horizontal_samples = 128;
     unsigned int vertical_samples = 32;
     auto lidar =
         chrono_types::make_shared<ChLidarSensor>(cobra.GetChassis()->GetBody(),          // body lidar is attached to
                                                  10,                                     // scanning rate in Hz
                                                  offset_pose2,                           // offset pose
-                                                 640,                                    // number of horizontal samples
-                                                 320,                                    // number of vertical channels
+                                                 horizontal_samples,                     // number of horizontal samples
+                                                 vertical_samples,                       // number of vertical channels
                                                  horizontal_fov,                         // horizontal field of view
                                                  max_vert_angle, min_vert_angle, 100.0f  // vertical field of view
         );
@@ -330,11 +329,18 @@ int main(int argc, char* argv[]) {
     // cloud data
     lidar->PushFilter(chrono_types::make_shared<ChFilterPCfromDepth>());
 
+    lidar->PushFilter(chrono_types::make_shared<ChFilterLidarNoiseXYZI>(0.01f, 0.001f, 0.001f, 0.01f));
+
     // Render the point cloud
     lidar->PushFilter(chrono_types::make_shared<ChFilterVisualizePointCloud>(640, 480, 0.2, "Lidar Point Cloud"));
 
     // Access the lidar data as an XYZI buffer
     lidar->PushFilter(chrono_types::make_shared<ChFilterXYZIAccess>());
+
+    // Output directories
+    const std::string out_dir = "SENSOR_OUTPUT/LIDAR_DEMO/";
+    // Save the XYZI data
+    lidar->PushFilter(chrono_types::make_shared<ChFilterSavePtCloud>(out_dir + "lidar/"));
 
     // add sensor to the manager
     manager->AddSensor(lidar);
@@ -486,8 +492,8 @@ int main(int argc, char* argv[]) {
     // Create a subscriber for the driver inputs
     auto driver_inputs_rate = 25;
     auto driver_inputs_topic_name = "~/input/driver_inputs";
-    auto driver_inputs_handler = chrono_types::make_shared<ChROSCobraSpeedDriverHandler>(driver_inputs_rate, driver,
-                                                                                            driver_inputs_topic_name);
+    auto driver_inputs_handler =
+        chrono_types::make_shared<ChROSCobraSpeedDriverHandler>(driver_inputs_rate, driver, driver_inputs_topic_name);
     ros_manager->RegisterHandler(driver_inputs_handler);
 
     // Create a publisher for the rover state
