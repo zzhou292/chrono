@@ -38,6 +38,7 @@
 #include "chrono/physics/ChLinkMotorRotationTorque.h"
 
 #include "chrono_thirdparty/filesystem/path.h"
+#include "chrono/geometry/ChTriangleMeshConnected.h"
 
 namespace chrono {
 namespace parsers {
@@ -257,10 +258,17 @@ std::shared_ptr<ChVisualShape> ChParserURDF::toChVisualShape(const urdf::Geometr
             break;
         }
         case urdf::Geometry::MESH: {
-            auto mesh = std::static_pointer_cast<urdf::Mesh>(geometry);
-            auto modelfile_shape = chrono_types::make_shared<ChModelFileShape>();
-            modelfile_shape->SetFilename(m_filepath + "/" + mesh->filename);
-            vis_shape = modelfile_shape;
+            // auto mesh = std::static_pointer_cast<urdf::Mesh>(geometry);
+            // auto modelfile_shape = chrono_types::make_shared<ChModelFileShape>();
+            // modelfile_shape->SetFilename(m_filepath + "/" + mesh->filename);
+            // vis_shape = modelfile_shape;
+
+            auto mesh_urdf = std::static_pointer_cast<urdf::Mesh>(geometry);
+            auto mmesh = chrono::geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(m_filepath + "/" +
+                                                                                            mesh_urdf->filename);
+            auto model_mesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+            model_mesh_shape->SetMesh(mmesh);
+            vis_shape = model_mesh_shape;
             break;
         }
     }
@@ -349,7 +357,8 @@ void ChParserURDF::attachCollision(std::shared_ptr<ChBody> body,
                         trimesh = geometry::ChTriangleMeshConnected::CreateFromSTLFile(mesh_filename, true);
 
                     if (!trimesh) {
-                        cout << "Warning: Unsupported format for collision mesh file <" << mesh_filename << ">." << endl;
+                        cout << "Warning: Unsupported format for collision mesh file <" << mesh_filename << ">."
+                             << endl;
                         cout << "Warning: No collision shape was generated for body <" << link_name << ">.\n" << endl;
                         break;
                     }
