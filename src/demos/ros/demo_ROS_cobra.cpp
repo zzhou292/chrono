@@ -67,6 +67,8 @@
 #endif
 
 #include "chrono/assets/ChVisualSystem.h"
+
+
 #ifdef CHRONO_IRRLICHT
     #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 using namespace chrono::irrlicht;
@@ -147,7 +149,7 @@ int main(int argc, char* argv[]) {
     auto ground_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
 
     auto room_mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
-    room_mmesh->LoadWavefrontMesh(chrono::GetChronoDataFile("sensor/textures/hallway.obj"), false, true);
+    room_mmesh->LoadWavefrontMesh(chrono::GetChronoDataFile("robot/environment/hallway_1/hallway.obj"), false, true);
     room_mmesh->Transform(chrono::ChVector<>(0, 0, 0), chrono::ChMatrix33<>(1));
 
     auto room_trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();

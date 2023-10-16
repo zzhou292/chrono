@@ -38,7 +38,7 @@
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
 #include "chrono_vehicle/ChDriver.h"
-#include "chrono_models/vehicle/rccar/RCCar.h"
+#include "chrono_models/vehicle/artcar/ARTcar.h"
 
 #include "chrono_sensor/sensors/ChLidarSensor.h"
 #include "chrono_sensor/sensors/ChCameraSensor.h"
@@ -63,7 +63,7 @@ using namespace chrono;
 // using namespace chrono::ros;
 using namespace chrono::vehicle;
 using namespace chrono::sensor;
-using namespace chrono::vehicle::rccar;
+using namespace chrono::vehicle::artcar;
 // =============================================================================
 // Initial vehicle location and orientation
 ChVector<> initLoc(0, 0, 0.5);
@@ -108,7 +108,7 @@ double step_size = 2e-3;
 int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2023 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 
-    RCCar vehicle;
+    ARTcar vehicle;
     vehicle.SetContactMethod(contact_method);
     vehicle.SetChassisCollisionType(chassis_collision_type);
     vehicle.SetChassisFixed(false);
