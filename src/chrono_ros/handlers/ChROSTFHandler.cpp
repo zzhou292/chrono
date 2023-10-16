@@ -87,13 +87,31 @@ void ChROSTFHandler::Tick(double time) {
     m_msg.transform.translation.y = output_frame.GetPos().y();
     m_msg.transform.translation.z = output_frame.GetPos().z();
 
-
-    // flip one of these
-
     m_msg.transform.rotation.x = output_frame.GetRot().e0();
     m_msg.transform.rotation.y = output_frame.GetRot().e1();
     m_msg.transform.rotation.z = output_frame.GetRot().e2();
-    m_msg.transform.rotation.w = output_frame.GetRot().e3();
+    m_msg.transform.rotation.w = -output_frame.GetRot().e3();
+    // m_msg.transform.rotation.x = output_frame.GetRot().e2();
+    // m_msg.transform.rotation.y = output_frame.GetRot().e1();
+    // m_msg.transform.rotation.z = output_frame.GetRot().e0();
+    // m_msg.transform.rotation.w = output_frame.GetRot().e3();
+
+
+    // flip one of these
+
+    // // Extract the original rotation from `output_frame`
+    // ChQuaternion<> original_rotation = output_frame.GetRot();
+
+    // // Create a quaternion for a 180-degree rotation around the Z-axis (for example)
+    // ChQuaternion<> flip_rotation = Q_from_AngAxis(chrono::CH_C_PI, ChVector<>(0, 0, 1));
+
+    // // Apply the flip rotation
+    // ChQuaternion<> new_rotation = original_rotation * flip_rotation;
+
+    // m_msg.transform.rotation.x = new_rotation.e0();
+    // m_msg.transform.rotation.y = new_rotation.e1();
+    // m_msg.transform.rotation.z = new_rotation.e2();
+    // m_msg.transform.rotation.w = new_rotation.e3();
 
 
 
