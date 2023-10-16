@@ -493,7 +493,7 @@ int main(int argc, char* argv[]) {
 
     // Create baselink lidar tf pubisher
     auto lidar_baselink_tf_rate = 25;
-    auto lidar_baselink_tf_topic_name = "~/output/lidar/data/tf";
+    auto lidar_baselink_tf_topic_name = "/tf";
     auto lidar_baselink_tf_handler = chrono_types::make_shared<ChROSTFHandler>(lidar_baselink_tf_rate, lidar, cobra.GetChassis()->GetBody(), lidar_baselink_tf_topic_name);
     ros_manager->RegisterHandler(lidar_baselink_tf_handler);
 

@@ -23,6 +23,8 @@
 #include "chrono_ros/handlers/ChROSHandlerUtilities.h"
 #include "chrono_sensor/sensors/ChLidarSensor.h"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "tf2_msgs/msg/tf_message.hpp"
+
 
 #include "chrono_ros_interfaces/msg/body.hpp"
 
@@ -51,7 +53,7 @@ class ChROSTFHandler : public ChROSHandler {
     std::shared_ptr<chrono::sensor::ChLidarSensor> m_lidar;
     const std::string m_topic_name;          ///< The topic name to publish the body information to
     geometry_msgs::msg::TransformStamped m_msg;  ///< The message to publish
-    rclcpp::Publisher<geometry_msgs::msg::TransformStamped>::SharedPtr
+    rclcpp::Publisher<tf2_msgs::msg::TFMessage>::SharedPtr
         m_publisher;  ///< The publisher which data is published through
 };
 
