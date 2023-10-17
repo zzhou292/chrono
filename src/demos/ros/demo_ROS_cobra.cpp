@@ -229,12 +229,26 @@ int main(int argc, char* argv[]) {
 
     addCones(sys, cone_meshfile, cone_pos);
 
+    // Create chairs
+    std::vector<std::string> chair_meshfile = {
+        "robot/environment/objects/scan_chair_1/textured.obj", "robot/environment/objects/chair_1/swivel_chair_.obj",  //
+        "robot/environment/objects/scan_chair_1/textured.obj",
+        
+    };
+
+    std::vector<ChVector<>> chair_pos = {
+        ChVector<>(6.5, 2.1, 0.005), ChVector<>(10.5, 1.5, 0.005),  //
+        ChVector<>(13.0, 1.3, 0.005)  //
+    };
+
+    addCones(sys, chair_meshfile, chair_pos);
+
     // -----------------------
     // Create a sensor manager
     // -----------------------
     float intensity = 1.0;
     auto manager = chrono_types::make_shared<ChSensorManager>(&sys);
-    manager->scene->AddPointLight({100, 100, 100}, {intensity, intensity, intensity}, 500);
+    manager->scene->AddPointLight({12.0, 0.0, 1.89}, {intensity, intensity, intensity}, 500);
     manager->scene->SetAmbientLight({0.1f, 0.1f, 0.1f});
     Background b;
     b.mode = BackgroundMode::ENVIRONMENT_MAP;
@@ -306,8 +320,8 @@ int main(int argc, char* argv[]) {
     float min_vert_angle = (float)-CH_C_PI / 6;   // 30 degrees down
     chrono::ChFrame<double> offset_pose2({0.2, 0, 0.5}, Q_from_AngAxis(0, {0, 1, 0}));
     // Number of horizontal and vertical samples
-    unsigned int horizontal_samples = 128;
-    unsigned int vertical_samples = 32;
+    unsigned int horizontal_samples = 256;
+    unsigned int vertical_samples = 64;
     auto lidar =
         chrono_types::make_shared<ChLidarSensor>(cobra.GetChassis()->GetBody(),          // body lidar is attached to
                                                  10,                                     // scanning rate in Hz
@@ -332,18 +346,13 @@ int main(int argc, char* argv[]) {
     // cloud data
     lidar->PushFilter(chrono_types::make_shared<ChFilterPCfromDepth>());
 
-    lidar->PushFilter(chrono_types::make_shared<ChFilterLidarNoiseXYZI>(0.01f, 0.001f, 0.001f, 0.01f));
+    lidar->PushFilter(chrono_types::make_shared<ChFilterLidarNoiseXYZI>(0.005f, 0.0005f, 0.0005f, 0.005f));
 
     // Render the point cloud
     lidar->PushFilter(chrono_types::make_shared<ChFilterVisualizePointCloud>(640, 480, 0.2, "Lidar Point Cloud"));
 
     // Access the lidar data as an XYZI buffer
     lidar->PushFilter(chrono_types::make_shared<ChFilterXYZIAccess>());
-
-    // Output directories
-    const std::string out_dir = "SENSOR_OUTPUT/LIDAR_DEMO/";
-    // Save the XYZI data
-    lidar->PushFilter(chrono_types::make_shared<ChFilterSavePtCloud>(out_dir + "lidar/"));
 
     // add sensor to the manager
     manager->AddSensor(lidar);
@@ -481,6 +490,12 @@ int main(int argc, char* argv[]) {
     auto clock_handler = chrono_types::make_shared<ChROSClockHandler>();
     ros_manager->RegisterHandler(clock_handler);
 
+    // Create baselink lidar tf pubisher
+    auto lidar_baselink_tf_rate = 50;
+    auto lidar_baselink_tf_topic_name = "/tf";
+    auto lidar_baselink_tf_handler = chrono_types::make_shared<ChROSTFHandler>(lidar_baselink_tf_rate, lidar, cobra.GetChassis()->GetBody(), lidar_baselink_tf_topic_name);
+    ros_manager->RegisterHandler(lidar_baselink_tf_handler);
+
     // Create the publisher for the camera
     auto camera_rate = cam->GetUpdateRate();
     auto camera_topic_name = "~/output/camera/data/image";
@@ -488,22 +503,16 @@ int main(int argc, char* argv[]) {
     ros_manager->RegisterHandler(camera_handler);
 
     // Create the publisher for the lidar
-    auto lidar_topic_name = "~/output/lidar/data/pointcloud";
+    auto lidar_topic_name = "/input_cloud";
     auto lidar_handler = chrono_types::make_shared<ChROSLidarHandler>(lidar, lidar_topic_name);
     ros_manager->RegisterHandler(lidar_handler);
 
     // Create a subscriber for the driver inputs
     auto driver_inputs_rate = 25;
-    auto driver_inputs_topic_name = "~/input/driver_inputs";
+    auto driver_inputs_topic_name = "cmd_vel";
     auto driver_inputs_handler =
         chrono_types::make_shared<ChROSCobraSpeedDriverHandler>(driver_inputs_rate, driver, driver_inputs_topic_name);
     ros_manager->RegisterHandler(driver_inputs_handler);
-
-    // Create baselink lidar tf pubisher
-    auto lidar_baselink_tf_rate = 25;
-    auto lidar_baselink_tf_topic_name = "/tf";
-    auto lidar_baselink_tf_handler = chrono_types::make_shared<ChROSTFHandler>(lidar_baselink_tf_rate, lidar, cobra.GetChassis()->GetBody(), lidar_baselink_tf_topic_name);
-    ros_manager->RegisterHandler(lidar_baselink_tf_handler);
 
     // Create a publisher for the rover state
     auto rover_state_rate = 25;
@@ -535,7 +544,7 @@ int main(int argc, char* argv[]) {
         //     driver->SetSteering(0.0);
 
         // if (time > 10.0)
-        //     driver->SetMotorSpeed(0.0);
+             driver->SetMotorSpeed(0.8);
 
         // Update Cobra controls
         cobra.Update();

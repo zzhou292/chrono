@@ -39,7 +39,9 @@ bool ChROSTFHandler::Initialize(std::shared_ptr<ChROSInterface> interface) {
 
     m_publisher = node->create_publisher<tf2_msgs::msg::TFMessage>(m_topic_name, 1);
 
-    m_msg.header.frame_id = "lidar"; //TODO
+    m_msg.header.frame_id = "base_link"; //TODO
+    m_msg.child_frame_id = "lidar";
+        
 
     return true;
 }
@@ -83,14 +85,16 @@ void ChROSTFHandler::Tick(double time) {
     ChFrame<> bodyTemp = m_body->GetFrame_COG_to_abs();
     bodyTemp.TransformLocalToParent(lidarTemp, output_frame);
 
-    m_msg.transform.translation.x = output_frame.GetPos().x();
-    m_msg.transform.translation.y = output_frame.GetPos().y();
-    m_msg.transform.translation.z = output_frame.GetPos().z();
+    m_msg.transform.translation.x = 1;
+    m_msg.transform.translation.y = 0;
+    m_msg.transform.translation.z = 1;
 
-    m_msg.transform.rotation.x = output_frame.GetRot().e0();
-    m_msg.transform.rotation.y = output_frame.GetRot().e1();
-    m_msg.transform.rotation.z = output_frame.GetRot().e2();
-    m_msg.transform.rotation.w = -output_frame.GetRot().e3();
+    ChQuaternion<> quat = Q_from_AngAxis(0, ChVector<>(1, 0, 0));
+    m_msg.transform.rotation.x = quat.e1();
+    m_msg.transform.rotation.y = quat.e2();
+    m_msg.transform.rotation.z = quat.e3();
+    m_msg.transform.rotation.w = quat.e0();
+    //std::cout << quat.e1() << "," << quat.e2() << "," << quat.e3() << "," << quat.e0() << std::endl;
     // m_msg.transform.rotation.x = output_frame.GetRot().e2();
     // m_msg.transform.rotation.y = output_frame.GetRot().e1();
     // m_msg.transform.rotation.z = output_frame.GetRot().e0();
@@ -117,7 +121,8 @@ void ChROSTFHandler::Tick(double time) {
 
 
 
-    m_msg.child_frame_id = "base_link";
+    m_msg.child_frame_id = "lidar";
+    
 
 
     // m_msg.transform.rotation.x = 0;
