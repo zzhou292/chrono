@@ -306,10 +306,12 @@ int main(int argc, char* argv[]) {
     //                                                      CameraLensModelType::PINHOLE,  // lens model type
     //                                                      true, 2.2);
 
-    auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(), 30, offset_pose1, 1280, 720,
-                                                         CH_C_PI / 3.);
+    auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(), 20, offset_pose1, 1280, 720,
+                                                         CH_C_PI / 4, 1, CameraLensModelType::PINHOLE,false, 2.2);
+    
+    cam->PushFilter(chrono_types::make_shared<ChFilterCameraNoisePixDep>(.0004f, .0004f));
+    cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(640, 360, "Global //Illumination"));
     cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-    cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(1280, 720));
     manager->AddSensor(cam);
 
     // ------------------------------------------------
@@ -356,21 +358,6 @@ int main(int argc, char* argv[]) {
 
     // add sensor to the manager
     manager->AddSensor(lidar);
-
-    // ------------------------------------------------
-    // Create a gps and add it to the sensor manager
-    // ------------------------------------------------
-    ChVector<> gps_reference(-89.400, 43.070, 260.0);
-    std::shared_ptr<ChNoiseModel> gps_noise_model =
-        chrono_types::make_shared<ChNoiseNormal>(ChVector<double>(1.f, 1.f, 1.f),  // Mean
-                                                 ChVector<double>(2.f, 3.f, 1.f)   // Standard Deviation
-        );
-
-    auto gps = chrono_types::make_shared<ChGPSSensor>(cobra.GetChassis()->GetBody(), 20, offset_pose2, gps_reference,
-                                                      gps_noise_model);
-    gps->PushFilter(chrono_types::make_shared<ChFilterGPSAccess>());
-
-    manager->AddSensor(gps);
 
     // ----------------------------------------------
     // Create imu related sensors and add them to the sensor manager
@@ -419,18 +406,6 @@ int main(int argc, char* argv[]) {
     gyro->SetCollectionWindow(imu_collection_time);
     gyro->PushFilter(chrono_types::make_shared<ChFilterGyroAccess>());  // Add a filter to access the imu data
     manager->AddSensor(gyro);                                           // Add the IMU sensor to the sensor manager
-
-    auto mag = chrono_types::make_shared<ChMagnetometerSensor>(
-        cobra.GetChassis()->GetBody(),  // body to which the IMU is attached
-        imu_update_rate,                // update rate
-        imu_offset_pose,                // offset pose from body
-        mag_noise_model,                // IMU noise model
-        gps_reference);
-    mag->SetName("IMU - Accelerometer");
-    mag->SetLag(imu_lag);
-    mag->SetCollectionWindow(imu_collection_time);
-    mag->PushFilter(chrono_types::make_shared<ChFilterMagnetAccess>());  // Add a filter to access the imu data
-    manager->AddSensor(mag);
 
     // Create the run-time visualization interface
 #ifndef CHRONO_IRRLICHT
