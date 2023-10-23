@@ -169,36 +169,6 @@ int main(int argc, char* argv[]) {
 
     sys.AddBody(room_mesh_body);
 
-    // room_mmesh = chrono.ChTriangleMeshConnected()
-    // room_mmesh.LoadWavefrontMesh(chrono.GetChronoDataFile("sensor/textures/hallway.obj"), False, True)
-    // room_mmesh.Transform(chrono.ChVectorD(0, 0, 0), chrono.ChMatrix33D(1))
-
-    // room_trimesh_shape = chrono.ChTriangleMeshShape()
-    // room_trimesh_shape.SetMesh(room_mmesh)
-    // room_trimesh_shape.SetName("Hallway Mesh")
-    // room_trimesh_shape.SetMutable(False)
-
-    // room_mesh_body = chrono.ChBody()
-    // room_mesh_body.SetPos(chrono.ChVectorD(-2, -2, -1))
-    // room_mesh_body.AddVisualShape(room_trimesh_shape)
-    // room_mesh_body.SetBodyFixed(True)
-    // room_mesh_body.GetCollisionModel().ClearModel()
-
-    // room_mesh_body.GetCollisionModel().AddTriangleMesh(contact_method, room_mmesh, False, False)
-    // room_mesh_body.GetCollisionModel().BuildModel()
-    // room_mesh_body.SetCollide(True)
-
-    // # vehicle.GetSystem().Add(room_mesh_body)
-    // system.Add(room_mesh_body)
-
-    // Create the ground.
-    // auto ground_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
-    // auto ground = chrono_types::make_shared<ChBodyEasyBox>(30, 30, 1, 1000, true, true, ground_mat);
-    // ground->SetPos(ChVector<>(0, 0, -0.5));
-    // ground->SetBodyFixed(true);
-    // ground->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/concrete.jpg"), 60, 45);
-    // sys.Add(ground);
-
     // Construct a Cobra rover and the asociated driver
     auto driver = chrono_types::make_shared<CobraSpeedDriver>(1.0, 3.0);
 
@@ -259,52 +229,7 @@ int main(int argc, char* argv[]) {
     // Create a camera and add it to the sensor manager
     // ------------------------------------------------
     chrono::ChFrame<double> offset_pose1({0, 0, 1.2}, Q_from_AngAxis(CH_C_PI / 18, {0, 1, 0}));
-    // auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(),  // body camera is attached
-    // to
-    //                                                      20,                             // update rate in Hz
-    //                                                      offset_pose1,                   // offset pose
-    //                                                      640,                            // image width
-    //                                                      360,                            // image height
-    //                                                      (float)CH_C_PI / 3.,  // camera's horizontal field of view
-    //                                                      2,                    // super sampling factor
-    //                                                      CameraLensModelType::PINHOLE,  // lens model type
-    //                                                      true, 2.2);
-    // cam->SetName("Camera Sensor");
-    // cam->SetLag(.05f);
-    // cam->SetCollectionWindow(.02f);
-
-    // // --------------------------------------------------------------------
-    // // Create a filter graph for post-processing the images from the camera
-    // // --------------------------------------------------------------------
-
-    // // Renders the image at current point in the filter graph
-    // cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(640, 360, "Camera Sensor - 10 Deg"));
-
-    // // Provides the host access to this RGBA8 buffer
-    // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-
-    // // Filter the sensor to grayscale
-    // cam->PushFilter(chrono_types::make_shared<ChFilterGrayscale>());
-
-    // cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(640, 360, "Camera Sensor - 10 Deg - Grey Scale"));
-
-    // // Access the grayscaled buffer as R8 pixels
-    // cam->PushFilter(chrono_types::make_shared<ChFilterR8Access>());
-
-    // // add sensor to the manager
-    // manager->AddSensor(cam);
-
-    // Create a camera that's placed on the hood
-    // auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(),  // body camera is attached
-    // to
-    //                                                      20,                             // update rate in Hz
-    //                                                      offset_pose1,                   // offset pose
-    //                                                      640,                            // image width
-    //                                                      360,                            // image height
-    //                                                      (float)CH_C_PI / 3.,  // camera's horizontal field of view
-    //                                                      2,                    // super sampling factor
-    //                                                      CameraLensModelType::PINHOLE,  // lens model type
-    //                                                      true, 2.2);
+ 
 
     auto cam = chrono_types::make_shared<ChCameraSensor>(cobra.GetChassis()->GetBody(), 20, offset_pose1, 1280, 720,
                                                          CH_C_PI / 4, 1, CameraLensModelType::PINHOLE,false, 2.2);
