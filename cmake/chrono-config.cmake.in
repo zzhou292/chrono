@@ -464,6 +464,16 @@ foreach(COMPONENT ${Chrono_FIND_COMPONENTS})
       list(PREPEND CHRONO_LIB_NAMES "ChronoEngine_ros")
       list(APPEND CHRONO_DLL_NAMES "ChronoEngine_ros.dll")
 
+    elseif(${COMPONENT_UPPER} MATCHES ROS)
+
+      find_package(ROS2 REQUIRED)
+
+      list(APPEND CHRONO_INCLUDE_DIRS "@CH_ROS_INCLUDES@")
+      list(APPEND CHRONO_LIBRARIES "@CH_ROS_LIBRARIES@")
+
+      list(PREPEND CHRONO_LIB_NAMES "ChronoEngine_ros")
+      list(APPEND CHRONO_DLL_NAMES "ChronoEngine_ros.dll")
+
     elseif(${COMPONENT_UPPER} MATCHES "GPU")
 
       separate_arguments(CH_GPU_CXX_FLAGS NATIVE_COMMAND "@CH_GPU_CXX_FLAGS@")

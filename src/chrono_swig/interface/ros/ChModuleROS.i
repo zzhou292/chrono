@@ -62,7 +62,10 @@
 #include "chrono_ros/handlers/sensor/ChROSMagnetometerHandler.h"
 #include "chrono_ros/handlers/sensor/ChROSSensorHandlerUtilities.h"
 #include "chrono_ros/handlers/robot/viper/ChROSViperDCMotorControlHandler.h"
+<<<<<<< HEAD
 #include "chrono_ros/handlers/robot/cobra/ChROSCobraDCMotorControlHandler.h"
+=======
+>>>>>>> feature/ros
 
 using namespace chrono;
 using namespace chrono::ros;
@@ -123,8 +126,11 @@ using namespace chrono::ros;
 %shared_ptr(chrono::ros::ChROSLidarHandler)
 %shared_ptr(chrono::ros::ChROSMagnetometerHandler)
 %shared_ptr(chrono::ros::ChROSViperDCMotorControlHandler)
+<<<<<<< HEAD
 %shared_ptr(chrono::ros::ChROSCobraSpeedDriverHandler)
 
+=======
+>>>>>>> feature/ros
 
 //
 // B- INCLUDE HEADERS
@@ -162,7 +168,10 @@ using namespace chrono::ros;
 %include "../../../chrono_ros/handlers/sensor/ChROSMagnetometerHandler.h"
 %include "../../../chrono_ros/handlers/sensor/ChROSSensorHandlerUtilities.h"
 %include "../../../chrono_ros/handlers/robot/viper/ChROSViperDCMotorControlHandler.h"
+<<<<<<< HEAD
 %include "../../../chrono_ros/handlers/robot/cobra/ChROSCobraDCMotorControlHandler.h"
+=======
+>>>>>>> feature/ros
 
 //
 // C- DOWNCASTING OF SHARED POINTERS

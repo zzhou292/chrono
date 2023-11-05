@@ -61,7 +61,11 @@ class LaserScanImpl : public ChROSLidarHandlerImpl {
 
         m_publisher = interface->GetNode()->create_publisher<sensor_msgs::msg::LaserScan>(topic_name, 1);
 
+<<<<<<< HEAD
         m_msg.header.frame_id = "lidar"; // TODO
+=======
+        // m_msg.header.frame_id = ; // TODO
+>>>>>>> feature/ros
         m_msg.angle_min = lidar->GetHFOV() / 2.0;
         m_msg.angle_max = lidar->GetHFOV() / 2.0;
         m_msg.angle_increment = lidar->GetHFOV() / lidar->GetWidth();
@@ -70,8 +74,13 @@ class LaserScanImpl : public ChROSLidarHandlerImpl {
         m_msg.range_min = 0.0;
         m_msg.range_max = lidar->GetMaxDistance();
 
+<<<<<<< HEAD
         m_msg.ranges.reserve(lidar->GetWidth());
         m_msg.intensities.reserve(lidar->GetWidth());
+=======
+        m_msg.ranges.resize(lidar->GetWidth());
+        m_msg.intensities.resize(lidar->GetWidth());
+>>>>>>> feature/ros
 
         return true;
     }
@@ -108,14 +117,22 @@ class PointCloud2Impl : public ChROSLidarHandlerImpl {
     virtual bool Initialize(std::shared_ptr<ChROSInterface> interface) override {
         m_publisher = interface->GetNode()->create_publisher<sensor_msgs::msg::PointCloud2>(topic_name, 1);
 
+<<<<<<< HEAD
         m_msg.header.frame_id = "lidar"; // TODO
+=======
+        // m_msg.header.frame_id = ; // TODO
+>>>>>>> feature/ros
         m_msg.width = lidar->GetWidth();
         m_msg.height = lidar->GetHeight();
         m_msg.is_bigendian = false;
         m_msg.is_dense = true;
         m_msg.row_step = sizeof(PixelXYZI) * m_msg.width;
         m_msg.point_step = sizeof(PixelXYZI);
+<<<<<<< HEAD
         m_msg.data.reserve(m_msg.row_step * m_msg.height);
+=======
+        m_msg.data.resize(m_msg.row_step * m_msg.height);
+>>>>>>> feature/ros
 
         m_msg.fields.resize(4);
         const std::string field_names[4] = {"x", "y", "z", "intensity"};
