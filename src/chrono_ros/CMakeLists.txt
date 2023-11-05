@@ -33,11 +33,7 @@ foreach(_ros2_packages_path IN LISTS _ament_prefix_path)
     string(REPLACE ":" ";" _ros2_packages_path ${_ros2_packages_path})
     list(APPEND CH_ROS_INCLUDES "${_ros2_packages_path}/include")
 endforeach()
-<<<<<<< HEAD
 set(_ros_packages rclcpp std_msgs geometry_msgs sensor_msgs chrono_ros_interfaces rcl_interfaces tf2 tf2_msgs)
-=======
-set(_ros_packages rclcpp std_msgs geometry_msgs sensor_msgs chrono_ros_interfaces rcl_interfaces)
->>>>>>> feature/ros
 foreach(_package IN LISTS _ros_packages)
   find_package(${_package} REQUIRED)
   list(APPEND CH_ROS_LINKED_LIBRARIES "${${_package}_LIBRARIES}")
@@ -81,13 +77,10 @@ set(CH_ROS_HANDLER_FILES
 
   handlers/ChROSHandlerUtilities.h
   handlers/ChROSHandlerUtilities.cpp
-<<<<<<< HEAD
 
   handlers/ChROSTFHandler.h
   handlers/ChROSTFHandler.cpp
 
-=======
->>>>>>> feature/ros
 )
 source_group("handler" FILES ${CH_ROS_HANDLER_FILES})
 
@@ -128,13 +121,10 @@ set(CH_ROS_ROBOT_HANDLER_FILES
   # viper
   handlers/robot/viper/ChROSViperDCMotorControlHandler.h
   handlers/robot/viper/ChROSViperDCMotorControlHandler.cpp
-<<<<<<< HEAD
 
   # cobra
   handlers/robot/cobra/ChROSCobraDCMotorControlHandler.h
   handlers/robot/cobra/ChROSCobraDCMotorControlHandler.cpp
-=======
->>>>>>> feature/ros
 )
 source_group("robot_handler" FILES ${CH_ROS_ROBOT_HANDLER_FILES})
 

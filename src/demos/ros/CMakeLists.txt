@@ -7,11 +7,8 @@ message(STATUS "Demo programs for Chrono::ROS...")
 
 set(DEMOS
     demo_ROS_viper
-<<<<<<< HEAD
     demo_ROS_cobra
     demo_ROS_dART
-=======
->>>>>>> feature/ros
 )
 
 if(ENABLE_MODULE_VEHICLE AND ENABLE_MODULE_VEHICLE_MODELS)
@@ -26,14 +23,11 @@ if(ENABLE_MODULE_SENSOR)
   )
 endif()
 
-<<<<<<< HEAD
 if(ENABLE_MODULE_VEHICLE AND ENABLE_MODULE_SENSOR AND ENABLE_MODULE_IRRLICHT)
   set(DEMOS ${DEMOS}
     demo_ARCLAB_cone
   )
 endif()
-=======
->>>>>>> feature/ros
 # ------------------------------------------------------------------------------
 # Include directories, compiler flags, libraries
 
