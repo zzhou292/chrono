@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
 
     // Add FOV camera
     auto cam1 =
-        chrono_types::make_shared<ChCameraSensor>(car.GetChassisBody(), frame_rate, camera_pos, width, height, fov, 2);
+        chrono_types::make_shared<ChCameraSensor>(car.GetChassisBody(), frame_rate, camera_pos, width, height, fov, 1);
     cam1->SetName("Camera Sensor");
     cam1->SetCollectionWindow(0);
     cam1->PushFilter(chrono_types::make_shared<ChFilterVisualize>(640, 360));
