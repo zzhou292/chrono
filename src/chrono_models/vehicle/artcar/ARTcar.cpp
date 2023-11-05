@@ -116,6 +116,11 @@ void ARTcar::Initialize() {
             tire_RL->SetRollingResistanceCoefficient(m_rolling_friction_coeff);
             tire_RR->SetRollingResistanceCoefficient(m_rolling_friction_coeff);
 
+            tire_FL->SetRollingResistanceCoefficient(m_rolling_friction_coeff);
+            tire_FR->SetRollingResistanceCoefficient(m_rolling_friction_coeff);
+            tire_RL->SetRollingResistanceCoefficient(m_rolling_friction_coeff);
+            tire_RR->SetRollingResistanceCoefficient(m_rolling_friction_coeff);
+
             m_tire_mass = tire_FL->GetMass();
             break;
         }
