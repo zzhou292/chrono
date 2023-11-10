@@ -120,9 +120,6 @@ int main(int argc, char* argv[]) {
     ChSystemSMC sys;
     sys.Set_G_acc(ChVector<>(0, 0, -9.81));
 
-    collision::ChCollisionModel::SetDefaultSuggestedEnvelope(0.0025);
-    collision::ChCollisionModel::SetDefaultSuggestedMargin(0.0025);
-
     // Create the ground.
     auto ground_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
     auto ground = chrono_types::make_shared<ChBodyEasyBox>(30, 30, 1, 1000, true, true, ground_mat);
@@ -433,12 +430,15 @@ void addCones(ChSystem& sys, std::vector<std::string>& cone_files, std::vector<C
         body->SetMass(mass * cone_density);
         body->SetInertiaXX(cone_density * principal_I);
 
-        body->GetCollisionModel()->ClearModel();
-        body->GetCollisionModel()->AddTriangleMesh(rock_mat, mesh, false, false, VNULL, ChMatrix33<>(1), 0.005);
-        body->GetCollisionModel()->BuildModel();
+        body->GetCollisionModel()->Clear();
+        auto m_mat = CustomWheelMaterial(ChContactMethod::SMC);
+        auto col_shape =
+            chrono_types::make_shared<ChCollisionShapeTriangleMesh>(m_mat, mesh, false, false, 0.005);
+        body->GetCollisionModel()->AddShape(col_shape);
+        body->GetCollisionModel()->Build();
         body->SetCollide(false);
 
-        auto mesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+        auto mesh_shape = chrono_types::make_shared<ChVisualShapeTriangleMesh>();
         mesh_shape->SetMesh(mesh);
         mesh_shape->SetBackfaceCull(true);
         body->AddVisualShape(mesh_shape);

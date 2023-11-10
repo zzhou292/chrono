@@ -18,12 +18,13 @@
 // =============================================================================
 #include <cmath>
 
-#include "chrono/assets/ChBoxShape.h"
 #include "chrono/physics/ChBodyEasy.h"
-#include "chrono/assets/ChCylinderShape.h"
-#include "chrono/assets/ChSphereShape.h"
+#include "chrono/assets/ChVisualShape.h"
+#include "chrono/assets/ChVisualShapeCylinder.h"
+#include "chrono/assets/ChVisualShapeSphere.h"
 #include "chrono/assets/ChTexture.h"
-#include "chrono/assets/ChTriangleMeshShape.h"
+#include "chrono/assets/ChVisualShapeTriangleMesh.h"
+#include "chrono/collision/chrono/ChCollisionSystemChrono.h"
 
 #include "chrono/motion_functions/ChFunction_Setpoint.h"
 
@@ -231,14 +232,14 @@ void CobraPart::Construct(ChSystem* system) {
         trimesh_vis->Transform(m_mesh_xform.GetPos(), m_mesh_xform.GetA());  // translate/rotate/scale mesh
         trimesh_vis->RepairDuplicateVertexes(1e-9);                          // if meshes are not watertight
 
-        auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+        auto trimesh_shape = chrono_types::make_shared<ChVisualShapeTriangleMesh>();
         trimesh_shape->SetMesh(trimesh_vis);
         trimesh_shape->SetName(m_mesh_name);
         trimesh_shape->SetMutable(false);
         trimesh_shape->SetColor(m_color);
         m_body->AddVisualShape(trimesh_shape);
     } else if (m_visualize && m_mesh_name == "cobra_wheel_cyl") {
-        auto cyl = chrono_types::make_shared<ChCylinderShape>(0.1125, 2 * 0.025);
+        auto cyl = chrono_types::make_shared<ChVisualShapeCylinder>(0.1125, 2 * 0.025);
         m_body->AddVisualShape(cyl, ChFrame<>(VNULL, Q_from_AngX(CH_C_PI_2)));
     }
 
@@ -249,15 +250,16 @@ void CobraPart::Construct(ChSystem* system) {
         trimesh_col->Transform(m_mesh_xform.GetPos(), m_mesh_xform.GetA());  // translate/rotate/scale mesh
         trimesh_col->RepairDuplicateVertexes(1e-9);                          // if meshes are not watertight
 
-        m_body->GetCollisionModel()->ClearModel();
-        m_body->GetCollisionModel()->AddTriangleMesh(m_mat, trimesh_col, false, false, VNULL, ChMatrix33<>(1), 0.005);
-        m_body->GetCollisionModel()->BuildModel();
+        m_body->GetCollisionModel()->Clear();
+        auto shape =
+            chrono_types::make_shared<ChCollisionShapeTriangleMesh>(m_mat, trimesh_col, false, false, 0.005);
+        m_body->GetCollisionModel()->AddShape(shape);
+        m_body->GetCollisionModel()->Build();
         m_body->SetCollide(m_collide);
     } else if (m_collide && m_mesh_name == "cobra_wheel_cyl") {
-        m_body->GetCollisionModel()->ClearModel();
-        m_body->GetCollisionModel()->AddCylindricalShell(m_mat, 0.1125, 2 * 0.025, ChVector<>(0),
-                                                         Q_from_AngX(CH_C_PI_2));
-        m_body->GetCollisionModel()->BuildModel();
+        m_body->GetCollisionModel()->Clear();
+        m_body->GetCollisionModel()->AddCylinder(m_mat, 0.1125, ChVector<>(0.0,-0.025,0.0), ChVector<>(0.0, 0.025, 0.0));
+        m_body->GetCollisionModel()->Build();
         m_body->SetCollide(m_collide);
     }
 
@@ -364,10 +366,6 @@ Cobra::Cobra(ChSystem* system, CobraWheelType wheel_type) : m_system(system), m_
     // Set default collision model envelope commensurate with model dimensions.
     // Note that an SMC system automatically sets envelope to 0.
     auto contact_method = m_system->GetContactMethod();
-    if (contact_method == ChContactMethod::NSC) {
-        collision::ChCollisionModel::SetDefaultSuggestedEnvelope(0.01);
-        collision::ChCollisionModel::SetDefaultSuggestedMargin(0.005);
-    }
 
     // Create the contact materials
     m_default_material = DefaultContactMaterial(contact_method);
