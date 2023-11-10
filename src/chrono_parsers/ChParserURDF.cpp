@@ -24,10 +24,10 @@
 
 #include "chrono_parsers/ChParserURDF.h"
 
-#include "chrono/assets/ChBoxShape.h"
-#include "chrono/assets/ChSphereShape.h"
-#include "chrono/assets/ChCylinderShape.h"
-#include "chrono/assets/ChModelFileShape.h"
+#include "chrono/assets/ChVisualShapeBox.h"
+#include "chrono/assets/ChVisualShapeSphere.h"
+#include "chrono/assets/ChVisualShapeCylinder.h"
+#include "chrono/assets/ChVisualShapeModelFile.h"
 
 #include "chrono/physics/ChLinkMate.h"
 #include "chrono/physics/ChLinkMotorLinearPosition.h"
@@ -244,31 +244,24 @@ std::shared_ptr<ChVisualShape> ChParserURDF::toChVisualShape(const urdf::Geometr
     switch (geometry->type) {
         case urdf::Geometry::BOX: {
             auto box = std::static_pointer_cast<urdf::Box>(geometry);
-            vis_shape = chrono_types::make_shared<ChBoxShape>(box->dim.x, box->dim.y, box->dim.z);
+            vis_shape = chrono_types::make_shared<ChVisualShapeBox>(box->dim.x, box->dim.y, box->dim.z);
             break;
         }
         case urdf::Geometry::CYLINDER: {
             auto cylinder = std::static_pointer_cast<urdf::Cylinder>(geometry);
-            vis_shape = chrono_types::make_shared<ChCylinderShape>(cylinder->radius, cylinder->length);
+            vis_shape = chrono_types::make_shared<ChVisualShapeCylinder>(cylinder->radius, cylinder->length);
             break;
         }
         case urdf::Geometry::SPHERE: {
             auto sphere = std::static_pointer_cast<urdf::Sphere>(geometry);
-            vis_shape = chrono_types::make_shared<ChSphereShape>(sphere->radius);
+            vis_shape = chrono_types::make_shared<ChVisualShapeSphere>(sphere->radius);
             break;
         }
         case urdf::Geometry::MESH: {
-            // auto mesh = std::static_pointer_cast<urdf::Mesh>(geometry);
-            // auto modelfile_shape = chrono_types::make_shared<ChModelFileShape>();
-            // modelfile_shape->SetFilename(m_filepath + "/" + mesh->filename);
-            // vis_shape = modelfile_shape;
-
-            auto mesh_urdf = std::static_pointer_cast<urdf::Mesh>(geometry);
-            auto mmesh = chrono::geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(m_filepath + "/" +
-                                                                                            mesh_urdf->filename);
-            auto model_mesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
-            model_mesh_shape->SetMesh(mmesh);
-            vis_shape = model_mesh_shape;
+            auto mesh = std::static_pointer_cast<urdf::Mesh>(geometry);
+            auto modelfile_shape = chrono_types::make_shared<ChVisualShapeModelFile>();
+            modelfile_shape->SetFilename(m_filepath + "/" + mesh->filename);
+            vis_shape = modelfile_shape;
             break;
         }
     }
@@ -318,7 +311,7 @@ void ChParserURDF::attachCollision(std::shared_ptr<ChBody> body,
 
     // Create collision shapes
     auto collision_model = body->GetCollisionModel();
-    collision_model->ClearModel();
+    collision_model->Clear();
     for (const auto& collision : collision_array) {
         if (collision) {
             auto frame = ref_frame * toChFrame(collision->origin);
@@ -326,23 +319,22 @@ void ChParserURDF::attachCollision(std::shared_ptr<ChBody> body,
             switch (collision->geometry->type) {
                 case urdf::Geometry::BOX: {
                     auto box = std::static_pointer_cast<urdf::Box>(collision->geometry);
-                    collision_model->AddBox(contact_material,                    //
-                                            box->dim.x, box->dim.y, box->dim.z,  //
-                                            frame.GetPos(), frame.GetA());
+                    auto ct_shape = chrono_types::make_shared<ChCollisionShapeBox>(contact_material, box->dim.x,
+                                                                                   box->dim.y, box->dim.z);
+                    collision_model->AddShape(ct_shape, frame);
                     break;
                 }
                 case urdf::Geometry::CYLINDER: {
                     auto cylinder = std::static_pointer_cast<urdf::Cylinder>(collision->geometry);
-                    collision_model->AddCylinder(contact_material,                    //
-                                                 cylinder->radius, cylinder->length,  //
-                                                 frame.GetPos(), frame.GetA());
+                    auto ct_shape = chrono_types::make_shared<ChCollisionShapeCylinder>(
+                        contact_material, cylinder->radius, cylinder->length);
+                    collision_model->AddShape(ct_shape, frame);
                     break;
                 }
                 case urdf::Geometry::SPHERE: {
                     auto sphere = std::static_pointer_cast<urdf::Sphere>(collision->geometry);
-                    collision_model->AddSphere(contact_material,  //
-                                               sphere->radius,    //
-                                               frame.GetPos());
+                    auto ct_shape = chrono_types::make_shared<ChCollisionShapeSphere>(contact_material, sphere->radius);
+                    collision_model->AddShape(ct_shape, frame);
                     break;
                 }
                 case urdf::Geometry::MESH: {
@@ -367,22 +359,26 @@ void ChParserURDF::attachCollision(std::shared_ptr<ChBody> body,
                                                       ? m_coll_type.find(link_name)->second
                                                       : MeshCollisionType::TRIANGLE_MESH;
                     switch (coll_type) {
-                        case MeshCollisionType::TRIANGLE_MESH:
-                            collision_model->AddTriangleMesh(contact_material,              //
-                                                             trimesh, false, false,         //
-                                                             frame.GetPos(), frame.GetA(),  //
-                                                             0.002);
+                        case MeshCollisionType::TRIANGLE_MESH: {
+                            auto ct_shape = chrono_types::make_shared<ChCollisionShapeTriangleMesh>(
+                                contact_material, trimesh, false, false, 0.002);
+                            collision_model->AddShape(ct_shape, frame);
                             break;
-                        case MeshCollisionType::CONVEX_HULL:
-                            collision_model->AddConvexHull(contact_material,              //
-                                                           trimesh->getCoordsVertices(),  //
-                                                           frame.GetPos(), frame.GetA());
+                        }
+                        case MeshCollisionType::CONVEX_HULL: {
+                            auto ct_shape = chrono_types::make_shared<ChCollisionShapeConvexHull>(
+                                contact_material, trimesh->getCoordsVertices());
+                            collision_model->AddShape(ct_shape, frame);
                             break;
-                        case MeshCollisionType::NODE_CLOUD:
+                        }
+                        case MeshCollisionType::NODE_CLOUD: {
                             for (const auto& v : trimesh->getCoordsVertices()) {
-                                collision_model->AddSphere(contact_material, 0.002, v);
+                                auto ct_shape =
+                                    chrono_types::make_shared<ChCollisionShapeSphere>(contact_material, 0.002);
+                                collision_model->AddShape(ct_shape, ChFrame<>(v, QUNIT));
                             }
                             break;
+                        }
                     }
                     break;
                 }
@@ -390,7 +386,7 @@ void ChParserURDF::attachCollision(std::shared_ptr<ChBody> body,
             collision->origin;
         }
     }
-    collision_model->BuildModel();
+    collision_model->Build();
 }
 
 bool Discard(urdf::LinkConstSharedPtr link) {
