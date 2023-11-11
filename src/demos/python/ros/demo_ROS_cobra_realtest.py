@@ -37,58 +37,53 @@ chrono.ChCollisionModel.SetDefaultSuggestedMargin(0.0025)
 
 contact_method = chrono.ChMaterialSurfaceNSC()
 
-
 room_mmesh = chrono.ChTriangleMeshConnected()
-room_mmesh.LoadWavefrontMesh(chrono.GetChronoDataFile("sensor/textures/hallway.obj"), False, True)
+room_mmesh.LoadWavefrontMesh(chrono.GetChronoDataFile("robot/environment/room_2/test_REAL.obj"), False, True)
 room_mmesh.Transform(chrono.ChVectorD(0, 0, 0), chrono.ChMatrix33D(1))
 
-room_trimesh_shape = chrono.ChVisualShapeTriangleMesh()
+room_trimesh_shape = chrono.ChTriangleMeshShape()
 room_trimesh_shape.SetMesh(room_mmesh)
 room_trimesh_shape.SetName("Hallway Mesh")
 room_trimesh_shape.SetMutable(False)
 
 room_mesh_body = chrono.ChBody()
-room_mesh_body.SetPos(chrono.ChVectorD(-2, -2, -1))
+room_mesh_body.SetPos(chrono.ChVectorD(0, 0, 0))
 room_mesh_body.AddVisualShape(room_trimesh_shape)
 room_mesh_body.SetBodyFixed(True)
-room_mesh_body.GetCollisionModel().Clear()
+room_mesh_body.GetCollisionModel().ClearModel()
 
-cshape = chrono.ChCollisionShapeTriangleMesh(contact_method, room_mmesh, True, True)
-room_mesh_body.GetCollisionModel().AddShape(cshape)
-room_mesh_body.GetCollisionModel().Build()
+room_mesh_body.GetCollisionModel().AddTriangleMesh(contact_method, room_mmesh, False, False)
+room_mesh_body.GetCollisionModel().BuildModel()
 room_mesh_body.SetCollide(True)
 
 # vehicle.GetSystem().Add(room_mesh_body)
 system.Add(room_mesh_body)
 
-
-# # Create ground body
-# ground_mat = chrono.ChMaterialSurfaceNSC()
-# ground = chrono.ChBodyEasyBox(30, 30, 1, 1000, True, True, ground_mat)
-# ground.SetPos(chrono.ChVectorD(2, 5, -1.415))
-# ground.SetBodyFixed(True)
-# ground.GetVisualShape(0).SetTexture(chrono.GetChronoDataFile("textures/concrete.jpg"))
-# system.Add(ground)
-
 # Create Cobra rover
 driver = robot_chrono.CobraSpeedDriver(1.0, 3.0)
 rover = robot_chrono.Cobra(system, robot_chrono.CobraWheelType_SimpleWheel)
 rover.SetDriver(driver)
-rover.Initialize(chrono.ChFrameD(chrono.ChVectorD(0, -0.2, -0.3), chrono.ChQuaternionD(1, 0, 0, 0)))
+rover.Initialize(chrono.ChFrameD(chrono.ChVectorD(0, 0, 0.4), chrono.Q_from_AngAxis(0, chrono.ChVectorD(0, 0, 1))))
+
+quat = chrono.Q_from_AngAxis(chrono.CH_C_PI, chrono.ChVectorD(0, 0, 1))
+print(quat)
 
 # Create the sensor 
 sens_manager = sens.ChSensorManager(system)
 
-offset_pose = chrono.ChFrameD(chrono.ChVectorD(0.2, 0, 1.2),
-                              chrono.Q_from_AngAxis(.2, chrono.ChVectorD(0, 1, 0)))
+offset_pose1 = chrono.ChFrameD(chrono.ChVectorD(0, 0, 1.2),
+                              chrono.Q_from_AngAxis(chrono.CH_C_PI/18, chrono.ChVectorD(0, 1, 0)))
 
-cam = sens.ChCameraSensor(rover.GetChassis().GetBody(), 30, offset_pose, 1280,  720, 1.408)
+cam = sens.ChCameraSensor(rover.GetChassis().GetBody(), 30, offset_pose1, 1280,  720, 1.408)
 cam.PushFilter(sens.ChFilterVisualize(1280, 720))
 cam.PushFilter(sens.ChFilterRGBA8Access())
 sens_manager.AddSensor(cam)
 
-lidar = sens.ChLidarSensor(rover.GetChassis().GetBody(), 5., offset_pose, 90, 300,
-                            2*chrono.CH_C_PI, chrono.CH_C_PI / 12, -chrono.CH_C_PI / 6, 100., 0)
+offset_pose2 = chrono.ChFrameD(chrono.ChVectorD(0.3, 0, 0.6),
+                              chrono.Q_from_AngAxis(0, chrono.ChVectorD(0, 1, 0)))
+
+lidar = sens.ChLidarSensor(rover.GetChassis().GetBody(), 5., offset_pose2, 512, 64,
+                            2*chrono.CH_C_PI, chrono.CH_C_PI / 4, -chrono.CH_C_PI / 4, 100., 0)
 lidar.PushFilter(sens.ChFilterDIAccess())
 lidar.PushFilter(sens.ChFilterPCfromDepth())
 lidar.PushFilter(sens.ChFilterXYZIAccess())
@@ -115,14 +110,20 @@ ros_manager.RegisterHandler(chros.ChROSClockHandler())
 ros_manager.RegisterHandler(chros.ChROSCameraHandler(
         cam.GetUpdateRate() / 4, cam, "~/output/camera/data/image"))
 ros_manager.RegisterHandler(chros.ChROSLidarHandler(
-    lidar, "~/output/lidar/data/pointcloud"))
-ros_manager.RegisterHandler(chros.ChROSCobraSpeedDriverHandler(25, driver, "~/input/driver_inputs"))
+    lidar, "/input_cloud"))
+ros_manager.RegisterHandler(chros.ChROSCobraSpeedDriverHandler(25, driver, "/input/driver_inputs"))
 ros_manager.RegisterHandler(chros.ChROSBodyHandler(25, rover.GetChassis().GetBody(), "~/output/cobra/state"))
+
+
+tf_rate = 50
+tf_topic_name = "/tf"
+ros_manager.RegisterHandler(chros.ChROSTFHandler(
+    tf_rate, lidar, rover.GetChassis().GetBody(), tf_topic_name))
 ros_manager.Initialize()
 
 ####vis.EnableShadows()
 
-time_step = 1e-3
+time_step = 5e-4
 
 driver.SetMotorSpeed(0)
 
@@ -141,6 +142,7 @@ while (vis.Run()) :
     # elif time > 1:
     # 	steering = 0.4
     # driver.SetSteering(steering)
+    #driver.SetMotorSpeed(2)
     
     rover.Update()
     sens_manager.Update()

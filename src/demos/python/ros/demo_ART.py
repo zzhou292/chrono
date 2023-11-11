@@ -78,7 +78,7 @@ step_size = 1e-3
 tire_step_size = step_size
 
 # Create the RCCar vehicle, set parameters, and initialize
-vehicle = veh.RCCar(system)
+vehicle = veh.ARTcar(system)
 vehicle.SetContactMethod(contact_method)
 vehicle.SetChassisCollisionType(chassis_collision_type)
 vehicle.SetChassisFixed(False)
