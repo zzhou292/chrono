@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Radu Serban, Asher Elmquist
+// Authors: Radu Serban, Asher Elmquist, Json Zhou
 // =============================================================================
 //
 // Main driver function for the ARTcar model.
@@ -57,6 +57,7 @@ using namespace chrono::sensor;
 using namespace chrono::irrlicht;
 using namespace chrono::vehicle;
 using namespace chrono::ros;
+using namespace chrono::geometry;
 
 // =============================================================================
 
@@ -118,8 +119,8 @@ int num_cones = 100;
 bool cones_from_file = true;
 std::string cone_path_file = "data/paths/cone_paths_0.csv";
 
-std::vector<std::shared_ptr<chrono::ChTriangleMeshShape>> red_cone_assets;
-std::vector<std::shared_ptr<chrono::ChTriangleMeshShape>> green_cone_assets;
+std::vector<std::shared_ptr<ChVisualShapeTriangleMesh>> red_cone_assets;
+std::vector<std::shared_ptr<ChVisualShapeTriangleMesh>> green_cone_assets;
 // =============================================================================
 // Forward declaration
 void AddRandomCones(int count, std::string filename, int class_id, RigidTerrain& terrain, artcar::ARTcar& car);
@@ -405,7 +406,7 @@ void AddRandomCones(int count, std::string filename, int class_id, RigidTerrain&
         double z = terrain.GetHeight(chrono::ChVector<>(x, y, 1000));  // get the terrain z
         chrono::ChVector<> pos(x, y, z);
 
-        auto trimesh_shape = std::make_shared<chrono::ChTriangleMeshShape>();
+        auto trimesh_shape = std::make_shared<ChVisualShapeTriangleMesh>();
         trimesh_shape->SetMesh(mmesh);
         trimesh_shape->SetName(filename);
         trimesh_shape->SetMutable(false);
@@ -427,11 +428,11 @@ void AddRandomCones(int count, std::string filename, int class_id, RigidTerrain&
 }
 
 void AddConesFromFile(RigidTerrain& terrain, artcar::ARTcar& car) {
-    auto green_cone_mesh = chrono_types::make_shared<chrono::geometry::ChTriangleMeshConnected>();
+    auto green_cone_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
     green_cone_mesh->LoadWavefrontMesh(chrono::GetChronoDataPath() + "sensor/cones/green_cone.obj", false, true);
     green_cone_mesh->Transform(chrono::ChVector<>(0, 0, 0), chrono::ChMatrix33<>(1));
 
-    auto red_cone_mesh = chrono_types::make_shared<chrono::geometry::ChTriangleMeshConnected>();
+    auto red_cone_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
     red_cone_mesh->LoadWavefrontMesh(chrono::GetChronoDataPath() + "sensor/cones/red_cone.obj", false, true);
     red_cone_mesh->Transform(chrono::ChVector<>(0, 0, 0), chrono::ChMatrix33<>(1));
 
@@ -456,7 +457,7 @@ void AddConesFromFile(RigidTerrain& terrain, artcar::ARTcar& car) {
         auto pos_red = chrono::ChVector<>(pos_red_x, pos_red_y, pos_red_z);
         auto rot = chrono::ChQuaternion<>(1, 0, 0, 0);
 
-        auto green_cone_shape = std::make_shared<chrono::ChTriangleMeshShape>();
+        auto green_cone_shape = std::make_shared<ChVisualShapeTriangleMesh>();
         green_cone_shape->SetMesh(green_cone_mesh);
         green_cone_shape->SetName("green_cone_shape");
         green_cone_shape->SetMutable(false);
@@ -469,7 +470,7 @@ void AddConesFromFile(RigidTerrain& terrain, artcar::ARTcar& car) {
         green_body->SetBodyFixed(true);
         car.GetSystem()->Add(green_body);
 
-        auto red_cone_shape = std::make_shared<chrono::ChTriangleMeshShape>();
+        auto red_cone_shape = std::make_shared<ChVisualShapeTriangleMesh>();
         red_cone_shape->SetMesh(red_cone_mesh);
         red_cone_shape->SetName("red_cone_shape");
         red_cone_shape->SetMutable(false);

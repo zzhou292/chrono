@@ -96,7 +96,7 @@ bool use_custom_mat = false;
 CobraWheelType wheel_type = CobraWheelType::SimpleWheel;
 
 // Simulation time step
-double time_step = 1e-3;
+double time_step = 5e-4;
 
 // -----------------------------------------------------------------------------
 
@@ -143,8 +143,9 @@ int main(int argc, char* argv[]) {
     ChSystemSMC sys;
     sys.Set_G_acc(ChVector<>(0, 0, -9.81));
 
-    collision::ChCollisionModel::SetDefaultSuggestedEnvelope(0.0025);
-    collision::ChCollisionModel::SetDefaultSuggestedMargin(0.0025);
+    ChCollisionModel::SetDefaultSuggestedEnvelope(0.0025);
+    ChCollisionModel::SetDefaultSuggestedMargin(0.0025);
+
     // auto object_mat = ChMaterialSurface::DefaultMaterial(contact_method);
     auto ground_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
 
@@ -152,7 +153,7 @@ int main(int argc, char* argv[]) {
     room_mmesh->LoadWavefrontMesh(chrono::GetChronoDataFile("robot/environment/hallway_1/hallway.obj"), false, true);
     room_mmesh->Transform(chrono::ChVector<>(0, 0, 0), chrono::ChMatrix33<>(1));
 
-    auto room_trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    auto room_trimesh_shape = chrono_types::make_shared<ChVisualShapeTriangleMesh>();
     room_trimesh_shape->SetMesh(room_mmesh);
     room_trimesh_shape->SetName("Hallway Mesh");
     room_trimesh_shape->SetMutable(false);
@@ -161,10 +162,10 @@ int main(int argc, char* argv[]) {
     room_mesh_body->SetPos(chrono::ChVector<>(-2, -2, -0.1));
     room_mesh_body->AddVisualShape(room_trimesh_shape);
     room_mesh_body->SetBodyFixed(true);
-    room_mesh_body->GetCollisionModel()->ClearModel();
-
-    room_mesh_body->GetCollisionModel()->AddTriangleMesh(ground_mat, room_mmesh, false, false);
-    room_mesh_body->GetCollisionModel()->BuildModel();
+    room_mesh_body->GetCollisionModel()->Clear();
+    auto cshape = chrono_types::make_shared<ChCollisionShapeTriangleMesh>(ground_mat, room_mmesh, true, true);
+    room_mesh_body->GetCollisionModel()->AddShape(cshape);
+    room_mesh_body->GetCollisionModel()->Build();
     room_mesh_body->SetCollide(true);
 
     sys.AddBody(room_mesh_body);
@@ -466,7 +467,7 @@ void addCones(ChSystem& sys, std::vector<std::string>& cone_files, std::vector<C
     std::shared_ptr<ChMaterialSurface> rock_mat = ChMaterialSurface::DefaultMaterial(sys.GetContactMethod());
 
     for (int i = 0; i < cone_files.size(); i++) {
-        auto mesh = ChTriangleMeshConnected::CreateFromWavefrontFile(GetChronoDataFile(cone_files[i]), false, true);
+        auto mesh = ChTriangleMeshConnected::CreateFromWavefrontFile(GetChronoDataFile(cone_files[i]), true, true);
 
         double mass;
         ChVector<> cog;
@@ -484,12 +485,11 @@ void addCones(ChSystem& sys, std::vector<std::string>& cone_files, std::vector<C
         body->SetMass(mass * cone_density);
         body->SetInertiaXX(cone_density * principal_I);
 
-        body->GetCollisionModel()->ClearModel();
-        body->GetCollisionModel()->AddTriangleMesh(rock_mat, mesh, false, false, VNULL, ChMatrix33<>(1), 0.005);
-        body->GetCollisionModel()->BuildModel();
+        body->GetCollisionModel()->Clear();
+        body->GetCollisionModel()->Build();
         body->SetCollide(false);
 
-        auto mesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+        auto mesh_shape = chrono_types::make_shared<ChVisualShapeTriangleMesh>();
         mesh_shape->SetMesh(mesh);
         mesh_shape->SetBackfaceCull(true);
         body->AddVisualShape(mesh_shape);

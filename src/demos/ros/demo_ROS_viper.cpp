@@ -58,9 +58,6 @@ int main(int argc, char* argv[]) {
     ChSystemNSC sys;
     sys.Set_G_acc(ChVector<>(0, 0, -9.81));
 
-    collision::ChCollisionModel::SetDefaultSuggestedEnvelope(0.0025);
-    collision::ChCollisionModel::SetDefaultSuggestedMargin(0.0025);
-
     // Create the ground.
     auto ground_mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
     auto ground = chrono_types::make_shared<ChBodyEasyBox>(30, 30, 1, 1000, true, true, ground_mat);
