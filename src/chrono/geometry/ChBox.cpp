@@ -29,7 +29,7 @@ ChBox::ChBox(const ChBox& source) {
     hlen = source.hlen;
 }
 
-ChVector<> ChBox::Evaluate(const double parU, const double parV, const double parW) const {
+ChVector<> ChBox::Evaluate(double parU, double parV, double parW) const {
     return ChVector<>(hlen.x() * (parU - 0.5), hlen.y() * (parV - 0.5), hlen.z() * (parW - 0.5));
 }
 
@@ -105,7 +105,7 @@ void ChBox::ArchiveOut(ChArchiveOut& marchive) {
     // serialize parent class
     ChVolume::ArchiveOut(marchive);
     // serialize all member data:
-    ChVector<> lengths = GetLengths();  // TODO: DARIOM why this intermediate step?
+    ChVector<> lengths = GetLengths();
     marchive << CHNVP(lengths);
 }
 
