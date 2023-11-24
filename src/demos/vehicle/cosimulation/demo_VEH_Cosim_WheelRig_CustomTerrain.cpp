@@ -91,6 +91,7 @@ class MyTerrain : public ChVehicleCosimTerrainNode {
 
 MyTerrain::MyTerrain(double length, double width) : ChVehicleCosimTerrainNode(length, width) {
     m_system = new ChSystemSMC;
+    m_system->SetCollisionSystemType(ChCollisionSystem::Type::BULLET);
     m_system->Set_G_acc(ChVector<>(0, 0, m_gacc));
     m_system->SetNumThreads(1);
     m_system->SetContactForceModel(ChSystemSMC::ContactForceModel::Hertz);
@@ -101,9 +102,8 @@ MyTerrain::~MyTerrain() {
 }
 
 void MyTerrain::OnInitialize(unsigned int num_tires) {
-
     // Create the rigid terrain box with its top surface at init height = 0
-    auto ground = std::shared_ptr<ChBody>(m_system->NewBody());
+    auto ground = chrono_types::make_shared<ChBody>();
     m_system->AddBody(ground);
     ground->SetMass(1);
     ground->SetBodyFixed(true);
@@ -121,7 +121,6 @@ void MyTerrain::OnInitialize(unsigned int num_tires) {
 
     utils::AddBoxGeometry(ground.get(), mat_terrain, ChVector<>(m_dimX, m_dimY, 0.2), ChVector<>(0, 0, -0.1),
                           ChQuaternion<>(1, 0, 0, 0), true);
-    ground->GetCollisionModel()->Build();
 
     // Shared proxy contact material
     auto mat_proxy = chrono_types::make_shared<ChMaterialSurfaceSMC>();
@@ -148,7 +147,6 @@ void MyTerrain::OnInitialize(unsigned int num_tires) {
         m_bodies[i]->SetCollide(true);
 
         utils::AddCylinderGeometry(m_bodies[i].get(), mat_proxy, tire_radius, tire_width / 2);
-        m_bodies[i]->GetCollisionModel()->Build();
 
         m_system->AddBody(m_bodies[i]);
     }
