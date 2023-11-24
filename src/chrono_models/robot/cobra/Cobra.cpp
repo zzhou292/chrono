@@ -24,7 +24,6 @@
 #include "chrono/assets/ChVisualShapeSphere.h"
 #include "chrono/assets/ChTexture.h"
 #include "chrono/assets/ChVisualShapeTriangleMesh.h"
-#include "chrono/collision/chrono/ChCollisionSystemChrono.h"
 
 #include "chrono/motion_functions/ChFunction_Setpoint.h"
 
@@ -215,15 +214,11 @@ CobraPart::CobraPart(const std::string& name,
     : m_name(name), m_pos(rel_pos), m_mat(mat), m_collide(collide), m_visualize(true) {}
 
 void CobraPart::Construct(ChSystem* system) {
-    m_body = std::shared_ptr<ChBodyAuxRef>(system->NewBodyAuxRef());
+    m_body = chrono_types::make_shared<ChBodyAuxRef>();
     m_body->SetNameString(m_name + "_body");
-    if (m_mesh_name != "cobra_wheel_cyl") {
-        m_body->SetMass(m_mass);
-        m_body->SetInertiaXX(m_inertia);
-        m_body->SetFrame_COG_to_REF(m_cog);
-    } else {
-        m_body->SetMass(m_mass);
-    }
+    m_body->SetMass(m_mass);
+    m_body->SetInertiaXX(m_inertia);
+    m_body->SetFrame_COG_to_REF(m_cog);
 
     // Add visualization shape
     if (m_visualize && m_mesh_name != "cobra_wheel_cyl") {
@@ -244,24 +239,14 @@ void CobraPart::Construct(ChSystem* system) {
     }
 
     // Add collision shape
-    if (m_collide && m_mesh_name != "cobra_wheel_cyl") {
-        auto col_mesh_file = GetChronoDataFile("robot/cobra/obj/" + m_mesh_name + ".obj");
-        auto trimesh_col = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(col_mesh_file, false, false);
-        trimesh_col->Transform(m_mesh_xform.GetPos(), m_mesh_xform.GetA());  // translate/rotate/scale mesh
-        trimesh_col->RepairDuplicateVertexes(1e-9);                          // if meshes are not watertight
+    auto col_mesh_file = GetChronoDataFile("robot/cobra/obj/" + m_mesh_name + ".obj");
+    auto trimesh_col = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(col_mesh_file, false, false);
+    trimesh_col->Transform(m_mesh_xform.GetPos(), m_mesh_xform.GetA());  // translate/rotate/scale mesh
+    trimesh_col->RepairDuplicateVertexes(1e-9);                          // if meshes are not watertight
 
-        m_body->GetCollisionModel()->Clear();
-        auto shape =
-            chrono_types::make_shared<ChCollisionShapeTriangleMesh>(m_mat, trimesh_col, false, false, 0.005);
-        m_body->GetCollisionModel()->AddShape(shape);
-        m_body->GetCollisionModel()->Build();
-        m_body->SetCollide(m_collide);
-    } else if (m_collide && m_mesh_name == "cobra_wheel_cyl") {
-        m_body->GetCollisionModel()->Clear();
-        m_body->GetCollisionModel()->AddCylinder(m_mat, 0.1125, ChVector<>(0.0,-0.025,0.0), ChVector<>(0.0, 0.025, 0.0));
-        m_body->GetCollisionModel()->Build();
-        m_body->SetCollide(m_collide);
-    }
+    auto shape = chrono_types::make_shared<ChCollisionShapeTriangleMesh>(m_mat, trimesh_col, false, false, 0.005);
+    m_body->AddCollisionShape(shape);
+    m_body->SetCollide(m_collide);
 
     system->AddBody(m_body);
 }
@@ -271,7 +256,7 @@ void CobraPart::CalcMassProperties(double density) {
     if (m_mesh_name == "cobra_wheel_cyl") {
         mesh_filename = GetChronoDataFile("robot/cobra/obj/cobra_wheel.obj");
     }
-    auto trimesh_col = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(mesh_filename, false, false);
+    auto trimesh_col = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(mesh_filename, true, false);
     trimesh_col->Transform(m_mesh_xform.GetPos(), m_mesh_xform.GetA());  // translate/rotate/scale mesh
     trimesh_col->RepairDuplicateVertexes(1e-9);                          // if meshes are not watertight
 
@@ -282,6 +267,7 @@ void CobraPart::CalcMassProperties(double density) {
     trimesh_col->ComputeMassProperties(true, vol, cog_pos, inertia);
     ChInertiaUtils::PrincipalInertia(inertia, m_inertia, cog_rot);
     m_mass = density * vol;
+    std::cout << ("mass: " + std::to_string(m_mass) + " kg") << std::endl;
     m_inertia *= density;
     m_cog = ChFrame<>(cog_pos, cog_rot);
 }
@@ -301,7 +287,7 @@ CobraChassis::CobraChassis(const std::string& name, std::shared_ptr<ChMaterialSu
     : CobraPart(name, ChFrame<>(VNULL, QUNIT), mat, false) {
     m_mesh_name = "cobra_chassis";
     m_color = ChColor(0.7f, 0.4f, 0.4f);
-    CalcMassProperties(165);
+    CalcMassProperties(1650);
 }
 
 void CobraChassis::Initialize(ChSystem* system, const ChFrame<>& pos) {
@@ -317,7 +303,7 @@ CobraSteerHub::CobraSteerHub(const std::string& name, const ChFrame<>& rel_pos, 
     : CobraPart(name, rel_pos, mat, false) {
     m_mesh_name = "steering_hub";
     m_color = ChColor(0.7f, 0.7f, 0.9f);
-    CalcMassProperties(30);
+    CalcMassProperties(300);
 }
 
 // =============================================================================
@@ -329,7 +315,7 @@ CobraSteerStruct::CobraSteerStruct(const std::string& name,
     : CobraPart(name, rel_pos, mat, false) {
     m_mesh_name = "steering_struct";
     m_color = ChColor(0.7f, 0.4f, 0.4f);
-    CalcMassProperties(30);
+    CalcMassProperties(300);
 }
 
 // =============================================================================
@@ -349,14 +335,10 @@ CobraWheel::CobraWheel(const std::string& name,
             m_mesh_name = "cobra_simplewheel";
             m_wheel_type = CobraWheelType::SimpleWheel;
             break;
-        case CobraWheelType::CylWheel:
-            m_mesh_name = "cobra_wheel_cyl";
-            m_wheel_type = CobraWheelType::CylWheel;
-            break;
     }
 
     m_color = ChColor(0.4f, 0.7f, 0.4f);
-    CalcMassProperties(800);
+    CalcMassProperties(1200);
 }
 
 // =============================================================================
@@ -418,13 +400,13 @@ void Cobra::Create(CobraWheelType wheel_type) {
     double wz = 0.0355;
 
     m_wheels[CO_LF] = chrono_types::make_shared<CobraWheel>("Wheel_LF", ChFrame<>(ChVector<>(+wx, +wy, wz), QUNIT),
-                                                           m_wheel_material, wheel_type);
+                                                            m_wheel_material, wheel_type);
     m_wheels[CO_RF] = chrono_types::make_shared<CobraWheel>("Wheel_RF", ChFrame<>(ChVector<>(+wx, -wy, wz), QUNIT),
-                                                           m_wheel_material, wheel_type);
+                                                            m_wheel_material, wheel_type);
     m_wheels[CO_LB] = chrono_types::make_shared<CobraWheel>("Wheel_LB", ChFrame<>(ChVector<>(-wx, +wy, wz), QUNIT),
-                                                           m_wheel_material, wheel_type);
+                                                            m_wheel_material, wheel_type);
     m_wheels[CO_RB] = chrono_types::make_shared<CobraWheel>("Wheel_RB", ChFrame<>(ChVector<>(-wx, -wy, wz), QUNIT),
-                                                           m_wheel_material, wheel_type);
+                                                            m_wheel_material, wheel_type);
 
     m_wheels[CO_RF]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));
     m_wheels[CO_RB]->m_mesh_xform = ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI));

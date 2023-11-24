@@ -20,7 +20,7 @@
 
 #include "chrono_models/robot/cobra/Cobra.h"
 
-#include "chrono/physics/ChSystemSMC.h"
+#include "chrono/physics/ChSystemNSC.h"
 #include "chrono/physics/ChBodyEasy.h"
 
 #include "chrono_sensor/sensors/ChSegmentationCamera.h"
@@ -67,10 +67,10 @@ using namespace chrono::geometry;
 ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
 
 // Use custom material for the Cobra Rover Wheel
-bool use_custom_mat = false;
+bool use_custom_mat = true;
 
 // Define Cobra rover wheel type
-CobraWheelType wheel_type = CobraWheelType::SimpleWheel;
+CobraWheelType wheel_type = CobraWheelType::RealWheel;
 
 // Simulation time step
 double time_step = 1e-3;
@@ -117,12 +117,16 @@ int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 
     // Create the Chrono system with gravity in the negative Z direction
-    ChSystemSMC sys;
+    ChSystemNSC sys;
     sys.Set_G_acc(ChVector<>(0, 0, -9.81));
 
+    sys.SetCollisionSystemType(ChCollisionSystem::Type::BULLET);
+    ChCollisionModel::SetDefaultSuggestedEnvelope(0.0025);
+    ChCollisionModel::SetDefaultSuggestedMargin(0.0025);
+
     // Create the ground.
-    auto ground_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
-    auto ground = chrono_types::make_shared<ChBodyEasyBox>(30, 30, 1, 1000, true, true, ground_mat);
+    auto ground_mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
+    auto ground = chrono_types::make_shared<ChBodyEasyBox>(30, 30, 1, 100, true, true, ground_mat);
     ground->SetPos(ChVector<>(0, 0, -0.5));
     ground->SetBodyFixed(true);
     ground->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/concrete.jpg"), 60, 45);
@@ -134,9 +138,9 @@ int main(int argc, char* argv[]) {
     Cobra cobra(&sys, wheel_type);
     cobra.SetDriver(driver);
     if (use_custom_mat)
-        cobra.SetWheelContactMaterial(CustomWheelMaterial(ChContactMethod::SMC));
+        cobra.SetWheelContactMaterial(CustomWheelMaterial(ChContactMethod::NSC));
 
-    cobra.Initialize(ChFrame<>(ChVector<>(0, 0, 0.1), QUNIT));
+    cobra.Initialize(ChFrame<>(ChVector<>(0, 0, 0.2), QUNIT));
 
     // -----------------------
     // Adding cone objects
@@ -430,12 +434,9 @@ void addCones(ChSystem& sys, std::vector<std::string>& cone_files, std::vector<C
         body->SetMass(mass * cone_density);
         body->SetInertiaXX(cone_density * principal_I);
 
-        body->GetCollisionModel()->Clear();
-        auto m_mat = CustomWheelMaterial(ChContactMethod::SMC);
-        auto col_shape =
-            chrono_types::make_shared<ChCollisionShapeTriangleMesh>(m_mat, mesh, false, false, 0.005);
-        body->GetCollisionModel()->AddShape(col_shape);
-        body->GetCollisionModel()->Build();
+        auto m_mat = CustomWheelMaterial(ChContactMethod::NSC);
+        auto col_shape = chrono_types::make_shared<ChCollisionShapeTriangleMesh>(m_mat, mesh, false, false, 0.005);
+        body->AddCollisionShape(col_shape);
         body->SetCollide(false);
 
         auto mesh_shape = chrono_types::make_shared<ChVisualShapeTriangleMesh>();

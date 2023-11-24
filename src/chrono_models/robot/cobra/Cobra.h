@@ -48,9 +48,8 @@ enum CobraWheelID {
 
 /// Cobra wheel type.
 enum class CobraWheelType {
-    RealWheel,    ///< actual geometry of the Cobra wheel
-    SimpleWheel,  ///< simplified geometry of the Cobra wheel
-    CylWheel      ///< cylindrical wheel geometry
+    RealWheel,   ///< actual geometry of the Cobra wheel
+    SimpleWheel  ///< simplified geometry of the Cobra wheel
 };
 
 // -----------------------------------------------------------------------------
