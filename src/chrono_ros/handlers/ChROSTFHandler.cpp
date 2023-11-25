@@ -9,10 +9,10 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Aaron Young
+// Authors: Sriram Ashokkumar, Json Zhou
 // =============================================================================
 //
-// Handler responsible for publishing information about a ChBody
+// Handler responsible for publishing information about a tf - currently just set up for lidar
 //
 // =============================================================================
 

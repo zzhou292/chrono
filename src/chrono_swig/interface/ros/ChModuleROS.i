@@ -53,6 +53,7 @@
 #include "chrono_ros/handlers/ChROSClockHandler.h"
 #include "chrono_ros/handlers/ChROSBodyHandler.h"
 #include "chrono_ros/handlers/ChROSHandlerUtilities.h"
+#include "chrono_ros/handlers/ChROSTFHandler.h"
 #include "chrono_ros/handlers/vehicle/ChROSDriverInputsHandler.h"
 #include "chrono_ros/handlers/sensor/ChROSAccelerometerHandler.h"
 #include "chrono_ros/handlers/sensor/ChROSCameraHandler.h"
@@ -116,6 +117,7 @@ using namespace chrono::ros;
 %shared_ptr(chrono::ros::ChROSInterface)
 %shared_ptr(chrono::ros::ChROSClockHandler)
 %shared_ptr(chrono::ros::ChROSBodyHandler)
+%shared_ptr(chrono::ros::ChROSTFHandler)
 %shared_ptr(chrono::ros::ChROSDriverInputsHandler)
 %shared_ptr(chrono::ros::ChROSAccelerometerHandler)
 %shared_ptr(chrono::ros::ChROSCameraHandler)
@@ -155,6 +157,7 @@ using namespace chrono::ros;
 %include "../../../chrono_ros/handlers/ChROSClockHandler.h"
 %include "../../../chrono_ros/handlers/ChROSBodyHandler.h"
 %include "../../../chrono_ros/handlers/ChROSHandlerUtilities.h"
+%include "../../../chrono_ros/handlers/ChROSTFHandler.h"
 %include "../../../chrono_ros/handlers/vehicle/ChROSDriverInputsHandler.h"
 %include "../../../chrono_ros/handlers/sensor/ChROSAccelerometerHandler.h"
 %include "../../../chrono_ros/handlers/sensor/ChROSCameraHandler.h"

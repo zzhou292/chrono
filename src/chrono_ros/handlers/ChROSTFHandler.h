@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Aaron Young
+// Authors: Sriram Ashokkumar
 // =============================================================================
 //
 // Handler responsible for publishing information about a ChBody

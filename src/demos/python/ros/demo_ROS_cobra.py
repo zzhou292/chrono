@@ -112,10 +112,12 @@ vis.AddLightWithShadow(chrono.ChVectorD(1.5, -2.5, 5.5), chrono.ChVectorD(0, 0, 
 # Create ROS manager
 ros_manager = chros.ChROSManager()
 ros_manager.RegisterHandler(chros.ChROSClockHandler())
+
 ros_manager.RegisterHandler(chros.ChROSCameraHandler(
         cam.GetUpdateRate() / 4, cam, "~/output/camera/data/image"))
 ros_manager.RegisterHandler(chros.ChROSLidarHandler(
     lidar, "~/output/lidar/data/pointcloud"))
+ros_manager.RegisterHandler(chros.ChROSTFHandler(50, lidar, rover.GetChassis().GetBody(), "/tf"))
 ros_manager.RegisterHandler(chros.ChROSCobraSpeedDriverHandler(25, driver, "~/input/driver_inputs"))
 ros_manager.RegisterHandler(chros.ChROSBodyHandler(25, rover.GetChassis().GetBody(), "~/output/cobra/state"))
 ros_manager.Initialize()
