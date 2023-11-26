@@ -32,6 +32,8 @@ except:
 # Chreate Chrono system
 system = chrono.ChSystemNSC()
 system.Set_G_acc(chrono.ChVectorD(0, 0, -9.81))
+
+system.SetCollisionSystemType(chrono.ChCollisionSystem.Type_BULLET)
 chrono.ChCollisionModel.SetDefaultSuggestedEnvelope(0.0025)
 chrono.ChCollisionModel.SetDefaultSuggestedMargin(0.0025)
 
@@ -51,11 +53,9 @@ room_mesh_body = chrono.ChBody()
 room_mesh_body.SetPos(chrono.ChVectorD(-2, -2, -1))
 room_mesh_body.AddVisualShape(room_trimesh_shape)
 room_mesh_body.SetBodyFixed(True)
-room_mesh_body.GetCollisionModel().Clear()
 
 cshape = chrono.ChCollisionShapeTriangleMesh(contact_method, room_mmesh, True, True)
-room_mesh_body.GetCollisionModel().AddShape(cshape)
-room_mesh_body.GetCollisionModel().Build()
+room_mesh_body.AddCollisionShape(cshape)
 room_mesh_body.SetCollide(True)
 
 # vehicle.GetSystem().Add(room_mesh_body)

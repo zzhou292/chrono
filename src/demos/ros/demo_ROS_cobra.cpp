@@ -143,6 +143,7 @@ int main(int argc, char* argv[]) {
     ChSystemSMC sys;
     sys.Set_G_acc(ChVector<>(0, 0, -9.81));
 
+    sys.SetCollisionSystemType(ChCollisionSystem::Type::BULLET);
     ChCollisionModel::SetDefaultSuggestedEnvelope(0.0025);
     ChCollisionModel::SetDefaultSuggestedMargin(0.0025);
 
@@ -162,10 +163,8 @@ int main(int argc, char* argv[]) {
     room_mesh_body->SetPos(chrono::ChVector<>(-2, -2, -0.1));
     room_mesh_body->AddVisualShape(room_trimesh_shape);
     room_mesh_body->SetBodyFixed(true);
-    room_mesh_body->GetCollisionModel()->Clear();
     auto cshape = chrono_types::make_shared<ChCollisionShapeTriangleMesh>(ground_mat, room_mmesh, true, true);
-    room_mesh_body->GetCollisionModel()->AddShape(cshape);
-    room_mesh_body->GetCollisionModel()->Build();
+    room_mesh_body->AddCollisionShape(cshape);
     room_mesh_body->SetCollide(true);
 
     sys.AddBody(room_mesh_body);
@@ -484,9 +483,6 @@ void addCones(ChSystem& sys, std::vector<std::string>& cone_files, std::vector<C
         body->SetFrame_COG_to_REF(ChFrame<>(cog, principal_inertia_rot));
         body->SetMass(mass * cone_density);
         body->SetInertiaXX(cone_density * principal_I);
-
-        body->GetCollisionModel()->Clear();
-        body->GetCollisionModel()->Build();
         body->SetCollide(false);
 
         auto mesh_shape = chrono_types::make_shared<ChVisualShapeTriangleMesh>();
