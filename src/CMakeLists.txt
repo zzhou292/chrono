@@ -1028,6 +1028,15 @@ configure_file("${PROJECT_SOURCE_DIR}/cmake/chrono-config.cmake.in"
                "${PROJECT_BINARY_DIR}/cmake/chrono-config.cmake"
                @ONLY)
 
+# Generate the C# file with global constants
+# This must be done here, after replacement variables were set.
+if(ENABLE_MODULE_CSHARP)
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/chrono_swig/chrono_csharp/ChChronoGlobals.cs.in"
+                 "${PROJECT_BINARY_DIR}/chrono_csharp/core/ChChronoGlobals.cs"
+                 @ONLY)
+endif()
+
+
 # For the INSTALL tree
 set(CH_THIRDPARTY_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include/chrono_thirdparty")
 set(CH_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/include")
