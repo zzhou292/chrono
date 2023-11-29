@@ -952,8 +952,8 @@ if(ENABLE_MODULE_ROS)
 
   # Copy PY file in a package dir
   set(CHPY_ROS_PY_FILE "${CMAKE_SWIG_OUTDIR}/${CHPY_ROS}.py")
-  get_target_property(CHPY_ROS_PYD_FILE ${SWIG_MODULE_${CHPY_ROS}_REAL_NAME} LOCATION)
-  get_filename_component(CHPY_ROS_PYD_PATH "${CHPY_ROS_PYD_FILE}" PATH)
+  set(CHPY_ROS_PYD_PATH $<TARGET_FILE_DIR:${SWIG_MODULE_${CHPY_ROS}_REAL_NAME}>)
+
   add_custom_command(TARGET ${SWIG_MODULE_${CHPY_ROS}_REAL_NAME}
                    POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E make_directory ${CHPY_ROS_PYD_PATH}/${CHPY_PACKAGENAME})
