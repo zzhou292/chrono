@@ -87,18 +87,18 @@ void Unitree_Go1::Initialize(const ChFrame<>& pos) {
     m_robot->PrintModelJoints();
 
     // Enable actuation for all joints
-    m_robot->SetJointActuationType("FL_hip_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("FL_thigh_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("FL_calf_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("FR_hip_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("FR_thigh_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("FR_calf_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("RL_hip_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("RL_thigh_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("RL_calf_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("RR_hip_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("RR_thigh_joint", ChParserURDF::ActuationType::SPEED);
-    m_robot->SetJointActuationType("RR_calf_joint", ChParserURDF::ActuationType::SPEED);
+    m_robot->SetJointActuationType("FL_hip_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("FL_thigh_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("FL_calf_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("FR_hip_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("FR_thigh_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("FR_calf_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("RL_hip_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("RL_thigh_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("RL_calf_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("RR_hip_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("RR_thigh_joint", ChParserURDF::ActuationType::POSITION);
+    m_robot->SetJointActuationType("RR_calf_joint", ChParserURDF::ActuationType::POSITION);
 
     // Create the Chrono model
     m_robot->PopulateSystem(*m_system);
@@ -199,6 +199,8 @@ void Unitree_Go1::Initialize(const ChFrame<>& pos) {
         m_thigh_motors[i]->SetMotorFunction(m_thigh_motor_funcs[i]);
         m_calf_motors[i]->SetMotorFunction(m_calf_motor_funcs[i]);
     }
+
+
 }
 // =============================================================================
 

@@ -47,6 +47,16 @@ enum UnitreeSideID {
     UA1_RR = 3   ///< right back
 };
 
+const float HIP_MOTOR_MIN = -0.802851455917f;
+const float HIP_MOTOR_MAX = 0.802851455917f;
+
+const float THIGH_MOTOR_MIN = -1.0471975512f;
+const float THIGH_MOTOR_MAX = 4.18879020479f;
+
+const float CALF_MOTOR_MIN = 0.916297857297f;
+const float CALF_MOTOR_MAX = 2.69653369433f;
+
+
 /// Cobra rover class.
 /// This class encapsulates the location and rotation information of all Cobra parts wrt the chassis.
 /// This class should be the entry point to create a complete rover.

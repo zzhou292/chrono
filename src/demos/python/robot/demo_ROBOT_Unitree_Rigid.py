@@ -9,7 +9,7 @@
 # http://projectchrono.org/license-chrono.txt.
 #
 # =============================================================================
-# Authors: Json Zhou
+# Authors: Json Zhou 
 # =============================================================================
 #
 # Demo to show Unitree Go1 operated on Rigid Terrain
