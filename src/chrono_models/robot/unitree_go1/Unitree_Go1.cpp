@@ -83,10 +83,6 @@ void Unitree_Go1::Initialize(const ChFrame<>& pos) {
     // Set root body pose
     m_robot->SetRootInitPose(pos);
 
-    // Report parsed elements
-    m_robot->PrintModelBodies();
-    m_robot->PrintModelJoints();
-
     // Enable actuation for all joints
     m_robot->SetJointActuationType("FL_hip_joint", ChParserURDF::ActuationType::POSITION);
     m_robot->SetJointActuationType("FL_thigh_joint", ChParserURDF::ActuationType::POSITION);
