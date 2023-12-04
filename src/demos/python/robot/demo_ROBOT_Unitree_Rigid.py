@@ -29,11 +29,13 @@ except:
 system = chrono.ChSystemSMC()
 system.SetCollisionSystemType(chrono.ChCollisionSystem.Type_BULLET)
 system.Set_G_acc(chrono.ChVectorD(0, 0, -9.81))
-chrono.ChCollisionModel.SetDefaultSuggestedEnvelope(0.001)
-chrono.ChCollisionModel.SetDefaultSuggestedMargin(0.001)
+chrono.ChCollisionModel.SetDefaultSuggestedEnvelope(0.0025)
+chrono.ChCollisionModel.SetDefaultSuggestedMargin(0.0025)
 
 # Create ground body
 ground_mat = chrono.ChMaterialSurfaceSMC()
+ground_mat.SetFriction(0.9)
+ground_mat.SetYoungModulus(1e7)
 ground = chrono.ChBodyEasyBox(20, 20, 0.1, 1000, True, True, ground_mat)
 ground.SetPos(chrono.ChVectorD(0, 0, 0))
 ground.SetBodyFixed(True)
@@ -63,10 +65,16 @@ time_step = 5e-4
 
 # Simulation loop
 time = 0
+step = 1
 while (vis.Run()) :
     time = time + time_step
-
-    vis.BeginScene()
-    vis.Render()
-    vis.EndScene()
+            
+    if(step % 100 == 0):
+        vis.BeginScene()
+        vis.Render()
+        vis.EndScene()
+        step = 1
+    else:
+        step+=1
+        
     system.DoStepDynamics(time_step)

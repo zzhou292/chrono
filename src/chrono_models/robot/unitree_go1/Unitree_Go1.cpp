@@ -15,6 +15,7 @@
 //
 // =============================================================================
 #include <cmath>
+#include <algorithm>
 
 #include "chrono/physics/ChBodyEasy.h"
 #include "chrono/assets/ChVisualShape.h"
@@ -201,6 +202,35 @@ void Unitree_Go1::Initialize(const ChFrame<>& pos) {
     }
 
 
+}
+
+
+void Unitree_Go1::SetHipMotorPos(UnitreeSideID id, double pos, double x){
+    //pos = std::max(HIP_MOTOR_MIN, std::min(pos, HIP_MOTOR_MAX));
+    pos = std::clamp(pos, HIP_MOTOR_MIN, HIP_MOTOR_MAX);
+    m_hip_motor_funcs[id]->SetSetpoint(pos, x);
+}
+
+void Unitree_Go1::SetThighMotorPos(UnitreeSideID id, double pos, double x){
+    pos = std::clamp(pos, THIGH_MOTOR_MIN, THIGH_MOTOR_MAX);
+    m_thigh_motor_funcs[id]->SetSetpoint(pos, x);
+}
+
+void Unitree_Go1::SetCalfMotorPos(UnitreeSideID id, double pos, double x){
+    pos = std::clamp(pos, CALF_MOTOR_MIN, CALF_MOTOR_MAX);
+    m_calf_motor_funcs[id]->SetSetpoint(pos, x);
+}
+
+double Unitree_Go1::GetHipMotorPos(UnitreeSideID id, double x){
+    return m_hip_motor_funcs[id]->Get_y(x);
+}
+
+double Unitree_Go1::GetThighMotorPos(UnitreeSideID id, double x){
+    return m_thigh_motor_funcs[id]->Get_y(x);
+}
+
+double Unitree_Go1::GetCalfMotorPos(UnitreeSideID id, double x){
+    return m_calf_motor_funcs[id]->Get_y(x);
 }
 // =============================================================================
 

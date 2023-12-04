@@ -47,14 +47,14 @@ enum UnitreeSideID {
     UA1_RR = 3   ///< right back
 };
 
-const float HIP_MOTOR_MIN = -0.802851455917f;
-const float HIP_MOTOR_MAX = 0.802851455917f;
+const double HIP_MOTOR_MIN = -0.802851455917f;
+const double HIP_MOTOR_MAX = 0.802851455917f;
 
-const float THIGH_MOTOR_MIN = -1.0471975512f;
-const float THIGH_MOTOR_MAX = 4.18879020479f;
+const double THIGH_MOTOR_MIN = -1.0471975512f;
+const double THIGH_MOTOR_MAX = 4.18879020479f;
 
-const float CALF_MOTOR_MIN = 0.916297857297f;
-const float CALF_MOTOR_MAX = 2.69653369433f;
+const double CALF_MOTOR_MIN = 0.916297857297f;
+const double CALF_MOTOR_MAX = 2.69653369433f;
 
 
 /// Cobra rover class.
@@ -72,6 +72,14 @@ class CH_MODELS_API Unitree_Go1 {
     /// Initialize the Cobra rover at the specified position.
     void Initialize(const ChFrame<>& pos);
 
+    void SetHipMotorPos(UnitreeSideID id, double pos, double x);
+    void SetThighMotorPos(UnitreeSideID id, double pos, double x);
+    void SetCalfMotorPos(UnitreeSideID id, double pos, double x);
+
+    double GetHipMotorPos(UnitreeSideID id, double x);
+    double GetThighMotorPos(UnitreeSideID id, double x);
+    double GetCalfMotorPos(UnitreeSideID id, double x);
+
     std::shared_ptr<ChBody> GetTrunkBody() const { return m_trunk; }
     std::shared_ptr<ChBody> GetCalfBody(UnitreeSideID id) const { return m_calfs[id]; }
     std::shared_ptr<ChBody> GetThighBody(UnitreeSideID id) const { return m_thighs[id]; }
@@ -82,9 +90,6 @@ class CH_MODELS_API Unitree_Go1 {
     std::shared_ptr<ChLinkMotor> GetThighMotor(UnitreeSideID id) const { return m_thigh_motors[id]; }
     std::shared_ptr<ChLinkMotor> GetCalfMotor(UnitreeSideID id) const { return m_calf_motors[id]; }
 
-    std::shared_ptr<ChFunction_Setpoint> GetHipMotorFunc(UnitreeSideID id) const { return m_hip_motor_funcs[id]; }
-    std::shared_ptr<ChFunction_Setpoint> GetThighMotorFunc(UnitreeSideID id) const { return m_thigh_motor_funcs[id]; }
-    std::shared_ptr<ChFunction_Setpoint> GetCalfMotorFunc(UnitreeSideID id) const { return m_calf_motor_funcs[id]; }
 
   private:
     ChSystem* m_system;     ///< pointer to the Chrono system
