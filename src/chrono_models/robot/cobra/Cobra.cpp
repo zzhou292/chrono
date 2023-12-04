@@ -267,7 +267,6 @@ void CobraPart::CalcMassProperties(double density) {
     trimesh_col->ComputeMassProperties(true, vol, cog_pos, inertia);
     ChInertiaUtils::PrincipalInertia(inertia, m_inertia, cog_rot);
     m_mass = density * vol;
-    std::cout << ("mass: " + std::to_string(m_mass) + " kg") << std::endl;
     m_inertia *= density;
     m_cog = ChFrame<>(cog_pos, cog_rot);
 }
