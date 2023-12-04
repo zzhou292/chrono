@@ -71,6 +71,7 @@
 #include "chrono_models/robot/copters/Copter.h"
 #include "chrono_models/robot/copters/Little_Hexy.h"
 #include "chrono_models/robot/cobra/Cobra.h"
+#include "chrono_models/robot/unitree_go1/Unitree_Go1.h"
 
 using namespace chrono;
 using namespace chrono::robosimian;
@@ -79,6 +80,7 @@ using namespace chrono::curiosity;
 using namespace chrono::turtlebot;
 using namespace chrono::copter;
 using namespace chrono::cobra;
+using namespace chrono::unitree_go1;
 
 %}
 
@@ -228,6 +230,8 @@ using namespace chrono::cobra;
 %import(module = "pychrono.core") "../chrono/fea/ChContinuumMaterial.h"
 %import(module = "pychrono.core") "../chrono/physics/ChPhysicsItem.h"
 
+%import(module = "pychrono.core") "../chrono_parsers/ChParserURDF.h"
+
 %import(module = "pychrono.core") "../chrono/physics/ChBodyFrame.h"
 %import(module = "pychrono.core") "../chrono/physics/ChLinkBase.h"
 %import(module = "pychrono.core") "../chrono/assets/ChVisualShapeTriangleMesh.h"
@@ -252,6 +256,7 @@ using namespace chrono::cobra;
 %template(ChCopter6) chrono::copter::Copter<6>;
 %template(ChCopter4) chrono::copter::Copter<4>;
 %include "../../../chrono_models/robot/copters/Little_Hexy.h"
+%include "../../../chrono_models/robot/unitree_go1/Unitree_Go1.h"
 
 
 

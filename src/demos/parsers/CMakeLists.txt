@@ -21,7 +21,6 @@ endif()
 if(HAVE_URDF)
     set(DEMOS ${DEMOS}
       demo_PARSER_URDF
-      demo_PARSER_URDF_Unitree
       demo_PARSER_URDF_Fetch
       demo_PARSER_URDF_RoboSimian
     )

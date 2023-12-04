@@ -67,6 +67,15 @@ source_group("curiosity" FILES ${CRM_CURIOSITY_FILES})
 
 
 #-----------------------------------------------------------------------------
+if(ENABLE_MODULE_PARSERS)
+    set(CRM_UNITREEGO1_FILES
+        unitree_go1/Unitree_Go1.cpp
+        unitree_go1/Unitree_Go1.h
+    )
+    source_group("unitree_go1" FILES ${CRM_UNITREEGO1_FILES})
+endif()
+
+#-----------------------------------------------------------------------------
 
 set(CRM_COPTERS_FILES
     copters/Copter.h
@@ -87,6 +96,12 @@ if(ENABLE_MODULE_IRRLICHT)
     include_directories(${CH_IRRLICHT_INCLUDES})
 endif()
 
+if(ENABLE_MODULE_PARSERS)
+    set(CXX_FLAGS "${CXX_FLAGS} ${CH_PARSERS_CXX_FLAGS}")
+    list(APPEND LIBRARIES ChronoEngine_parsers)
+    include_directories(${CH_PARSERS_INCLUDES})
+endif()
+
 #-----------------------------------------------------------------------------
 
 add_library(ChronoModels_robot 
@@ -97,6 +112,7 @@ add_library(ChronoModels_robot
             ${CRM_COBRA_FILES}
             ${CRM_TURTLEBOT_FILES}
             ${CRM_COPTERS_FILES}
+            ${CRM_UNITREEGO1_FILES}
             )
 
 set_target_properties(ChronoModels_robot PROPERTIES

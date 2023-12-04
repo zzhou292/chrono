@@ -25,6 +25,13 @@ if(ENABLE_MODULE_IRRLICHT)
   )
 endif()
 
+if(ENABLE_MODULE_PARSERS)
+  set(DEMOS ${DEMOS}
+      demo_ROBOT_UnitreeGo1_Rigid
+  )
+endif()
+
+
 if(ENABLE_MODULE_SENSOR AND ENABLE_MODULE_IRRLICHT)
   set(DEMOS ${DEMOS}
       demo_ROBOT_Curiosity_SCM_Sensor
