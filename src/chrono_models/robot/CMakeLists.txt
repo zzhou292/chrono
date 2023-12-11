@@ -65,6 +65,15 @@ set(CRM_CURIOSITY_FILES
 
 source_group("curiosity" FILES ${CRM_CURIOSITY_FILES})
 
+#-----------------------------------------------------------------------------
+
+set(CRM_RASSOR_FILES
+    rassor/Rassor.cpp    
+    rassor/Rassor.h
+)
+
+source_group("rassor" FILES ${CRM_RASSOR_FILES})
+
 
 #-----------------------------------------------------------------------------
 if(ENABLE_MODULE_PARSERS)
@@ -113,6 +122,7 @@ add_library(ChronoModels_robot
             ${CRM_TURTLEBOT_FILES}
             ${CRM_COPTERS_FILES}
             ${CRM_UNITREEGO1_FILES}
+            ${CRM_RASSOR_FILES}
             )
 
 set_target_properties(ChronoModels_robot PROPERTIES

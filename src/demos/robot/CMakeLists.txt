@@ -17,6 +17,7 @@ set(DEMOS
     demo_ROBOT_Viper_Rigid
     demo_ROBOT_Viper_SCM
     demo_ROBOT_Cobra_Rigid
+    demo_ROBOT_Rassor_Rigid
 )
 
 if(ENABLE_MODULE_IRRLICHT)
