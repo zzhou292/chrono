@@ -43,6 +43,7 @@ endif()
 if(ENABLE_MODULE_FSI)
   set(DEMOS ${DEMOS}
       demo_ROBOT_Viper_SPH
+      demo_ROBOT_Rassor_SPH
   )
 endif()
 
