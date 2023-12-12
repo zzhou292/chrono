@@ -131,19 +131,14 @@ int main(int argc, char* argv[]) {
     sys.Add(ground);
 
     // Construct a Rassor rover and the asociated driver
-    auto driver = chrono_types::make_shared<RassorSpeedDriver>(1.0, 3.0);
+    auto driver = chrono_types::make_shared<RassorSpeedDriver>(1.0);
 
-    std::cout << "tp1" << std::endl;
     Rassor rassor(&sys, wheel_type);
-    std::cout << "tp2" << std::endl;
     rassor.SetDriver(driver);
-    std::cout << "tp3" << std::endl;
     if (use_custom_mat)
         rassor.SetWheelContactMaterial(CustomWheelMaterial(ChContactMethod::NSC));
 
-    std::cout << "tp4" << std::endl;
     rassor.Initialize(ChFrame<>(ChVector<>(0, 0, 0.5), QUNIT));
-    std::cout << "tp5" << std::endl;
     // Create the run-time visualization interface
 #ifndef CHRONO_IRRLICHT
     if (vis_type == ChVisualSystem::Type::IRRLICHT)
@@ -200,6 +195,19 @@ int main(int argc, char* argv[]) {
 
         // Set current steering angle
         double time = rassor.GetSystem()->GetChTime();
+
+        for (int i = 0; i < 4; i++) {
+            driver->SetDriveMotorSpeed((RassorWheelID)i, 2.0);
+        }
+
+        for (int i = 0; i < 2; i++) {
+            driver->SetRazorMotorSpeed((RassorDirID)i, 3.14);
+        }
+
+        if (time <= 2.0) {
+            driver->SetArmMotorSpeed((RassorDirID)0, -0.5);
+            driver->SetArmMotorSpeed((RassorDirID)1, 0.5);
+        }
 
         std::cout << time << std::endl;
 

@@ -469,16 +469,46 @@ double Rassor::GetWheelMass() const {
     return m_wheels[0]->GetBody()->GetMass();
 }
 
-void Rassor::Update() {}
+void Rassor::Update() {
+    double time = m_system->GetChTime();
+    m_driver->Update(time);
+
+    for (int i = 0; i < 4; i++) {
+        // Extract driver inputs
+        double driving = m_driver->drive_speeds[i];
+
+        // Set motor functions
+        m_drive_motor_funcs[i]->Set_yconst(driving);
+    }
+
+    for (int i = 0; i < 2; i++) {
+        double arm_speed = m_driver->arm_speeds[i];
+        double razor_speed = m_driver->razor_speeds[i];
+        m_arm_1_motor_funcs[i]->Set_yconst(arm_speed);
+        m_arm_2_motor_funcs[i]->Set_yconst(razor_speed);
+    }
+}
 
 // =============================================================================
 
-RassorDriver::RassorDriver() : drive_speeds({0, 0, 0, 0}), rassor(nullptr) {}
+RassorDriver::RassorDriver() : drive_speeds({0, 0, 0, 0}), arm_speeds({0, 0}), razor_speeds({0, 0}), rassor(nullptr) {}
 
-RassorSpeedDriver::RassorSpeedDriver(double time_ramp, double speed) : m_ramp(time_ramp), m_speed(speed) {}
+RassorSpeedDriver::RassorSpeedDriver(double time_ramp) : m_ramp(time_ramp) {}
 
 /// Set current drive motor speed input.
-void RassorSpeedDriver::SetMotorSpeed(double speed) {}
+void RassorSpeedDriver::SetDriveMotorSpeed(RassorWheelID wheel_id, double drive_speed) {
+    drive_speeds[wheel_id] = drive_speed;
+}
+
+/// Set current arm motor speed input.
+void RassorSpeedDriver::SetArmMotorSpeed(RassorDirID dir_id, double arm_speed) {
+    arm_speeds[dir_id] = arm_speed;
+}
+
+/// Set current razor motor speed input.
+void RassorSpeedDriver::SetRazorMotorSpeed(RassorDirID dir_id, double razor_speed) {
+    razor_speeds[dir_id] = razor_speed;
+}
 
 void RassorSpeedDriver::Update(double time) {}
 

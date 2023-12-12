@@ -46,6 +46,12 @@ enum RassorWheelID {
     RA_RB = 3   ///< right back
 };
 
+/// Rassor wheel/suspension identifiers.
+enum RassorDirID {
+    RA_F = 0,  ///< left front
+    RA_B = 1,  ///< right front
+};
+
 /// Rassor wheel type.
 enum class RassorWheelType {
     RealWheel  ///< actual geometry of the Rassor wheel
@@ -320,6 +326,8 @@ class CH_MODELS_API RassorDriver {
     Rassor* rassor;  ///< associated Rassor rover
 
     std::array<double, 4> drive_speeds;  ///< angular speeds for drive motors
+    std::array<double, 2> arm_speeds;    ///< angular speeds for arm motors
+    std::array<double, 2> razor_speeds;  ///< angular speeds for razor motors
 
     friend class Rassor;
 };
@@ -328,11 +336,17 @@ class CH_MODELS_API RassorDriver {
 /// This driver applies the same angular speed (ramped from 0 to a prescribed value) to all wheels.
 class CH_MODELS_API RassorSpeedDriver : public RassorDriver {
   public:
-    RassorSpeedDriver(double time_ramp, double speed);
+    RassorSpeedDriver(double time_ramp);
     ~RassorSpeedDriver() {}
 
     /// Set current drive motor speed input.
-    void SetMotorSpeed(double speed);
+    void SetDriveMotorSpeed(RassorWheelID wheel_id, double drive_speed);
+
+    /// Set current drive motor speed input.
+    void SetArmMotorSpeed(RassorDirID dir_id, double arm_speed);
+
+    /// Set current drive motor speed input.
+    void SetRazorMotorSpeed(RassorDirID dir_id, double razor_speed);
 
   private:
     virtual DriveMotorType GetDriveMotorType() const override { return DriveMotorType::SPEED; }
@@ -340,6 +354,8 @@ class CH_MODELS_API RassorSpeedDriver : public RassorDriver {
 
     double m_ramp;
     double m_speed;
+    double m_arm_speed;
+    double m_razor_speed;
 };
 
 /// @} robot_models_rassor
