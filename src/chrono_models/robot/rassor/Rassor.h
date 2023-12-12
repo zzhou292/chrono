@@ -9,11 +9,12 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Jason Zhou
+// Authors: Json Zhou
 // =============================================================================
 //
 // NASA RASSOR Mining Experimental Rover Model Class.
 // This class contains model for an experimental rover Rassor
+// Reference page: https://technology.nasa.gov/patent/KSC-TOPS-7
 //
 // =============================================================================
 
@@ -46,10 +47,10 @@ enum RassorWheelID {
     RA_RB = 3   ///< right back
 };
 
-/// Rassor wheel/suspension identifiers.
+/// Rassor razor/arm identifiers.
 enum RassorDirID {
-    RA_F = 0,  ///< left front
-    RA_B = 1,  ///< right front
+    RA_F = 0,  ///< front
+    RA_B = 1,  ///< back
 };
 
 /// Rassor wheel type.
@@ -60,7 +61,7 @@ enum class RassorWheelType {
 // -----------------------------------------------------------------------------
 
 /// Base class definition for all Rassor parts.
-/// Rassor Rover Parts include Chassis, Upper Suspension Arm, Bottom Suspension Arm and Wheel.
+/// Rassor Rover Parts include Chassis, Wheel, Arm, and Razor
 class CH_MODELS_API RassorPart {
   public:
     RassorPart(const std::string& name,                 ///< part name
@@ -164,7 +165,7 @@ class CH_MODELS_API RassorWheel : public RassorPart {
     RassorWheelType m_wheel_type;  ///< wheel type
 };
 
-/// Rassor rover Wheel.
+/// Rassor rover Razo.
 class CH_MODELS_API RassorRazor : public RassorPart {
   public:
     RassorRazor(const std::string& name,                ///< part name
@@ -176,7 +177,7 @@ class CH_MODELS_API RassorRazor : public RassorPart {
     friend class Rassor;
 };
 
-/// Rassor rover Wheel.
+/// Rassor rover Arm.
 class CH_MODELS_API RassorArm : public RassorPart {
   public:
     RassorArm(const std::string& name,                ///< part name
@@ -340,6 +341,8 @@ class CH_MODELS_API RassorDriver {
 
 /// Concrete Rassor speed driver.
 /// This driver applies the same angular speed (ramped from 0 to a prescribed value) to all wheels.
+/// Note that this speed drive controls three types of motors -> drive, arm, and razor
+/// Note that this speed driver control signal is persistent, i.e. it is not reset at each time step.
 class CH_MODELS_API RassorSpeedDriver : public RassorDriver {
   public:
     RassorSpeedDriver(double time_ramp);
@@ -348,10 +351,10 @@ class CH_MODELS_API RassorSpeedDriver : public RassorDriver {
     /// Set current drive motor speed input.
     void SetDriveMotorSpeed(RassorWheelID wheel_id, double drive_speed);
 
-    /// Set current drive motor speed input.
+    /// Set current arm motor speed input.
     void SetArmMotorSpeed(RassorDirID dir_id, double arm_speed);
 
-    /// Set current drive motor speed input.
+    /// Set current razor motor speed input.
     void SetRazorMotorSpeed(RassorDirID dir_id, double razor_speed);
 
   private:

@@ -9,11 +9,12 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Jason Zhou
+// Authors: Json Zhou
 // =============================================================================
 //
 // NASA RASSOR Mining Experimental Rover Model Class.
 // This class contains model for an experimental rover Rassor
+// Reference page: https://technology.nasa.gov/patent/KSC-TOPS-7
 //
 // =============================================================================
 #include <cmath>
@@ -293,7 +294,7 @@ RassorRazor::RassorRazor(const std::string& name, const ChFrame<>& rel_pos, std:
 }
 // =============================================================================
 
-// Rassor Razor
+// Rassor Arm
 RassorArm::RassorArm(const std::string& name, const ChFrame<>& rel_pos, std::shared_ptr<ChMaterialSurface> mat)
     : RassorPart(name, rel_pos, mat, false) {
     m_mesh_name = "rassor_arm";
@@ -346,6 +347,8 @@ void Rassor::Create(RassorWheelType wheel_type) {
 
     m_razors[1] =
         chrono_types::make_shared<RassorRazor>("razor_B", ChFrame<>(ChVector<>(-rx, ry, rz), QUNIT), m_wheel_material);
+
+    // initialize rover arms
 
     double ax = 0.25;
     double ay = 0.0;
