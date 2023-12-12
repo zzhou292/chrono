@@ -52,9 +52,9 @@ const std::string out_dir = GetChronoOutputPath() + "FSI_Rassor/";
 bool save_obj = false;
 
 // Physical properties of terrain particles
-double iniSpacing = 0.005;
-double kernelLength = 0.005;
-double density = 2200.0;
+double iniSpacing = 0.004;
+double kernelLength = 0.004;
+double density = 2600.0;
 
 // Dimension of the space domain
 double bxDim = 4.0;
@@ -66,7 +66,7 @@ ChVector<> init_loc(-bxDim / 2.0 + 1.0, 0, bzDim + 0.3);
 
 // Simulation time and stepsize
 double total_time = 20.0;
-double dT = 2.5e-4;
+double dT = 2.0e-4;
 
 // Save data as csv files to see the results off-line using Paraview
 bool output = true;
@@ -78,12 +78,15 @@ float render_fps = 100;
 
 // Pointer to store the VIPER instance
 std::shared_ptr<Rassor> rover;
+std::shared_ptr<RassorSpeedDriver> driver;
 
 // Define Viper rover wheel type
 RassorWheelType wheel_type = RassorWheelType::RealWheel;
 
 // Use below mesh file if the wheel type is real VIPER wheel
 std::string wheel_obj = "robot/rassor/obj/rassor_wheel.obj";
+std::string arm_obj = "robot/rassor/obj/rassor_arm.obj";
+std::string razor_obj = "robot/rassor/obj/rassor_razor.obj";
 
 std::shared_ptr<ChMaterialSurface> CustomWheelMaterial(ChContactMethod contact_method) {
     float mu = 0.4f;   // coefficient of friction
@@ -286,6 +289,19 @@ int main(int argc, char* argv[]) {
     while (time < total_time) {
         std::cout << current_step << "  time: " << time << "  sim. time: " << timer() << std::endl;
 
+        for (int i = 0; i < 4; i++) {
+            driver->SetDriveMotorSpeed((RassorWheelID)i, 2.0);
+        }
+
+        for (int i = 0; i < 2; i++) {
+            driver->SetRazorMotorSpeed((RassorDirID)i, 3.14);
+        }
+
+        if (time <= 2.0) {
+            driver->SetArmMotorSpeed((RassorDirID)0, -0.25);
+            driver->SetArmMotorSpeed((RassorDirID)1, 0.25);
+        }
+
         rover->Update();
 
         std::cout << "  pos: " << body->GetPos() << std::endl;
@@ -339,7 +355,7 @@ void CreateSolidPhase(ChSystemNSC& sysMBS, ChSystemFsi& sysFSI) {
                               ChVector<>(bxDim, byDim, 2 * bzDim),        //
                               ChVector<int>(2, 0, -1));
 
-    auto driver = chrono_types::make_shared<RassorSpeedDriver>(1.0, 3.0);
+    driver = chrono_types::make_shared<RassorSpeedDriver>(1.0);
     rover = chrono_types::make_shared<Rassor>(&sysMBS, wheel_type);
     rover->SetDriver(driver);
     rover->SetWheelContactMaterial(CustomWheelMaterial(ChContactMethod::NSC));
@@ -478,6 +494,114 @@ void SaveParaViewFiles(ChSystemFsi& sysFSI, ChSystemNSC& sysMBS, double mTime) {
             geometry::ChTriangleMeshConnected::WriteWavefront(filename, meshes);
         } else {  // save to vtk file
             filename = rover_dir + "/wheel_" + std::to_string(i + 1) + "_" + std::to_string(frame_number) + ".vtk";
+            std::ofstream file;
+            file.open(filename);
+            file << "# vtk DataFile Version 2.0" << std::endl;
+            file << "VTK from simulation" << std::endl;
+            file << "ASCII" << std::endl;
+            file << "DATASET UNSTRUCTURED_GRID" << std::endl;
+            auto nv = mmesh->getCoordsVertices().size();
+            file << "POINTS " << nv << " float" << std::endl;
+            for (auto& v : mmesh->getCoordsVertices())
+                file << v.x() << " " << v.y() << " " << v.z() << std::endl;
+            auto nf = mmesh->getIndicesVertexes().size();
+            file << "CELLS " << nf << " " << 4 * nf << std::endl;
+            for (auto& f : mmesh->getIndicesVertexes())
+                file << "3 " << f.x() << " " << f.y() << " " << f.z() << std::endl;
+            file << "CELL_TYPES " << nf << std::endl;
+            for (size_t ii = 0; ii < nf; ii++)
+                file << "5 " << std::endl;
+            file.close();
+        }
+    }
+
+    // save the arms to obj/vtk files
+    for (int i = 0; i < 2; i++) {
+        std::shared_ptr<ChBodyAuxRef> body;
+        if (i == 0) {
+            body = rover->GetArm(RassorDirID::RA_F)->GetBody();
+        }
+        if (i == 1) {
+            body = rover->GetArm(RassorDirID::RA_B)->GetBody();
+        }
+
+        ChFrame<> body_ref_frame = body->GetFrame_REF_to_abs();
+        ChVector<> body_pos = body_ref_frame.GetPos();      // body->GetPos();
+        ChQuaternion<> body_rot = body_ref_frame.GetRot();  // body->GetRot();
+
+        auto mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+        std::string obj_path = GetChronoDataFile(arm_obj);
+        double scale_ratio = 1.0;
+        mmesh->LoadWavefrontMesh(obj_path, false, true);
+        mmesh->Transform(ChVector<>(0, 0, 0), ChMatrix33<>(scale_ratio));  // scale to a different size
+        mmesh->RepairDuplicateVertexes(1e-9);                              // if meshes are not watertight
+
+        double mmass;
+        ChVector<> mcog;
+        ChMatrix33<> minertia;
+        mmesh->ComputeMassProperties(true, mmass, mcog, minertia);
+        mmesh->Transform(body_pos, ChMatrix33<>(body_rot));  // rotate the mesh based on the orientation of body
+
+        if (save_obj) {  // save to obj file
+            filename = rover_dir + "/arm_" + std::to_string(i + 1) + "_" + std::to_string(frame_number) + ".obj";
+            std::vector<geometry::ChTriangleMeshConnected> meshes = {*mmesh};
+            geometry::ChTriangleMeshConnected::WriteWavefront(filename, meshes);
+        } else {  // save to vtk file
+            filename = rover_dir + "/arm_" + std::to_string(i + 1) + "_" + std::to_string(frame_number) + ".vtk";
+            std::ofstream file;
+            file.open(filename);
+            file << "# vtk DataFile Version 2.0" << std::endl;
+            file << "VTK from simulation" << std::endl;
+            file << "ASCII" << std::endl;
+            file << "DATASET UNSTRUCTURED_GRID" << std::endl;
+            auto nv = mmesh->getCoordsVertices().size();
+            file << "POINTS " << nv << " float" << std::endl;
+            for (auto& v : mmesh->getCoordsVertices())
+                file << v.x() << " " << v.y() << " " << v.z() << std::endl;
+            auto nf = mmesh->getIndicesVertexes().size();
+            file << "CELLS " << nf << " " << 4 * nf << std::endl;
+            for (auto& f : mmesh->getIndicesVertexes())
+                file << "3 " << f.x() << " " << f.y() << " " << f.z() << std::endl;
+            file << "CELL_TYPES " << nf << std::endl;
+            for (size_t ii = 0; ii < nf; ii++)
+                file << "5 " << std::endl;
+            file.close();
+        }
+    }
+
+    // save the razors to obj/vtk files
+    for (int i = 0; i < 2; i++) {
+        std::shared_ptr<ChBodyAuxRef> body;
+        if (i == 0) {
+            body = rover->GetRazor(RassorDirID::RA_F)->GetBody();
+        }
+        if (i == 1) {
+            body = rover->GetRazor(RassorDirID::RA_B)->GetBody();
+        }
+
+        ChFrame<> body_ref_frame = body->GetFrame_REF_to_abs();
+        ChVector<> body_pos = body_ref_frame.GetPos();      // body->GetPos();
+        ChQuaternion<> body_rot = body_ref_frame.GetRot();  // body->GetRot();
+
+        auto mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+        std::string obj_path = GetChronoDataFile(razor_obj);
+        double scale_ratio = 1.0;
+        mmesh->LoadWavefrontMesh(obj_path, false, true);
+        mmesh->Transform(ChVector<>(0, 0, 0), ChMatrix33<>(scale_ratio));  // scale to a different size
+        mmesh->RepairDuplicateVertexes(1e-9);                              // if meshes are not watertight
+
+        double mmass;
+        ChVector<> mcog;
+        ChMatrix33<> minertia;
+        mmesh->ComputeMassProperties(true, mmass, mcog, minertia);
+        mmesh->Transform(body_pos, ChMatrix33<>(body_rot));  // rotate the mesh based on the orientation of body
+
+        if (save_obj) {  // save to obj file
+            filename = rover_dir + "/razor_" + std::to_string(i + 1) + "_" + std::to_string(frame_number) + ".obj";
+            std::vector<geometry::ChTriangleMeshConnected> meshes = {*mmesh};
+            geometry::ChTriangleMeshConnected::WriteWavefront(filename, meshes);
+        } else {  // save to vtk file
+            filename = rover_dir + "/razor_" + std::to_string(i + 1) + "_" + std::to_string(frame_number) + ".vtk";
             std::ofstream file;
             file.open(filename);
             file << "# vtk DataFile Version 2.0" << std::endl;

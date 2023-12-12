@@ -223,6 +223,12 @@ class CH_MODELS_API Rassor {
     /// Get the specified rover wheel.
     std::shared_ptr<RassorWheel> GetWheel(RassorWheelID id) const { return m_wheels[id]; }
 
+    /// Get the specified rover wheel.
+    std::shared_ptr<RassorArm> GetArm(RassorDirID id) const { return m_arms[id]; }
+
+    /// Get the specified rover wheel.
+    std::shared_ptr<RassorRazor> GetRazor(RassorDirID id) const { return m_razors[id]; }
+
     /// Get chassis position.
     ChVector<> GetChassisPos() const { return m_chassis->GetPos(); }
 
