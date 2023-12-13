@@ -207,6 +207,9 @@ int main(int argc, char* argv[]) {
         if (time <= 2.0) {
             driver->SetArmMotorSpeed((RassorDirID)0, -0.5);
             driver->SetArmMotorSpeed((RassorDirID)1, 0.5);
+        }else{
+            driver->SetArmMotorSpeed((RassorDirID)0, 0.0);
+            driver->SetArmMotorSpeed((RassorDirID)1, 0.0);
         }
 
         std::cout << time << std::endl;
