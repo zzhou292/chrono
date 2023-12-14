@@ -263,6 +263,18 @@ class CH_MODELS_API Rassor {
     /// Get wheel total applied torque.
     ChVector<> GetWheelAppliedTorque(RassorWheelID id) const;
 
+    double GetDriveMotorRot(RassorWheelID id){return m_drive_motors[id]->GetMotorRot();}
+
+    double GetDriveMotorRot_dt(RassorWheelID id){return m_drive_motors[id]->GetMotorRot_dt();}
+
+    double GetArmMotorRot(RassorWheelID id){return m_arm_1_motors[id]->GetMotorRot();}
+
+    double GetArmMotorRot_dt(RassorWheelID id){return m_arm_1_motors[id]->GetMotorRot_dt();}
+
+    double GetRazorMotorRot(RassorWheelID id){return m_arm_2_motors[id]->GetMotorRot();}
+
+    double GetRazorMotorRot_dt(RassorWheelID id){return m_arm_2_motors[id]->GetMotorRot_dt();}
+
     /// Get total rover mass.
     double GetRoverMass() const;
 

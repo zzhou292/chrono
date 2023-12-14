@@ -29,6 +29,7 @@ except:
 # Chreate Chrono system
 system = chrono.ChSystemNSC()
 system.Set_G_acc(chrono.ChVectorD(0, 0, -9.81))
+system.SetCollisionSystemType(chrono.ChCollisionSystem.Type_BULLET)
 chrono.ChCollisionModel.SetDefaultSuggestedEnvelope(0.0025)
 chrono.ChCollisionModel.SetDefaultSuggestedMargin(0.0025)
 
