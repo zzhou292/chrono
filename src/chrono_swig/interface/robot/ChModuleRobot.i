@@ -72,6 +72,7 @@
 #include "chrono_models/robot/copters/Little_Hexy.h"
 #include "chrono_models/robot/cobra/Cobra.h"
 #include "chrono_models/robot/unitree_go1/Unitree_Go1.h"
+#include "chrono_models/robot/rassor/Rassor.h"
 
 using namespace chrono;
 using namespace chrono::robosimian;
@@ -81,6 +82,7 @@ using namespace chrono::turtlebot;
 using namespace chrono::copter;
 using namespace chrono::cobra;
 using namespace chrono::unitree_go1;
+using namespace chrono::rassor;
 
 %}
 
@@ -186,6 +188,15 @@ using namespace chrono::unitree_go1;
 %shared_ptr(chrono::cobra::CobraDriver)
 %shared_ptr(chrono::cobra::CobraSpeedDriver)
 
+%shared_ptr(chrono::rassor::RassorPart)
+%shared_ptr(chrono::rassor::RassorChassis)
+%shared_ptr(chrono::rassor::RassorWheel)
+%shared_ptr(chrono::rassor::RassorRazor)
+%shared_ptr(chrono::rassor::RassorArm)
+%shared_ptr(chrono::rassor::RassorDriver)
+%shared_ptr(chrono::rassor::RassorSpeedDriver)
+
+
 //
 // B- INCLUDE HEADERS
 //
@@ -252,11 +263,13 @@ using namespace chrono::unitree_go1;
 %include "../../../chrono_models/robot/turtlebot/Turtlebot.h"
 %include "../../../chrono_models/robot/cobra/Cobra.h"
 
+
 %include "../../../chrono_models/robot/copters/Copter.h"
 %template(ChCopter6) chrono::copter::Copter<6>;
 %template(ChCopter4) chrono::copter::Copter<4>;
 %include "../../../chrono_models/robot/copters/Little_Hexy.h"
 %include "../../../chrono_models/robot/unitree_go1/Unitree_Go1.h"
+%include "../../../chrono_models/robot/rassor/Rassor.h"
 
 
 
