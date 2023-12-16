@@ -54,7 +54,7 @@ bool output = false;
 const std::string out_dir = GetChronoOutputPath() + "SCM_DEF_SOIL";
 
 // SCM grid spacing
-double mesh_resolution = 0.02;
+double mesh_resolution = 0.05;
 
 // Enable/disable bulldozing effects
 bool enable_bulldozing = true;

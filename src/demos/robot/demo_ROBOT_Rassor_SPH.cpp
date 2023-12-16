@@ -125,6 +125,7 @@ std::shared_ptr<ChMaterialSurface> CustomWheelMaterial(ChContactMethod contact_m
 // Forward declaration of helper functions
 void SaveParaViewFiles(ChSystemFsi& sysFSI, ChSystemNSC& sysMBS, double mTime);
 void CreateSolidPhase(ChSystemNSC& sysMBS, ChSystemFsi& sysFSI);
+std::vector<ChVector<>> LoadSolidPhaseBCE(std::string filename);
 
 int main(int argc, char* argv[]) {
     // Create oputput directories
@@ -289,17 +290,42 @@ int main(int argc, char* argv[]) {
     while (time < total_time) {
         std::cout << current_step << "  time: " << time << "  sim. time: " << timer() << std::endl;
 
-        for (int i = 0; i < 4; i++) {
-            driver->SetDriveMotorSpeed((RassorWheelID)i, 2.0);
-        }
-
-        for (int i = 0; i < 2; i++) {
-            driver->SetRazorMotorSpeed((RassorDirID)i, 3.14);
-        }
-
         if (time <= 2.0) {
-            driver->SetArmMotorSpeed((RassorDirID)0, -0.25);
-            driver->SetArmMotorSpeed((RassorDirID)1, 0.25);
+            for (int i = 0; i < 4; i++) {
+                driver->SetDriveMotorSpeed((RassorWheelID)i, 2.0);
+            }
+
+            driver->SetRazorMotorSpeed((RassorDirID)0, 2.0);
+            driver->SetRazorMotorSpeed((RassorDirID)1, 2.0);
+            driver->SetArmMotorSpeed((RassorDirID)0, 0.0);
+            driver->SetArmMotorSpeed((RassorDirID)1, 0.0);
+        } else if (time > 2.0 && time <= 5.0) {
+            for (int i = 0; i < 4; i++) {
+                driver->SetDriveMotorSpeed((RassorWheelID)i, 0.0);
+            }
+
+            driver->SetRazorMotorSpeed((RassorDirID)0, 3.14);
+            driver->SetRazorMotorSpeed((RassorDirID)1, 3.14);
+            driver->SetArmMotorSpeed((RassorDirID)0, 0.0);
+            driver->SetArmMotorSpeed((RassorDirID)1, 0.0);
+        } else if (time > 5.0 && time <= 7.0) {
+            for (int i = 0; i < 4; i++) {
+                driver->SetDriveMotorSpeed((RassorWheelID)i, 0.0);
+            }
+
+            driver->SetRazorMotorSpeed((RassorDirID)0, 0.0);
+            driver->SetRazorMotorSpeed((RassorDirID)1, 0.0);
+            driver->SetArmMotorSpeed((RassorDirID)0, -0.5);
+            driver->SetArmMotorSpeed((RassorDirID)1, 0.5);
+        } else if (time > 7.0 && time <= 10.0) {
+            for (int i = 0; i < 4; i++) {
+                driver->SetDriveMotorSpeed((RassorWheelID)i, 0.0);
+            }
+
+            driver->SetRazorMotorSpeed((RassorDirID)0, -2.0);
+            driver->SetRazorMotorSpeed((RassorDirID)1, -2.0);
+            driver->SetArmMotorSpeed((RassorDirID)0, 0.0);
+            driver->SetArmMotorSpeed((RassorDirID)1, 0.0);
         }
 
         rover->Update();
@@ -392,6 +418,28 @@ void CreateSolidPhase(ChSystemNSC& sysMBS, ChSystemFsi& sysFSI) {
             sysFSI.AddPointsBCE(wheel_body, BCE_wheel, ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI)), true);
         } else {
             sysFSI.AddPointsBCE(wheel_body, BCE_wheel, ChFrame<>(VNULL, QUNIT), true);
+        }
+    }
+
+    std::vector<ChVector<>> BCE_razor;
+    BCE_razor = LoadSolidPhaseBCE(GetChronoDataFile("robot/rassor/bce/rassor_razor.csv"));
+    std::cout << "BCE Razor len:" << BCE_razor.size() << std::endl;
+
+    // Add BCE particles and mesh of razor to the system
+    for (int i = 0; i < 2; i++) {
+        std::shared_ptr<ChBodyAuxRef> razor_body;
+        if (i == 0) {
+            razor_body = rover->GetRazor(RassorDirID::RA_F)->GetBody();
+        }
+        if (i == 1) {
+            razor_body = rover->GetRazor(RassorDirID::RA_B)->GetBody();
+        }
+
+        sysFSI.AddFsiBody(razor_body);
+        if (i == 0) {
+            sysFSI.AddPointsBCE(razor_body, BCE_razor, ChFrame<>(VNULL, QUNIT), true);
+        } else {
+            sysFSI.AddPointsBCE(razor_body, BCE_razor, ChFrame<>(VNULL, QUNIT), true);
         }
     }
 }
@@ -653,4 +701,39 @@ void SaveParaViewFiles(ChSystemFsi& sysFSI, ChSystemNSC& sysMBS, double mTime) {
     std::cout << " Output frame:  " << frame_number << std::endl;
     std::cout << " Time:          " << mTime << std::endl;
     std::cout << "-------------------------------------" << std::endl;
+}
+
+std::vector<ChVector<>> LoadSolidPhaseBCE(std::string filename) {
+    std::ifstream file(filename);
+    std::vector<ChVector<>> points;
+    std::string line;
+
+    // Check if the file is open
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return points;
+    }
+
+    // Skip the header
+    std::getline(file, line);
+
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::vector<float> point;
+        std::string value;
+
+        while (std::getline(ss, value, ',')) {
+            point.push_back(std::stof(value));
+        }
+
+        ChVector<> pt_vec;
+        pt_vec.x() = point[0];
+        pt_vec.y() = point[1];
+        pt_vec.z() = point[2];
+
+        points.push_back(pt_vec);
+        std::cout << pt_vec << std::endl;
+    }
+
+    return points;
 }
