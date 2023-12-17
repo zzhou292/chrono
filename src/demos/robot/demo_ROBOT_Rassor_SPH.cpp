@@ -65,7 +65,7 @@ double bzDim = 0.1;
 ChVector<> init_loc(-bxDim / 2.0 + 1.0, 0, bzDim + 0.3);
 
 // Simulation time and stepsize
-double total_time = 20.0;
+double total_time = 10.0;
 double dT = 2.0e-4;
 
 // Save data as csv files to see the results off-line using Paraview
