@@ -9,9 +9,9 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Author: Wei Hu, Jason Zhou
-// Chrono::FSI demo to show usage of VIPER rover models on CRM granular terrain
-// This demo uses a plug-in VIPER rover model from chrono::models
+// Author: Json Zhou
+// Chrono::FSI demo to show usage of Rassor rover models on CRM granular terrain
+// This demo uses a plug-in Rassor rover model from chrono::models
 // =============================================================================
 
 #include "chrono_models/robot/rassor/Rassor.h"
@@ -305,9 +305,9 @@ int main(int argc, char* argv[]) {
             }
 
             driver->SetRazorMotorSpeed((RassorDirID)0, 3.14);
-            driver->SetRazorMotorSpeed((RassorDirID)1, 3.14);
-            driver->SetArmMotorSpeed((RassorDirID)0, 0.0);
-            driver->SetArmMotorSpeed((RassorDirID)1, 0.0);
+            driver->SetRazorMotorSpeed((RassorDirID)1, -3.14);
+            driver->SetArmMotorSpeed((RassorDirID)0, 0.05);
+            driver->SetArmMotorSpeed((RassorDirID)1, -0.05);
         } else if (time > 5.0 && time <= 7.0) {
             for (int i = 0; i < 4; i++) {
                 driver->SetDriveMotorSpeed((RassorWheelID)i, 0.0);
@@ -315,15 +315,15 @@ int main(int argc, char* argv[]) {
 
             driver->SetRazorMotorSpeed((RassorDirID)0, 0.0);
             driver->SetRazorMotorSpeed((RassorDirID)1, 0.0);
-            driver->SetArmMotorSpeed((RassorDirID)0, -0.5);
-            driver->SetArmMotorSpeed((RassorDirID)1, 0.5);
+            driver->SetArmMotorSpeed((RassorDirID)0, -0.55);
+            driver->SetArmMotorSpeed((RassorDirID)1, 0.55);
         } else if (time > 7.0 && time <= 10.0) {
             for (int i = 0; i < 4; i++) {
                 driver->SetDriveMotorSpeed((RassorWheelID)i, 0.0);
             }
 
             driver->SetRazorMotorSpeed((RassorDirID)0, -2.0);
-            driver->SetRazorMotorSpeed((RassorDirID)1, -2.0);
+            driver->SetRazorMotorSpeed((RassorDirID)1, 2.0);
             driver->SetArmMotorSpeed((RassorDirID)0, 0.0);
             driver->SetArmMotorSpeed((RassorDirID)1, 0.0);
         }
@@ -436,10 +436,13 @@ void CreateSolidPhase(ChSystemNSC& sysMBS, ChSystemFsi& sysFSI) {
         }
 
         sysFSI.AddFsiBody(razor_body);
+
+        ChQuaternion<> z2z180;
+        z2z180.Q_from_AngAxis(CH_C_PI, ChVector<>(0, 0, 1));
         if (i == 0) {
             sysFSI.AddPointsBCE(razor_body, BCE_razor, ChFrame<>(VNULL, QUNIT), true);
         } else {
-            sysFSI.AddPointsBCE(razor_body, BCE_razor, ChFrame<>(VNULL, QUNIT), true);
+            sysFSI.AddPointsBCE(razor_body, BCE_razor, ChFrame<>(VNULL, z2z180), true);
         }
     }
 }

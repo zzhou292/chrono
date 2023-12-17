@@ -342,11 +342,14 @@ void Rassor::Create(RassorWheelType wheel_type) {
     double ry = 0.0;
     double rz = -0.00136;
 
+    ChQuaternion<> z2z180;
+    z2z180.Q_from_AngAxis(CH_C_PI, ChVector<>(0, 0, 1));
+
     m_razors[0] =
         chrono_types::make_shared<RassorRazor>("razor_F", ChFrame<>(ChVector<>(+rx, ry, rz), QUNIT), m_wheel_material);
 
     m_razors[1] =
-        chrono_types::make_shared<RassorRazor>("razor_B", ChFrame<>(ChVector<>(-rx, ry, rz), QUNIT), m_wheel_material);
+        chrono_types::make_shared<RassorRazor>("razor_B", ChFrame<>(ChVector<>(-rx, ry, rz), z2z180), m_wheel_material);
 
     // initialize rover arms
 

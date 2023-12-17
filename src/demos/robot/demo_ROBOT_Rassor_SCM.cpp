@@ -264,7 +264,7 @@ int main(int argc, char* argv[]) {
             vis_irr->AddCamera(ChVector<>(1.0, 2.0, 1.4), ChVector<>(0, 0, wheel_range));
             vis_irr->AddTypicalLights();
             vis_irr->AddLightWithShadow(ChVector<>(-5.0, -0.5, 8.0), ChVector<>(-1, 0, 0), 100, 1, 35, 85, 512,
-                                    ChColor(0.8f, 0.8f, 0.8f));
+                                        ChColor(0.8f, 0.8f, 0.8f));
             vis_irr->EnableShadows();
 
             vis = vis_irr;
@@ -308,19 +308,16 @@ int main(int argc, char* argv[]) {
             driver->SetDriveMotorSpeed((RassorWheelID)i, 2.0);
         }
 
-        for (int i = 0; i < 2; i++) {
-            driver->SetRazorMotorSpeed((RassorDirID)i, 3.14);
-        }
+        driver->SetRazorMotorSpeed((RassorDirID)0, 3.14);
+        driver->SetRazorMotorSpeed((RassorDirID)1, -3.14);
 
         if (time <= 2.0) {
             driver->SetArmMotorSpeed((RassorDirID)0, -0.5);
             driver->SetArmMotorSpeed((RassorDirID)1, 0.5);
-        }else{
+        } else {
             driver->SetArmMotorSpeed((RassorDirID)0, 0.0);
             driver->SetArmMotorSpeed((RassorDirID)1, 0.0);
         }
-
-
 
         sys.DoStepDynamics(5e-4);
         rover.Update();

@@ -200,14 +200,13 @@ int main(int argc, char* argv[]) {
             driver->SetDriveMotorSpeed((RassorWheelID)i, 2.0);
         }
 
-        for (int i = 0; i < 2; i++) {
-            driver->SetRazorMotorSpeed((RassorDirID)i, 3.14);
-        }
+        driver->SetRazorMotorSpeed((RassorDirID)0, 3.14);
+        driver->SetRazorMotorSpeed((RassorDirID)1, -3.14);
 
         if (time <= 2.0) {
             driver->SetArmMotorSpeed((RassorDirID)0, -0.5);
             driver->SetArmMotorSpeed((RassorDirID)1, 0.5);
-        }else{
+        } else {
             driver->SetArmMotorSpeed((RassorDirID)0, 0.0);
             driver->SetArmMotorSpeed((RassorDirID)1, 0.0);
         }
