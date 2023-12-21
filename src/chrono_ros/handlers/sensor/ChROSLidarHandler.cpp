@@ -49,57 +49,6 @@ class ChROSLidarHandlerImpl {
     friend class ChROSLidarHandler;
 };
 
-class LaserScanImpl : public ChROSLidarHandlerImpl {
-  public:
-    LaserScanImpl(std::shared_ptr<ChLidarSensor> lidar, const std::string& topic_name)
-        : ChROSLidarHandlerImpl(lidar, topic_name) {}
-
-    virtual bool Initialize(std::shared_ptr<ChROSInterface> interface) override {
-        if (!ChROSSensorHandlerUtilities::CheckSensorHasFilter<ChFilterDIAccess, ChFilterDIAccessName>(lidar)) {
-            return false;
-        }
-
-        m_publisher = interface->GetNode()->create_publisher<sensor_msgs::msg::LaserScan>(topic_name, 1);
-
-        // m_msg.header.frame_id = ; // TODO
-        m_msg.angle_min = lidar->GetHFOV() / 2.0;
-        m_msg.angle_max = lidar->GetHFOV() / 2.0;
-        m_msg.angle_increment = lidar->GetHFOV() / lidar->GetWidth();
-        m_msg.time_increment = 0.0;  // TODO
-        m_msg.scan_time = 1.0 / lidar->GetUpdateRate();
-        m_msg.range_min = 0.0;
-        m_msg.range_max = lidar->GetMaxDistance();
-
-        m_msg.ranges.reserve(lidar->GetWidth());
-        m_msg.intensities.reserve(lidar->GetWidth());
-
-        return true;
-    }
-
-  private:
-    virtual void Tick(double time) override {
-        auto pc_ptr = lidar->GetMostRecentBuffer<UserDIBufferPtr>();
-        if (!pc_ptr->Buffer) {
-            // TODO: Is this supposed to happen?
-            GetLog() << "Lidar buffer is not ready. Not ticking. \n";
-            return;
-        }
-
-        m_msg.header.stamp = ChROSHandlerUtilities::GetROSTimestamp(time);
-
-        auto begin = pc_ptr->Buffer.get();
-        std::transform(begin, begin + lidar->GetWidth(), m_msg.intensities.begin(),
-                       [](const PixelDI& p) { return p.intensity; });
-        std::transform(begin, begin + lidar->GetWidth(), m_msg.ranges.begin(),
-                       [](const PixelDI& p) { return p.range; });
-
-        m_publisher->publish(m_msg);
-    }
-
-    sensor_msgs::msg::LaserScan m_msg;
-    rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr m_publisher;
-};
-
 class PointCloud2Impl : public ChROSLidarHandlerImpl {
   public:
     PointCloud2Impl(std::shared_ptr<ChLidarSensor> lidar, const std::string& topic_name)
@@ -108,14 +57,14 @@ class PointCloud2Impl : public ChROSLidarHandlerImpl {
     virtual bool Initialize(std::shared_ptr<ChROSInterface> interface) override {
         m_publisher = interface->GetNode()->create_publisher<sensor_msgs::msg::PointCloud2>(topic_name, 1);
 
-        // m_msg.header.frame_id = ; // TODO
+        m_msg.header.frame_id = lidar->GetName();
         m_msg.width = lidar->GetWidth();
         m_msg.height = lidar->GetHeight();
         m_msg.is_bigendian = false;
         m_msg.is_dense = true;
         m_msg.row_step = sizeof(PixelXYZI) * m_msg.width;
         m_msg.point_step = sizeof(PixelXYZI);
-        m_msg.data.reserve(m_msg.row_step * m_msg.height);
+        m_msg.data.resize(m_msg.row_step * m_msg.height);
 
         m_msg.fields.resize(4);
         const std::string field_names[4] = {"x", "y", "z", "intensity"};
@@ -149,18 +98,77 @@ class PointCloud2Impl : public ChROSLidarHandlerImpl {
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr m_publisher;
 };
 
-ChROSLidarHandler::ChROSLidarHandler(std::shared_ptr<ChLidarSensor> lidar, const std::string& topic_name, bool use_pc2)
-    : ChROSLidarHandler(lidar->GetUpdateRate(), lidar, topic_name, use_pc2) {}
+class LaserScanImpl : public ChROSLidarHandlerImpl {
+  public:
+    LaserScanImpl(std::shared_ptr<ChLidarSensor> lidar, const std::string& topic_name)
+        : ChROSLidarHandlerImpl(lidar, topic_name) {}
+
+    virtual bool Initialize(std::shared_ptr<ChROSInterface> interface) override {
+        if (!ChROSSensorHandlerUtilities::CheckSensorHasFilter<ChFilterDIAccess, ChFilterDIAccessName>(lidar)) {
+            return false;
+        }
+
+        m_publisher = interface->GetNode()->create_publisher<sensor_msgs::msg::LaserScan>(topic_name, 1);
+
+        m_msg.header.frame_id = lidar->GetName();
+        m_msg.angle_min = lidar->GetHFOV() / 2.0;
+        m_msg.angle_max = lidar->GetHFOV() / 2.0;
+        m_msg.angle_increment = lidar->GetHFOV() / lidar->GetWidth();
+        m_msg.time_increment = 0.0;  // TODO
+        m_msg.scan_time = 1.0 / lidar->GetUpdateRate();
+        m_msg.range_min = 0.0;
+        m_msg.range_max = lidar->GetMaxDistance();
+
+        m_msg.ranges.resize(lidar->GetWidth());
+        m_msg.intensities.resize(lidar->GetWidth());
+
+        return true;
+    }
+
+  private:
+    virtual void Tick(double time) override {
+        auto pc_ptr = lidar->GetMostRecentBuffer<UserDIBufferPtr>();
+        if (!pc_ptr->Buffer) {
+            // TODO: Is this supposed to happen?
+            GetLog() << "Lidar buffer is not ready. Not ticking. \n";
+            return;
+        }
+
+        m_msg.header.stamp = ChROSHandlerUtilities::GetROSTimestamp(time);
+
+        auto begin = pc_ptr->Buffer.get();
+        std::transform(begin, begin + lidar->GetWidth(), m_msg.intensities.begin(),
+                       [](const PixelDI& p) { return p.intensity; });
+        std::transform(begin, begin + lidar->GetWidth(), m_msg.ranges.begin(),
+                       [](const PixelDI& p) { return p.range; });
+
+        m_publisher->publish(m_msg);
+    }
+
+    sensor_msgs::msg::LaserScan m_msg;
+    rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr m_publisher;
+};
+
+ChROSLidarHandler::ChROSLidarHandler(std::shared_ptr<ChLidarSensor> lidar,
+                                     const std::string& topic_name,
+                                     ChROSLidarHandlerMessageType msg_type)
+    : ChROSLidarHandler(lidar->GetUpdateRate(), lidar, topic_name, msg_type) {}
 
 ChROSLidarHandler::ChROSLidarHandler(double update_rate,
                                      std::shared_ptr<ChLidarSensor> lidar,
                                      const std::string& topic_name,
-                                     bool use_pc2)
+                                     ChROSLidarHandlerMessageType msg_type)
     : ChROSHandler(update_rate) {
-    if (use_pc2)
-        m_impl = std::make_shared<PointCloud2Impl>(lidar, topic_name);
-    else
-        m_impl = std::make_shared<LaserScanImpl>(lidar, topic_name);
+    switch (msg_type) {
+        case ChROSLidarHandlerMessageType::POINT_CLOUD2:
+            m_impl = std::make_shared<PointCloud2Impl>(lidar, topic_name);
+            break;
+        case ChROSLidarHandlerMessageType::LASER_SCAN:
+            m_impl = std::make_shared<LaserScanImpl>(lidar, topic_name);
+            break;
+        default:
+            throw std::runtime_error("Invalid ChROSLidarHandlerMessageType");
+    }
 }
 
 bool ChROSLidarHandler::Initialize(std::shared_ptr<ChROSInterface> interface) {
