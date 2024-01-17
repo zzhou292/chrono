@@ -1855,6 +1855,7 @@ void ChPac02Tire::Advance(double step) {
     // transformed into the global coordinate system.
     // Convert from SAE to ISO Coordinates at the contact patch.
     m_tireforce.force = ChVector<>(Fx, -Fy, m_data.normal_force);
+    std::cout << "Fx: " << Fx << std::endl;
     m_tireforce.moment = ChVector<>(Mx, -My, -Mz);
 }
 

@@ -82,9 +82,9 @@ auto my_body = chrono_types::make_shared<ChBody>();
 
     Examples of distributed simulation of autonomous vehicles and robots.
 
--   @subpage tutorial_table_of_content_chrono_ros
+-   @subpage tutorial_table_of_content_chrono_fmi
 
-    Examples of integrating an external ROS-based autonomy stack in Chrono.
+    Examples of generating (exporting) and using (importing) Chrono FMUs.
 
 
 ## Other tools
