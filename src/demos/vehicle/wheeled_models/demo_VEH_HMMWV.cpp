@@ -83,7 +83,7 @@ CollisionType chassis_collision_type = CollisionType::NONE;
 EngineModelType engine_model = EngineModelType::SHAFTS;
 
 // Type of transmission model (SHAFTS, SIMPLE_MAP)
-TransmissionModelType transmission_model = TransmissionModelType::SHAFTS;
+TransmissionModelType transmission_model = TransmissionModelType::SIMPLE_MAP;
 
 // Drive type (FWD, RWD, or AWD)
 DrivelineTypeWV drive_type = DrivelineTypeWV::AWD;
@@ -98,24 +98,24 @@ BrakeType brake_type = BrakeType::SHAFTS;
 bool use_tierod_bodies = true;
 
 // Type of tire model (RIGID, RIGID_MESH, TMEASY, FIALA, PAC89, PAC02, TMSIMPLE)
-TireModelType tire_model = TireModelType::PAC02;
+TireModelType tire_model = TireModelType::TMEASY;
 
 // Rigid terrain
 RigidTerrain::PatchType terrain_model = RigidTerrain::PatchType::BOX;
-double terrainHeight = 0;      // terrain height (FLAT terrain only)
-double terrainLength = 200.0;  // size in X direction
-double terrainWidth = 200.0;   // size in Y direction
+double terrainHeight = 0;        // terrain height (FLAT terrain only)
+double terrainLength = 20000.0;  // size in X direction
+double terrainWidth = 20000.0;   // size in Y direction
 
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
 
 // Contact method
 ChContactMethod contact_method = ChContactMethod::SMC;
-bool contact_vis = false;
+bool contact_vis = true;
 
 // Simulation step sizes
-double step_size = 2e-3;
-double tire_step_size = step_size;
+double step_size = 5e-4;
+double tire_step_size = step_size / 10;
 
 // Simulation end time
 double t_end = 1000;
@@ -369,7 +369,7 @@ int main(int argc, char* argv[]) {
     ////    vis->EnableContactDrawing(ContactsDrawMode::CONTACT_FORCES);
     ////}
 
-    hmmwv.GetVehicle().EnableRealtime(true);
+    hmmwv.GetVehicle().EnableRealtime(false);
 
     while (vis->Run()) {
         double time = hmmwv.GetSystem()->GetChTime();
@@ -412,6 +412,13 @@ int main(int argc, char* argv[]) {
                       << marker_driver.z() << std::endl;
             std::cout << "  Chassis COM loc: " << marker_com.x() << " " << marker_com.y() << " " << marker_com.z()
                       << std::endl;
+        }
+
+        if (time > 0.55) {  // lower this time to 0.35 to get the pendulum effect, car goes forward and then backward
+            driver->SetBraking(0.0);
+            driver->SetThrottle(0.0);
+        } else {
+            driver->SetThrottle(1.0);
         }
 
         // Driver inputs

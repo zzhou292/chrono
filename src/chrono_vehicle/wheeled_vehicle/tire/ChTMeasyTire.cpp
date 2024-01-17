@@ -274,6 +274,8 @@ void ChTMeasyTire::Advance(double step) {
     // transformed into the global coordinate system.
     m_tireforce.force = ChVector<>(startup * Fx, startup * Fy, m_data.normal_force);
     m_tireforce.moment = startup * ChVector<>(Mx, My, Mz);
+
+    std::cout << "Fx: " << startup * Fx << " Fy: " << startup * Fy << " Fz: " << m_data.normal_force << std::endl;
 }
 
 void ChTMeasyTire::CombinedCoulombForces(double& fx, double& fy, double fz, double muscale) {
