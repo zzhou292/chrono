@@ -603,9 +603,9 @@ class ChApi ChSystem : public ChIntegrableIIorder {
     /// If mass lumping is impossible or approximate, adds scalar error to "error" parameter.
     ///    Md += c*diag(M)    or   Md += c*HRZ(M)
     virtual void LoadLumpedMass_Md(ChVectorDynamic<>& Md,  ///< result: Md vector, diagonal of the lumped mass matrix
-                                      double& error,  ///< result: not touched if lumping does not introduce errors
-                                      const double c  ///< a scaling factor
-    ) override;
+                                   double& err,            ///< result: not touched if lumping does not introduce errors
+                                   const double c          ///< a scaling factor
+                                   ) override;
 
     /// Increment a vectorR with the term Cq'*L:
     ///    R += c*Cq'*L
@@ -761,7 +761,7 @@ class ChApi ChSystem : public ChIntegrableIIorder {
     /// These can be later used for linearized motion, modal analysis, buckling analysis, etc.
     /// The name of the files will be [path]_M.dat [path]_K.dat [path]_R.dat [path]_Cq.dat
     /// Might throw ChException if file can't be saved.
-    void DumpSystemMatrices(bool save_M, bool save_K, bool save_R, bool save_Cq, const char* path);
+    void DumpSystemMatrices(bool save_M, bool save_K, bool save_R, bool save_Cq, const std::string& path);
 
     /// Compute the system-level mass matrix.
     /// This function has a small overhead, because it must assembly the

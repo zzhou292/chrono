@@ -347,7 +347,7 @@ public:
     /// first the all the "boundary" variables then all the "inner" variables (or modal variables if switched to modal assembly).
     /// The name of the files will be [path]_M.dat [path]_K.dat [path]_R.dat [path]_Cq.dat 
     /// Might throw ChException if file can't be saved.
-    void DumpSubassemblyMatrices(bool save_M, bool save_K, bool save_R, bool save_Cq, const char* path);
+    void DumpSubassemblyMatrices(bool save_M, bool save_K, bool save_R, bool save_Cq, const std::string& path);
 
     /// Compute the mass matrix of the subassembly. 
     /// Assumes the rows/columns of the matrix are ordered as the ChVariable objects used in this assembly, 
@@ -441,7 +441,7 @@ public:
                                     const double c) override;
     virtual void IntLoadLumpedMass_Md(const unsigned int off,
                                       ChVectorDynamic<>& Md,
-                                      double& error,
+                                      double& err,
                                       const double c) override;
     virtual void IntLoadResidual_CqL(const unsigned int off_L,
                                      ChVectorDynamic<>& R,

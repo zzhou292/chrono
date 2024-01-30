@@ -21,10 +21,6 @@
 #include "chrono/physics/ChSystemNSC.h"
 #include "chrono/physics/ChBodyEasy.h"
 
-#ifdef CHRONO_POSTPROCESS
-    #include "chrono_postprocess/ChGnuPlot.h"
-#endif
-
 #include "chrono/assets/ChVisualSystem.h"
 #ifdef CHRONO_IRRLICHT
     #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
@@ -57,6 +53,9 @@ int main(int argc, char* argv[]) {
     // Create the Chrono system with gravity in the negative Z direction
     ChSystemNSC sys;
     sys.Set_G_acc(ChVector<>(0, 0, -9.81));
+
+    ChCollisionModel::SetDefaultSuggestedEnvelope(0.0025);
+    ChCollisionModel::SetDefaultSuggestedMargin(0.0025);
 
     // Create the ground.
     auto ground_mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();

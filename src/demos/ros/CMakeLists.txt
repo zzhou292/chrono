@@ -5,29 +5,28 @@ message(STATUS "Demo programs for Chrono::ROS...")
 
 # ------------------------------------------------------------------------------
 
-set(DEMOS
-    demo_ROS_viper
-    demo_ROS_cobra
-    demo_ROS_dART
-)
+set(DEMOS "")
+
+list(APPEND DEMOS demo_ROS_custom_handler)
+
+if (CH_ROS_HAS_INTERFACES)
+  list(APPEND DEMOS demo_ROS_viper)
+endif()
+
+if (HAVE_URDF)
+  list(APPEND DEMOS demo_ROS_urdf)
+endif()
 
 if(ENABLE_MODULE_VEHICLE AND ENABLE_MODULE_VEHICLE_MODELS)
-  set(DEMOS ${DEMOS}
-    demo_ROS_vehicle
-  )
+  if (CH_ROS_HAS_INTERFACES)
+    list(APPEND DEMOS demo_ROS_vehicle)
+  endif()
 endif()
 
 if(ENABLE_MODULE_SENSOR)
-  set(DEMOS ${DEMOS}
-    demo_ROS_sensor
-  )
+  list(APPEND DEMOS demo_ROS_sensor)
 endif()
 
-if(ENABLE_MODULE_VEHICLE AND ENABLE_MODULE_SENSOR AND ENABLE_MODULE_IRRLICHT)
-  set(DEMOS ${DEMOS}
-    demo_ARCLAB_cone
-  )
-endif()
 # ------------------------------------------------------------------------------
 # Include directories, compiler flags, libraries
 
