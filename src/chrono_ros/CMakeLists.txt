@@ -114,6 +114,8 @@ if (ENABLE_MODULE_VEHICLE)
     list(APPEND CH_ROS_VEHICLE_HANDLER_FILES 
       handlers/vehicle/ChROSDriverInputsHandler.h
       handlers/vehicle/ChROSDriverInputsHandler.cpp
+      handlers/vehicle/ChROSDriverSignalInputHandler.h
+      handlers/vehicle/ChROSDriverSignalInputHandler.cpp
     )
   endif()
 endif()
