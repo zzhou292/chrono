@@ -38,6 +38,7 @@ if(ENABLE_MODULE_SENSOR AND ENABLE_MODULE_IRRLICHT)
   set(DEMOS ${DEMOS}
       demo_ROBOT_Curiosity_SCM_Sensor
       demo_ROBOT_Viper_SCM_Sensor
+      demo_ROBOT_Viper_SCM_LunarTerrain
   )
 endif()
 

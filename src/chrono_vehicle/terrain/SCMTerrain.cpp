@@ -39,7 +39,6 @@
 
 #include "chrono_thirdparty/stb/stb.h"
 
-
 namespace chrono {
 namespace vehicle {
 
@@ -98,7 +97,11 @@ void SCMTerrain::SetColor(const ChColor& color) {
 // Set the texture and texture scaling.
 void SCMTerrain::SetTexture(const std::string tex_file, float scale_x, float scale_y) {
     if (m_loader->GetVisualModel()) {
+        std::cout << "visualshape load\n";
         m_loader->GetVisualShape(0)->SetTexture(tex_file, scale_x, scale_y);
+        std::cout << "visualshape load end\n";
+    } else {
+        std::cout << "visualshape not found\n";
     }
 }
 

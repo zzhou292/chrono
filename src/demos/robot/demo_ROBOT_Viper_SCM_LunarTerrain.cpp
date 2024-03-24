@@ -43,6 +43,15 @@ using namespace chrono::irrlicht;
 using namespace chrono::vsg3d;
 #endif
 
+#ifdef CHRONO_SENSOR
+    #include "chrono_sensor/ChSensorManager.h"
+    #include "chrono_sensor/sensors/ChCameraSensor.h"
+    #include "chrono_sensor/filters/ChFilterAccess.h"
+    #include "chrono_sensor/filters/ChFilterSave.h"
+    #include "chrono_sensor/filters/ChFilterVisualize.h"
+using namespace chrono::sensor;
+#endif
+
 using namespace chrono;
 using namespace chrono::geometry;
 using namespace chrono::viper;
@@ -50,13 +59,13 @@ using namespace chrono::viper;
 // -----------------------------------------------------------------------------
 
 // Run-time visualization system (IRRLICHT or VSG)
-ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
+ChVisualSystem::Type vis_type = ChVisualSystem::Type::IRRLICHT;
 
 bool output = true;
 const std::string out_dir = GetChronoOutputPath() + "SCM_DEF_SOIL";
 
 // SCM grid spacing
-double mesh_resolution = 0.1;
+double mesh_resolution = 0.02;
 
 // Enable/disable bulldozing effects
 bool enable_bulldozing = false;
@@ -168,7 +177,7 @@ int main(int argc, char* argv[]) {
     if (use_custom_mat)
         viper.SetWheelContactMaterial(CustomWheelMaterial(ChContactMethod::NSC));
 
-    viper.Initialize(ChFrame<>(ChVector<>(-5, 0, -0.2), QUNIT));
+    viper.Initialize(ChFrame<>(ChVector<>(-5, 0, 0.2), QUNIT));
 
     // Get wheels and bodies to set up SCM patches
     auto Wheel_1 = viper.GetWheel(ViperWheelID::V_LF)->GetBody();
@@ -182,7 +191,7 @@ int main(int argc, char* argv[]) {
     //
 
     // Create the 'deformable terrain' object
-    vehicle::SCMTerrain terrain(&sys);
+    vehicle::SCMTerrain terrain(&sys, true);
 
     // Displace/rotate the terrain reference plane.
     // Note that SCMTerrain uses a default ISO reference frame (Z up). Since the mechanism is modeled here in
@@ -191,10 +200,11 @@ int main(int argc, char* argv[]) {
     terrain.SetPlane(ChCoordsys<>(ChVector<>(0, 0, -0.5)));
 
     // Use a regular grid:
-    // double length = 14;
-    // double width = 4;
-    // terrain.Initialize(length, width, mesh_resolution);
-    terrain.Initialize(GetChronoDataFile("robot/viper/terrain/terrain_test.obj"), mesh_resolution);
+    double length = 14;
+    double width = 4;
+    terrain.Initialize(GetChronoDataFile("robot/viper/terrain/sample_3.bmp"), 50, 87, 1.0, -1.0, mesh_resolution);
+    terrain.SetTexture(GetChronoDataFile("robot/viper/terrain/sample_3.png"), 1.0f, 1.0f);
+    //   terrain.GetMesh()->AddMaterial(vis_mat);
 
     // Set the soil terramechanical parameters
     if (var_params) {
@@ -236,7 +246,7 @@ int main(int argc, char* argv[]) {
     // Set some visualization parameters: either with a texture, or with falsecolor plot, etc.
     terrain.SetPlotType(vehicle::SCMTerrain::PLOT_PRESSURE, 0, 20000);
 
-    terrain.SetMeshWireframe(true);
+    terrain.GetMesh()->SetWireframe(false);
 
     // Create the run-time visualization interface
 #ifndef CHRONO_IRRLICHT
@@ -255,12 +265,12 @@ int main(int argc, char* argv[]) {
             auto vis_irr = chrono_types::make_shared<ChVisualSystemIrrlicht>();
             vis_irr->AttachSystem(&sys);
             vis_irr->SetCameraVertical(CameraVerticalDir::Z);
-            vis_irr->SetWindowSize(800, 600);
+            vis_irr->SetWindowSize(1920, 1080);
             vis_irr->SetWindowTitle("Viper Rover on SCM");
             vis_irr->Initialize();
             vis_irr->AddLogo();
             vis_irr->AddSkyBox();
-            vis_irr->AddCamera(ChVector<>(1.0, 2.0, 1.4), ChVector<>(0, 0, wheel_range));
+            vis_irr->AddCamera(ChVector<>(8.0, 16.0, 4.4), ChVector<>(0, 0, wheel_range));
             vis_irr->AddTypicalLights();
             vis_irr->AddLightWithShadow(ChVector<>(-5.0, -0.5, 8.0), ChVector<>(-1, 0, 0), 100, 1, 35, 85, 512,
                                         ChColor(0.8f, 0.8f, 0.8f));
@@ -286,6 +296,40 @@ int main(int argc, char* argv[]) {
         }
     }
 
+#ifdef CHRONO_SENSOR
+    ChSensorManager sensor_manager(&sys);
+
+    ChVector<> camera_loc_1(-0.75, 0.2, 0.1);
+    ChVector<> euler_1(0, CH_C_PI / 6, CH_C_PI / 2);
+    ChQuaternion<> rotation_1 = QUNIT;
+    rotation_1.Q_from_Euler123(euler_1);
+
+    ChVector<> camera_loc_2(-0.75, -0.2, 0.1);
+    ChVector<> euler_2(0, CH_C_PI / 6, -CH_C_PI / 2);
+    ChQuaternion<> rotation_2 = QUNIT;
+    rotation_2.Q_from_Euler123(euler_2);
+
+    auto overhead_camera = chrono_types::make_shared<chrono::sensor::ChCameraSensor>(
+        viper.GetChassis()->GetBody(),                      // body camera is attached to
+        30.0f,                                              // update rate in Hz
+        chrono::ChFrame<double>(camera_loc_1, rotation_1),  // offset pose
+        1920,                                               // image width
+        1080,                                               // image height
+        (float)CH_C_PI / 1.5                                // FOV
+    );
+
+    overhead_camera->SetName("Overhead Cam");
+    overhead_camera->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+
+    // Do we draw a window on the screen?
+    overhead_camera->PushFilter(chrono_types::make_shared<ChFilterVisualize>(1920, 1080));
+
+    sensor_manager.AddSensor(overhead_camera);
+    sensor_manager.scene->AddPointLight({100, 100, 100}, {1, 1, 1}, 600);
+    sensor_manager.scene->AddPointLight({-100, 100, 100}, {1, 1, 1}, 600);
+    sensor_manager.Update();
+#endif
+
     auto start = std::chrono::high_resolution_clock::now();
     int step = 0;
 
@@ -310,8 +354,12 @@ int main(int argc, char* argv[]) {
         }
         sys.DoStepDynamics(1e-3);
         viper.Update();
+        terrain.Synchronize(sys.GetChTime());
+        terrain.Advance(1e-3);
         ////terrain.PrintStepStatistics(std::cout);
-
+#ifdef CHRONO_SENSOR
+        sensor_manager.Update();
+#endif
         if (step % 100 == 0) {
             // End timer
             auto end = std::chrono::high_resolution_clock::now();
