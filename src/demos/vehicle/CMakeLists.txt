@@ -20,10 +20,6 @@ add_subdirectory(test_rigs)
 
 add_subdirectory(terrain)
 add_subdirectory(controllers)
-<<<<<<< HEAD
-
-=======
->>>>>>> main
 add_subdirectory(multicore)
 add_subdirectory(paths)
 add_subdirectory(visualization)

@@ -43,10 +43,17 @@ void HMMWV_EngineSimpleMap::SetEngineTorqueMaps(ChFunctionInterp& map0, ChFuncti
     map0.AddPoint(251.327, -100.0);
     map0.AddPoint(282.743, -800.0);
 
-    mapF.AddPoint(0 * rpm_to_radsec, 0);  // to start engine
-    mapF.AddPoint(500 * rpm_to_radsec, 400);
-    mapF.AddPoint(5000 * rpm_to_radsec, 400);
-    mapF.AddPoint(9000 * rpm_to_radsec, 0);
+    mapF.AddPoint(-10.472, 406.7);
+    mapF.AddPoint(83.776, 517.9);
+    mapF.AddPoint(104.720, 926.0);
+    mapF.AddPoint(125.664, 1216.2);
+    mapF.AddPoint(146.608, 1300.2);
+    mapF.AddPoint(167.552, 1300.2);
+    mapF.AddPoint(188.496, 1227.0);
+    mapF.AddPoint(209.440, 1136.2);
+    mapF.AddPoint(230.383, 1041.3);
+    mapF.AddPoint(251.327, -271.2);
+    mapF.AddPoint(282.743, -800.0);
 }
 
 }  // end namespace hmmwv

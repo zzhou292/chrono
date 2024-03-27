@@ -17,7 +17,6 @@ set(DEMOS
 if(ENABLE_MODULE_IRRLICHT)
    set(DEMOS ${DEMOS}
        demo_VEH_Controller_AIDriver
-       demo_VEH_Controller_ExternalDriver
   )
 endif()
 
