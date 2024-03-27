@@ -9,17 +9,22 @@ ENDIF()
 
 MESSAGE(STATUS "Demo programs for VEHICLE module...")
 
-add_subdirectory(tracked_models)
 add_subdirectory(wheeled_models)
+add_subdirectory(wheeled_tests)
+add_subdirectory(articulated_vehicle)
+add_subdirectory(two_cars)
+
+add_subdirectory(tracked_models)
+
 add_subdirectory(test_rigs)
 
 add_subdirectory(terrain)
 add_subdirectory(controllers)
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
 add_subdirectory(multicore)
-add_subdirectory(articulated_vehicle)
-add_subdirectory(two_cars)
-add_subdirectory(ISO2631)
 add_subdirectory(paths)
 add_subdirectory(visualization)
 
