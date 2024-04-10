@@ -460,7 +460,7 @@ ChVector3d ChBezierCurve::Eval(double t) const {
 // -----------------------------------------------------------------------------
 ChVector3d ChBezierCurve::CalcClosestPoint(const ChVector3d& loc, size_t i, double& t) const {
     // Bracket location of projection
-    int m_numEvals = 100;
+    int m_numEvals = 20;
     double dt = 1.0 / m_numEvals;
     int min_idx = -1;
     double d2_min = std::numeric_limits<double>::max();
@@ -712,8 +712,8 @@ int ChBezierCurveTracker::CalcClosestPoint(const ChVector3d& loc, ChVector3d& po
         // Not close to interval bounds. Done
         return 0;
     }
-    */
 
+    /*
     bool lastAtMin = false;
     bool lastAtMax = false;
 
@@ -721,7 +721,7 @@ int ChBezierCurveTracker::CalcClosestPoint(const ChVector3d& loc, ChVector3d& po
         point = m_path->CalcClosestPoint(loc, m_curInterval, m_curParam);
 
         if (m_curParam < ChBezierCurve::m_paramTol) {
-            if ((m_curInterval == 0) && (!m_path->IsClosed()))
+            if ((m_curInterval == 0) && (!m_isClosedPath))
                 return -1;
 
             if (lastAtMax)
@@ -757,6 +757,7 @@ int ChBezierCurveTracker::CalcClosestPoint(const ChVector3d& loc, ChVector3d& po
         } else
             return 0;
     }
+    */
 }
 
 int ChBezierCurveTracker::CalcClosestPoint(const ChVector3d& loc, ChFrame<>& tnb, double& curvature) {
