@@ -36,20 +36,21 @@
 
 using namespace chrono;
 using namespace chrono::ros;
-using namespace chrono::geometry;
 
 // =============================================================================
 
 class MyCustomHandler : public ChROSHandler {
   public:
-    MyCustomHandler(const std::string& topic) : ChROSHandler(30), m_topic(topic), m_ticker(0) {}
+    MyCustomHandler(const std::string& topic) : ChROSHandler(1), m_topic(topic), m_ticker(0) {}
 
     virtual bool Initialize(std::shared_ptr<ChROSInterface> interface) override {
+        std::cout << "Creating publisher for topic " << m_topic << " ..." << std::endl;
         m_publisher = interface->GetNode()->create_publisher<std_msgs::msg::Int64>(m_topic, 1);
         return true;
     }
 
     virtual void Tick(double time) override {
+        std::cout << "Publishing " << m_ticker << " ..." << std::endl;
         std_msgs::msg::Int64 msg;
         msg.data = m_ticker;
         m_publisher->publish(msg);
@@ -65,25 +66,25 @@ class MyCustomHandler : public ChROSHandler {
 // =============================================================================
 
 int main(int argc, char* argv[]) {
-    GetLog() << "Copyright (c) 2023 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
+    std::cout << "Copyright (c) 2023 projectchrono.org\nChrono version: " << CHRONO_VERSION << std::endl << std::endl;
 
     // Create the system
     ChSystemNSC sys;
-    sys.Set_G_acc({0, 0, -9.81});
+    sys.SetGravitationalAcceleration({0, 0, -9.81});
 
     // Add a mesh object to make the scene interesting
-    auto phys_mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
+    auto phys_mat = chrono_types::make_shared<ChContactMaterialNSC>();
     phys_mat->SetFriction(0.5f);
 
     auto floor = chrono_types::make_shared<ChBodyEasyBox>(20, 20, 1, 1000, true, true, phys_mat);
     floor->SetPos({0, 0, -1});
-    floor->SetBodyFixed(true);
+    floor->SetFixed(true);
     floor->SetName("floor");
     sys.AddBody(floor);
 
     auto box = chrono_types::make_shared<ChBodyEasyBox>(1, 1, 1, 1000, true, true, phys_mat);
     box->SetPos({0, 0, 5});
-    box->SetRot(Q_from_AngAxis(0.2, {1, 0, 0}));
+    box->SetRot(QuatFromAngleAxis(0.2, {1, 0, 0}));
     box->SetName("box");
     sys.AddBody(box);
 
@@ -106,6 +107,10 @@ int main(int argc, char* argv[]) {
     auto tf_handler = chrono_types::make_shared<ChROSTFHandler>(100);
     tf_handler->AddTransform(floor, box);
     ros_manager->RegisterHandler(tf_handler);
+
+    // Create a custom handler
+    auto custom_handler = chrono_types::make_shared<MyCustomHandler>("~/my_topic");
+    ros_manager->RegisterHandler(custom_handler);
 
     // Finally, initialize the ros manager
     ros_manager->Initialize();

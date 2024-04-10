@@ -22,8 +22,8 @@
 #ifdef SWIGPYTHON  // --------------------------------------------------------------------- PYTHON
 
 #ifdef CHRONO_IRRLICHT
-#include "chrono_vehicle/ChVehicleVisualSystemIrrlicht.h"
-#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
+#include "chrono_vehicle/ChVehicleVisualSystemIrrlicht.h"// For the csharp module, these can be found in the ChVehicleVisualSystemIrrlicht
+#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"// For the csharp module, these can be found in the ChVehicleVisualSystemIrrlicht
 #include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigInteractiveDriverIRR.h"
 #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 #include "chrono_vehicle/tracked_vehicle/ChTrackedVehicleVisualSystemIrrlicht.h"
@@ -34,14 +34,13 @@
 
 #endif             // --------------------------------------------------------------------- PYTHON
 
+#ifdef SWIGCSHARP //--------------------------------------------------------------------------CSHARP
+#include "chrono_vehicle/driver/ChHumanDriver.h"
+#endif            //--------------------------------------------------------------------------CSHARP
 %}
 
-#ifdef SWIGCSHARP
-%import "../chrono/core/ChBezierCurve.h"
-#endif
-
 #ifdef SWIGPYCHRONO
-%import(module = "pychrono.core") "../chrono/core/ChBezierCurve.h"
+%import(module = "pychrono.core") "../../../chrono/core/ChBezierCurve.h"
 #endif
 
 #ifdef SWIGPYTHON  // --------------------------------------------------------------------- PYTHON
@@ -79,7 +78,13 @@
 #endif
 #endif             // --------------------------------------------------------------------- PYTHON
 
+#ifdef SWIGCSHARP //--------------------------------------------------------------------------CSHARP
+%shared_ptr(chrono::vehicle::ChHumanDriver)
+#endif            //--------------------------------------------------------------------------CSHARP
 
+
+
+// Are these python specific?
 %rename(DriverInputs) chrono::vehicle::ChDriver::Inputs;
 %rename(DataDriverEntry) chrono::vehicle::ChDataDriver::Entry;
 %template(vector_Entry) std::vector< chrono::vehicle::ChDataDriver::Entry >;
@@ -96,6 +101,8 @@
 %include "../../../chrono_vehicle/utils/ChSpeedController.h"
 %include "../../../chrono_vehicle/utils/ChSteeringController.h"
 %include "../../../chrono_vehicle/utils/ChAdaptiveSpeedController.h"
+
+
 
 #ifdef SWIGPYTHON  // --------------------------------------------------------------------- PYTHON
 
@@ -115,3 +122,7 @@
 #endif
 
 #endif             // --------------------------------------------------------------------- PYTHON
+
+#ifdef SWIGCSHARP //--------------------------------------------------------------------------CSHARP
+%include "../../../chrono_vehicle/driver/ChHumanDriver.h"
+#endif            //--------------------------------------------------------------------------CSHARP
