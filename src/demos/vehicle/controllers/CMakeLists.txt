@@ -66,14 +66,7 @@ set(STB_FILES
 foreach(PROGRAM ${DEMOS})
     message(STATUS "...add ${PROGRAM}")
 
-    if(PROGRAM STREQUAL "demo_VEH_Controller_ExternalDriver")
-      set(EXTRA ${STB_FILES})
-      source_group("stb" FILES ${STB_FILES})
-    else()
-      set(EXTRA "")
-    endif()
-
-    add_executable(${PROGRAM} ${PROGRAM}.cpp ${EXTRA})
+    add_executable(${PROGRAM} ${PROGRAM}.cpp)
     source_group("" FILES ${PROGRAM}.cpp)
 
     set_target_properties(${PROGRAM} PROPERTIES COMPILE_FLAGS "${COMPILER_FLAGS}" LINK_FLAGS "${LINKER_FLAGS}")

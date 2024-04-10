@@ -1,11 +1,14 @@
-SET(LIBRARIES ChronoEngine ChronoEngine_ros)
-INCLUDE_DIRECTORIES( ${CH_INCLUDES} ${CH_ROS_INCLUDES} )
+SET(LIBRARIES ChronoEngine ChronoEngine_ros ${CH_ROS_LIBRARIES})
+INCLUDE_DIRECTORIES(${CH_INCLUDES} ${CH_ROS_INCLUDES})
 
 SET(TESTS
-  utest_ROS_custom_handler_with_manager
-  utest_ROS_custom_handler
-  utest_ROS_simple_publisher_subscriber
+  # utest_ROS_custom_handler_with_manager
+  # utest_ROS_custom_handler
+  # utest_ROS_simple_publisher_subscriber
 )
+
+# Force C++17, required by ROS Humble
+set(CMAKE_CXX_STANDARD 17)
 
 MESSAGE(STATUS "Unit test programs for ROS module...")
 

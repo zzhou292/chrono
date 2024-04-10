@@ -15,7 +15,7 @@
     try:
     if __package__
         or
-            "." in __name__ : from.import _ros else : import _ros except Exception as e
+            "." in __name__ : from.import _ros else : import _ros except ImportError as e
             : import os if "ROS_DISTRO" not in os.environ or
             "AMENT_PREFIX_PATH" not in os.environ
             : raise Exception("Cannot import ros. It appears like you haven't sourced your ROS installation.") raise e "
@@ -68,6 +68,7 @@
     #include "chrono_ros/handlers/sensor/ChROSGyroscopeHandler.h"
     #include "chrono_ros/handlers/sensor/ChROSLidarHandler.h"
     #include "chrono_ros/handlers/sensor/ChROSMagnetometerHandler.h"
+    #include "chrono_ros/handlers/sensor/ChROSIMUHandler.h"
     #include "chrono_ros/handlers/sensor/ChROSSensorHandlerUtilities.h"
 #endif
 
@@ -125,7 +126,8 @@
 #ifdef CHRONO_SENSOR
     % shared_ptr(chrono::ros::ChROSAccelerometerHandler) % shared_ptr(chrono::ros::ChROSCameraHandler) %
     shared_ptr(chrono::ros::ChROSGPSHandler) % shared_ptr(chrono::ros::ChROSGyroscopeHandler) %
-    shared_ptr(chrono::ros::ChROSLidarHandler) % shared_ptr(chrono::ros::ChROSMagnetometerHandler)
+    shared_ptr(chrono::ros::ChROSLidarHandler) % shared_ptr(chrono::ros::ChROSMagnetometerHandler) %
+    shared_ptr(chrono::ros::ChROSIMUHandler)
 #endif
 
 #ifdef CHRONO_ROS_HAS_INTERFACES
@@ -173,6 +175,7 @@
     include "../../../chrono_ros/handlers/sensor/ChROSGyroscopeHandler.h" %
     include "../../../chrono_ros/handlers/sensor/ChROSLidarHandler.h" %
     include "../../../chrono_ros/handlers/sensor/ChROSMagnetometerHandler.h" %
+    include "../../../chrono_ros/handlers/sensor/ChROSIMUHandler.h" %
     include "../../../chrono_ros/handlers/sensor/ChROSSensorHandlerUtilities.h"
 #endif
 
@@ -222,7 +225,7 @@
           spin_some(self, timeout_sec
                     : float = 0)
         : while True : try : handler,
-    entity, node = self.wait_for_ready_callbacks(max_duration)
+        entity, node = self.wait_for_ready_callbacks(max_duration)
       except ShutdownException:
           pass
       except TimeoutException:
@@ -322,4 +325,5 @@ class ChROSPythonManager(ChROSManager):
   def update_rclpy(self, value: bool):
     self._update_rclpy = value
 
-%}
+%
+}

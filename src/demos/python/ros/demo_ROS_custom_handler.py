@@ -27,7 +27,7 @@ class MyCustomHandler(chros.ChROSHandler):
     """This custom handler will just publish int messages to a topic."""
 
     def __init__(self, topic):
-        super().__init__(30)  # 30 Hz
+        super().__init__(1)  # 1 Hz
 
         self.topic = topic
         self.publisher: rclpy.publisher.Publisher = None
@@ -35,34 +35,37 @@ class MyCustomHandler(chros.ChROSHandler):
         self.ticker = 0
 
     def Initialize(self, interface: chros.ChROSPythonInterface) -> bool:
+        print(f"Creating publisher for topic {self.topic} ...")
         self.publisher = interface.GetNode().create_publisher(Int64, self.topic, 1)
 
         return True
 
     def Tick(self, time: float):
+        print(f"Publishing {self.ticker} ...")
         msg = Int64()
         msg.data = self.ticker
         self.publisher.publish(msg)
+        self.ticker += 1
 
 
 def main():
     # Create system
     sys = ch.ChSystemNSC()
-    sys.Set_G_acc(ch.ChVectorD(0, 0, -9.81))
+    sys.SetGravitationalAcceleration(ch.ChVector3d(0, 0, -9.81))
 
     # add a floor, box and sphere to the scene
-    phys_mat = ch.ChMaterialSurfaceNSC()
+    phys_mat = ch.ChContactMaterialNSC()
     phys_mat.SetFriction(0.5)
 
     floor = ch.ChBodyEasyBox(10, 10, 1, 1000, True, True, phys_mat)
-    floor.SetPos(ch.ChVectorD(0, 0, -1))
-    floor.SetBodyFixed(True)
+    floor.SetPos(ch.ChVector3d(0, 0, -1))
+    floor.SetFixed(True)
     floor.SetName("base_link")
     sys.Add(floor)
 
     box = ch.ChBodyEasyBox(1, 1, 1, 1000, True, True, phys_mat)
-    box.SetPos(ch.ChVectorD(0, 0, 5))
-    box.SetRot(ch.Q_from_AngAxis(.2, ch.ChVectorD(1, 0, 0)))
+    box.SetPos(ch.ChVector3d(0, 0, 5))
+    box.SetRot(ch.QuatFromAngleAxis(.2, ch.ChVector3d(1, 0, 0)))
     box.SetName("box")
     sys.Add(box)
 
@@ -92,8 +95,6 @@ def main():
     while time < time_end:
         sys.DoStepDynamics(time_step)
         time = sys.GetChTime()
-
-        custom_handler.ticker += 1
 
         if not ros_manager.Update(time, time_step):
             break

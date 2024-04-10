@@ -28,9 +28,9 @@ def main():
     hmmwv.SetContactMethod(ch.ChContactMethod_NSC)
     hmmwv.SetChassisCollisionType(veh.CollisionType_NONE)
     hmmwv.SetChassisFixed(False) 
-    hmmwv.SetInitPosition(ch.ChCoordsysD(ch.ChVectorD(0, 0, 1.6), ch.ChQuaternionD(1, 0, 0, 0)))
+    hmmwv.SetInitPosition(ch.ChCoordsysd(ch.ChVector3d(0, 0, 1.6), ch.ChQuaterniond(1, 0, 0, 0)))
     hmmwv.SetEngineType(veh.EngineModelType_SHAFTS)
-    hmmwv.SetTransmissionType(veh.TransmissionModelType_SHAFTS)
+    hmmwv.SetTransmissionType(veh.TransmissionModelType_AUTOMATIC_SHAFTS)
     hmmwv.SetDriveType(veh.DrivelineTypeWV_AWD)
     hmmwv.SetSteeringType(veh.SteeringTypeWV_PITMAN_ARM)
     hmmwv.SetTireType(veh.TireModelType_TMEASY)
@@ -39,7 +39,7 @@ def main():
 
     # Create the terrain
     terrain = veh.RigidTerrain(hmmwv.GetSystem())
-    patch_mat = ch.ChMaterialSurfaceNSC()
+    patch_mat = ch.ChContactMaterialNSC()
     patch_mat.SetFriction(0.9)
     patch_mat.SetRestitution(0.01)
     terrain.AddPatch(patch_mat, ch.CSYSNORM, 100.0, 100.0)

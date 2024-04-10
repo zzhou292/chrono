@@ -40,6 +40,11 @@
 
 #include "chrono_thirdparty/filesystem/path.h"
 
+#ifdef HAVE_ROS
+    #include "ament_index_cpp/get_package_prefix.hpp"
+    #include "ament_index_cpp/get_package_share_directory.hpp"
+#endif
+
 namespace chrono {
 namespace parsers {
 
@@ -785,6 +790,8 @@ void ChParserURDF::PrintModelJoints() {
                 break;
             case urdf::Joint::CONTINUOUS:
                 cout << "continous ";
+                break;
+            case urdf::Joint::UNKNOWN:
                 break;
         }
         cout << "Joint: " << std::left << std::setw(25) << joint->name;

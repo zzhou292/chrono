@@ -82,7 +82,7 @@ if (DBG_SCRIPT)
   message("CH_PYTHONLIB:   ${CH_PYTHONLIB}")
 endif()
 
-# Let some variables be visible also from outside this directory, using the PARENT_SCOPE trick
+# Let some variables be visible also from outside this directory
 set(CH_PYTHONDIR  "${CH_PYTHONDIR}"  PARENT_SCOPE)
 set(CH_PYTHONINC  "${CH_PYTHONINC}"  PARENT_SCOPE)
 set(CH_PYTHONLIB  "${CH_PYTHONLIB}"  PARENT_SCOPE)
@@ -1035,6 +1035,7 @@ if(ENABLE_MODULE_ROS)
 
   # Copy PY file in a package dir
   set(CHPY_ROS_PY_FILE "${CMAKE_SWIG_OUTDIR}/${CHPY_ROS}.py")
+
   set(CHPY_ROS_PYD_PATH $<TARGET_FILE_DIR:${SWIG_MODULE_${CHPY_ROS}_REAL_NAME}>)
 
   add_custom_command(TARGET ${SWIG_MODULE_${CHPY_ROS}_REAL_NAME}
