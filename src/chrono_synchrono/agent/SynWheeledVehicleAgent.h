@@ -101,6 +101,23 @@ class SYN_API SynWheeledVehicleAgent : public SynAgent {
     ///@param num_wheels number of wheels of the underlying vehicle
     void SetNumWheels(int num_wheels) { m_description->SetNumWheels(num_wheels); }
 
+
+    /// @brief Obtain the last-received zombie position
+    /// @return A ChVector describing the position of the zombie
+    ChVector3<> GetZombiePos() { return m_zombie_body->GetPos(); }
+
+    /// @brief Obtain the last-received zombie orientation
+    /// @return A ChQuaternion describing the rotation of the zombie
+    ChQuaternion<> GetZombieRot() { return m_zombie_body->GetRot(); }
+
+    /// @brief Obtain the last-received zombie wheel position
+    /// @return A ChVector describing the position of the zombie's wheel
+    ChVector3<> GetZombieWheelPos(int idx) { return m_wheel_list[idx]->GetPos(); }
+
+    /// @brief Obtain the last-received zombie wheel orientation
+    /// @return A ChQuaternion describing the rotation of the zombie's wheel
+    ChQuaternion<> GetZombieWheelRot(int idx) { return m_wheel_list[idx]->GetRot(); }
+
     ///@brief Set the Agent ID
     ///
     virtual void SetKey(AgentKey agent_key) override;

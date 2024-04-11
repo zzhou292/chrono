@@ -39,11 +39,11 @@ class ChROSDriverSignalInputHandler : public ChROSHandler {
 
     /// Initializes the handler. Creates a subscriber of chrono_ros_interfaces::msg::DriverInputs on topic
     /// "~/input/driver_inputs".
-    virtual bool Initialize(std::shared_ptr<ChROSInterface> interface) override;
+    bool Initialize(std::shared_ptr<ChROSInterface> interface) override;
 
   protected:
     /// Updates the driver with stored inputs data from Callback
-    virtual void Tick(double time) override;
+    void Tick(double time) override;
 
   private:
     /// NOTE: This will only update the local m_inputs variable. The driver will receive
