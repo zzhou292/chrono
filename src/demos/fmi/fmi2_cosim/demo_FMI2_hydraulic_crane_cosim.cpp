@@ -33,8 +33,10 @@ using namespace chrono;
 
 // -----------------------------------------------------------------------------
 
-std::string actuator_unpack_directory = ACTUATOR_FMU_DIRECTORY + std::string("/tmp_unpack/");
-std::string crane_unpack_directory = CRANE_FMU_DIRECTORY + std::string("/tmp_unpack/");
+std::string actuator_unpack_directory =
+    DEMO_FMU_MAIN_DIR + std::string("/tmp_unpack_") + ACTUATOR_FMU_MODEL_IDENTIFIER + std::string("/");
+std::string crane_unpack_directory =
+    DEMO_FMU_MAIN_DIR + std::string("/tmp_unpack_") + CRANE_FMU_MODEL_IDENTIFIER + std::string("/");
 
 // -----------------------------------------------------------------------------
 
@@ -44,7 +46,7 @@ void CreateCraneFMU(FmuChronoUnit& crane_fmu,
                     const std::vector<std::string>& logCategories) {
     try {
         crane_fmu.Load(CRANE_FMU_FILENAME, crane_unpack_directory);
-        // crane_fmu.Load(CRANE_FMU_FILENAME); // will go in TEMP/_fmu_temp
+        ////crane_fmu.Load(CRANE_FMU_FILENAME); // will go in TEMP/_fmu_temp
     } catch (std::exception& e) {
         throw e;
     }
@@ -55,7 +57,10 @@ void CreateCraneFMU(FmuChronoUnit& crane_fmu,
     crane_fmu.Instantiate("CraneFmuComponent", false, true);
 
     // Set debug logging
-    crane_fmu.SetDebugLogging(fmi2True, logCategories);
+    if (!logCategories.empty())
+        crane_fmu.SetDebugLogging(fmi2True, logCategories);
+    else
+        crane_fmu.SetDebugLogging(fmi2False, {});
 
     // Initialize FMU
     crane_fmu.SetupExperiment(fmi2False, 0.0,         // define tolerance
@@ -84,7 +89,7 @@ void CreateActuatorFMU(FmuChronoUnit& actuator_fmu,
                        const std::vector<std::string>& logCategories) {
     try {
         actuator_fmu.Load(ACTUATOR_FMU_FILENAME, actuator_unpack_directory);
-        // actuator_fmu.Load(ACTUATOR_FMU_FILENAME); // will go in TEMP/_fmu_temp
+        ////actuator_fmu.Load(ACTUATOR_FMU_FILENAME); // will go in TEMP/_fmu_temp
     } catch (std::exception& e) {
         throw e;
     }
@@ -95,7 +100,10 @@ void CreateActuatorFMU(FmuChronoUnit& actuator_fmu,
     actuator_fmu.Instantiate("ActuatorFmuComponent");
 
     // Set debug logging
-    actuator_fmu.SetDebugLogging(fmi2True, logCategories);
+    if (!logCategories.empty())
+        actuator_fmu.SetDebugLogging(fmi2True, logCategories);
+    else
+        actuator_fmu.SetDebugLogging(fmi2False, {});
 
     // Initialize FMU
     actuator_fmu.SetupExperiment(fmi2False, 0.0,         // define tolerance
@@ -104,8 +112,6 @@ void CreateActuatorFMU(FmuChronoUnit& actuator_fmu,
 
     // Set fixed parameters
     //// TODO - not much exposed right now
-    ////fmi2ValueReference valref;
-    ////fmi2Real val_real;
 }
 
 // -----------------------------------------------------------------------------
@@ -119,7 +125,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::vector<std::string> logCategories = {"logAll"};
+    ////std::vector<std::string> logCategories = {"logAll"};
+    std::vector<std::string> logCategories;
 
     double start_time = 0;
     double stop_time = 20;
@@ -143,18 +150,6 @@ int main(int argc, char* argv[]) {
     // Initialize FMUs
     crane_fmu.EnterInitializationMode();
     actuator_fmu.EnterInitializationMode();
-    {
-        fmi2Real init_F;
-        crane_fmu.GetVariable("init_F", init_F, FmuVariable::Type::Real);
-        actuator_fmu.SetVariable("init_F", init_F, FmuVariable::Type::Real);
-
-        fmi2Real s;
-        crane_fmu.GetVariable("s", s, FmuVariable::Type::Real);
-        actuator_fmu.SetVariable("s", s, FmuVariable::Type::Real);
-
-        std::cout << "Crane initial load: " << init_F << std::endl;
-        std::cout << "Crane initial actuator length: " << s << std::endl;
-    }
     crane_fmu.ExitInitializationMode();
     actuator_fmu.ExitInitializationMode();
 
@@ -176,21 +171,21 @@ int main(int argc, char* argv[]) {
     double dt = 5e-4;
 
     while (time < stop_time) {
-        // --------- Exchange data
-        fmi2Real F;  // Actuator force  [actuator] -> [crane]
-        actuator_fmu.GetVariable("F", F, FmuVariable::Type::Real);
-        crane_fmu.SetVariable("F", F, FmuVariable::Type::Real);
-
-        fmi2Real s;  // Actuator length [crane] -> [actuator]
-        crane_fmu.GetVariable("s", s, FmuVariable::Type::Real);
-        actuator_fmu.SetVariable("s", s, FmuVariable::Type::Real);
-
-        fmi2Real sd;  // Actuator length rate [crane] -> [actuator]
-        crane_fmu.GetVariable("sd", sd, FmuVariable::Type::Real);
-        actuator_fmu.SetVariable("sd", sd, FmuVariable::Type::Real);
-
         // ----------- Actuator input signal -> [actuator]
         fmi2Real Uref = actuation->GetVal(time);
+
+        // --------- Exchange data
+        fmi2Real F;  // Actuator force  [actuator] -> [crane]
+        fmi2Real s;  // Actuator length [crane] -> [actuator]
+        fmi2Real sd;  // Actuator length rate [crane] -> [actuator]
+
+        actuator_fmu.GetVariable("F", F, FmuVariable::Type::Real);
+        crane_fmu.GetVariable("s", s, FmuVariable::Type::Real);
+        crane_fmu.GetVariable("sd", sd, FmuVariable::Type::Real);
+
+        crane_fmu.SetVariable("F", F, FmuVariable::Type::Real);
+        actuator_fmu.SetVariable("s", s, FmuVariable::Type::Real);
+        actuator_fmu.SetVariable("sd", sd, FmuVariable::Type::Real);
         actuator_fmu.SetVariable("Uref", Uref, FmuVariable::Type::Real);
 
         // ----------- Current actuator state information
@@ -209,8 +204,7 @@ int main(int argc, char* argv[]) {
             break;
 
         // Save output
-        ////std::cout << time << s << sd << Uref << U << p1 << p2 << F << std::endl;
-        std::cout << time << " s,sd = (" << s << "," << sd << ")  F = " << F << std::endl;
+        ////std::cout << time << " s,sd = (" << s << "," << sd << ")  F = " << F << std::endl;
         csv << time << s << sd << Uref << U << p1 << p2 << F << std::endl;
 
         time += dt;
