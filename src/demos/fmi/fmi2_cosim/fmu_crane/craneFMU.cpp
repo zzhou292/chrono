@@ -23,6 +23,22 @@
 #include "craneFMU.h"
 
 using namespace chrono;
+using namespace chrono::fmi2;
+
+// -----------------------------------------------------------------------------
+
+// Create an instance of this FMU
+fmu_tools::fmi2::FmuComponentBase* fmu_tools::fmi2::fmi2InstantiateIMPL(fmi2String instanceName,
+                                                                        fmi2Type fmuType,
+                                                                        fmi2String fmuGUID,
+                                                                        fmi2String fmuResourceLocation,
+                                                                        const fmi2CallbackFunctions* functions,
+                                                                        fmi2Boolean visible,
+                                                                        fmi2Boolean loggingOn) {
+    return new FmuComponent(instanceName, fmuType, fmuGUID, fmuResourceLocation, functions, visible, loggingOn);
+}
+
+// -----------------------------------------------------------------------------
 
 FmuComponent::FmuComponent(fmi2String instanceName,
                            fmi2Type fmuType,
@@ -66,16 +82,24 @@ FmuComponent::FmuComponent(fmi2String instanceName,
     AddFmuVariable(&F, "F", FmuVariable::Type::Real, "N", "actuator force",                       //
                    FmuVariable::CausalityType::input, FmuVariable::VariabilityType::continuous);   //
 
+    // Specify variable dependencies
+    DeclareVariableDependencies("init_F", {"crane_mass", "crane_length", "crane_angle", "pend_mass", "pend_length"});
+    DeclareVariableDependencies("s", {"crane_length", "crane_angle", "pend_length"});
+    DeclareVariableDependencies("sd", {"crane_length", "crane_angle", "pend_length"});
+
 #ifdef CHRONO_IRRLICHT
     if (visible == fmi2True)
         vis_sys = chrono_types::make_shared<irrlicht::ChVisualSystemIrrlicht>();
+#else
+    if (visible)
+        std::cout << "The FMU was not built with run-time visualization support. Visualization disabled." << std::endl;
 #endif
 
     // Specify functions to process input variables (at beginning of step)
-    m_preStepCallbacks.push_back([this]() { this->ProcessActuatorForce(); });
+    AddPreStepFunction([this]() { this->ProcessActuatorForce(); });
 
     // Specify functions to calculate FMU outputs (at end of step)
-    m_postStepCallbacks.push_back([this]() { this->CalculateActuatorLength(); });
+    AddPostStepFunction([this]() { this->CalculateActuatorLength(); });
 }
 
 void FmuComponent::ProcessActuatorForce() {
@@ -101,15 +125,17 @@ void FmuComponent::CalculateActuatorLength() {
     sd = Vdot(dir, V2 - V1);  // actuator length rate
 }
 
-void FmuComponent::_preModelDescriptionExport() {
-    _exitInitializationMode();
+void FmuComponent::preModelDescriptionExport() {
+    exitInitializationModeIMPL();
 }
 
-void FmuComponent::_postModelDescriptionExport() {}
+void FmuComponent::postModelDescriptionExport() {}
 
-void FmuComponent::_enterInitializationMode() {}
+fmi2Status FmuComponent::enterInitializationModeIMPL() {
+    return fmi2Status::fmi2OK;
+}
 
-void FmuComponent::_exitInitializationMode() {
+fmi2Status FmuComponent::exitInitializationModeIMPL() {
     // Hardcoded mount points
     m_point_ground = ChVector3d(std::sqrt(3.0) / 2, 0, 0);
     m_point_crane = ChVector3d(0, 0, 0);
@@ -189,27 +215,27 @@ void FmuComponent::_exitInitializationMode() {
     CalculateActuatorLength();
 
     // Initialize runtime visualization (if requested and if available)
-    if (vis_sys) {
 #ifdef CHRONO_IRRLICHT
+    if (vis_sys) {
         sendToLog("Enable run-time visualization", fmi2Status::fmi2OK, "logAll");
         vis_sys->AttachSystem(&sys);
         vis_sys->SetWindowSize(800, 600);
-        vis_sys->SetWindowTitle("Hydraulic crane");
+        vis_sys->SetWindowTitle("Hydraulic crane FMU (FMI 2.0)");
         vis_sys->SetCameraVertical(CameraVerticalDir::Z);
         vis_sys->Initialize();
         vis_sys->AddCamera(ChVector3d(0.5, -1, 0.5), ChVector3d(0.5, 0, 0.5));
         vis_sys->AddTypicalLights();
-#else
-        sendToLog("Run-time visualization not available", fmi2Status::fmi2OK, "logAll");
-#endif
     }
+#endif
 
-    sys.DoAssembly(AssemblyLevel::FULL);
+    sys.DoAssembly(AssemblyAnalysis::Level::FULL);
+
+    return fmi2Status::fmi2OK;
 }
 
-fmi2Status FmuComponent::_doStep(fmi2Real currentCommunicationPoint,
-                                 fmi2Real communicationStepSize,
-                                 fmi2Boolean noSetFMUStatePriorToCurrentPoint) {
+fmi2Status FmuComponent::doStepIMPL(fmi2Real currentCommunicationPoint,
+                                    fmi2Real communicationStepSize,
+                                    fmi2Boolean noSetFMUStatePriorToCurrentPoint) {
     // Advance FMU state to next communication point
     while (m_time < currentCommunicationPoint + communicationStepSize) {
         fmi2Real step_size = std::min((currentCommunicationPoint + communicationStepSize - m_time),
@@ -219,7 +245,7 @@ fmi2Status FmuComponent::_doStep(fmi2Real currentCommunicationPoint,
         if (vis_sys) {
             auto status = vis_sys->Run();
             if (!status)
-                return fmi2Discard;
+                return fmi2Status::fmi2Discard;
             vis_sys->BeginScene(true, true, ChColor(0.33f, 0.6f, 0.78f));
             vis_sys->Render();
             vis_sys->EndScene();

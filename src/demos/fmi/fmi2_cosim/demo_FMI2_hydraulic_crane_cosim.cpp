@@ -12,12 +12,14 @@
 // Authors: Radu Serban
 // =============================================================================
 //
-// Demo code for using a hydraulic actuator FMU co-simulated with a simple crane
-// multibody mechanical system FMU.
+// Demo illustrating the co-simulation of 2 FMUs (FMI 2.0), a hydraulic actuator
+// and a simple crane multibody system.
 //
 // =============================================================================
 
-#include "chrono/ChConfig.h"
+#include "chrono_fmi/ChConfigFMI.h"
+#include "chrono_fmi/fmi2/ChFmuToolsImport.h"
+
 #include "chrono/functions/ChFunction.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
 
@@ -27,34 +29,32 @@
 
 #include "chrono_thirdparty/filesystem/path.h"
 
-#include "chrono_fmi/fmi2/ChFmuToolsImport.h"
-
 using namespace chrono;
-
-// -----------------------------------------------------------------------------
-
-std::string actuator_unpack_directory =
-    DEMO_FMU_MAIN_DIR + std::string("/tmp_unpack_") + ACTUATOR_FMU_MODEL_IDENTIFIER + std::string("/");
-std::string crane_unpack_directory =
-    DEMO_FMU_MAIN_DIR + std::string("/tmp_unpack_") + CRANE_FMU_MODEL_IDENTIFIER + std::string("/");
+using namespace chrono::fmi2;
 
 // -----------------------------------------------------------------------------
 
 void CreateCraneFMU(FmuChronoUnit& crane_fmu,
+                    const std::string& fmu_filename,
+                    const std::string& fmu_unpack_dir,
                     double start_time,
                     double stop_time,
                     const std::vector<std::string>& logCategories) {
     try {
-        crane_fmu.Load(CRANE_FMU_FILENAME, crane_unpack_directory);
-        ////crane_fmu.Load(CRANE_FMU_FILENAME); // will go in TEMP/_fmu_temp
-    } catch (std::exception& e) {
-        throw e;
+        crane_fmu.Load(fmi2Type::fmi2CoSimulation, fmu_filename, fmu_unpack_dir);
+        ////crane_fmu.Load(fmi2Type::fmi2CoSimulation, fmu_filename); // will go in TEMP/_fmu_temp
+    } catch (std::exception&) {
+        throw;
     }
     std::cout << "Crane FMU version:  " << crane_fmu.GetVersion() << "\n";
     std::cout << "Crane FMU platform: " << crane_fmu.GetTypesPlatform() << "\n";
 
     // Instantiate FMU: enable visualization
-    crane_fmu.Instantiate("CraneFmuComponent", false, true);
+    try {
+        crane_fmu.Instantiate("CraneFmuComponent", false, true);
+    } catch (std::exception&) {
+        throw;
+    }
 
     // Set debug logging
     if (!logCategories.empty())
@@ -84,20 +84,26 @@ void CreateCraneFMU(FmuChronoUnit& crane_fmu,
 // -----------------------------------------------------------------------------
 
 void CreateActuatorFMU(FmuChronoUnit& actuator_fmu,
+                       const std::string& fmu_filename,
+                       const std::string& fmu_unpack_dir,
                        double start_time,
                        double stop_time,
                        const std::vector<std::string>& logCategories) {
     try {
-        actuator_fmu.Load(ACTUATOR_FMU_FILENAME, actuator_unpack_directory);
-        ////actuator_fmu.Load(ACTUATOR_FMU_FILENAME); // will go in TEMP/_fmu_temp
-    } catch (std::exception& e) {
-        throw e;
+        actuator_fmu.Load(fmi2Type::fmi2CoSimulation, fmu_filename, fmu_unpack_dir);
+        ////actuator_fmu.Load(fmi2Type::fmi2CoSimulation, fmu_filename); // will go in TEMP/_fmu_temp
+    } catch (std::exception&) {
+        throw;
     }
     std::cout << "Actuator FMU version:  " << actuator_fmu.GetVersion() << "\n";
     std::cout << "Actuator FMU platform: " << actuator_fmu.GetTypesPlatform() << "\n";
 
     // Instantiate FMU
-    actuator_fmu.Instantiate("ActuatorFmuComponent");
+    try {
+        actuator_fmu.Instantiate("ActuatorFmuComponent");
+    } catch (std::exception&) {
+        throw;
+    }
 
     // Set debug logging
     if (!logCategories.empty())
@@ -117,8 +123,27 @@ void CreateActuatorFMU(FmuChronoUnit& actuator_fmu,
 // -----------------------------------------------------------------------------
 
 int main(int argc, char* argv[]) {
+#ifdef FMU_EXPORT_SUPPORT
+    // FMUs generated in current build
+    std::string crane_fmu_filename = CRANE_FMU_FILENAME;
+    std::string actuator_fmu_filename = ACTUATOR_FMU_FILENAME;
+#else
+    // Expect fully qualified FMU filenames as program arguments
+    if (argc != 3) {
+        std::cout << "Usage: ./demo_FMI2_hydraulic_crane_cosim [crane_FMU_filename] [actuator_FMU_filename]"
+                  << std::endl;
+        return 1;
+    }
+    std::string crane_fmu_filename = argv[1];
+    std::string actuator_fmu_filename = argv[2];
+#endif
+
+    // FMU unpack directories
+    std::string crane_unpack_dir = DEMO_FMU_MAIN_DIR + std::string("/tmp_unpack_crane/");
+    std::string actuator_unpack_dir = DEMO_FMU_MAIN_DIR + std::string("/tmp_unpack_actuator");
+
     // Create (if needed) output directory
-    std::string out_dir = GetChronoOutputPath() + "./DEMO_HYDRAULIC_CRANE_FMI_COSIM";
+    std::string out_dir = GetChronoOutputPath() + "./DEMO_FMI_HYDRAULIC_CRANE_COSIM";
 
     if (!filesystem::create_directory(filesystem::path(out_dir))) {
         std::cout << "Error creating directory " << out_dir << std::endl;
@@ -135,13 +160,14 @@ int main(int argc, char* argv[]) {
     FmuChronoUnit crane_fmu;
     FmuChronoUnit actuator_fmu;
     try {
-        CreateCraneFMU(crane_fmu, start_time, stop_time, logCategories);
+        CreateCraneFMU(crane_fmu, crane_fmu_filename, crane_unpack_dir, start_time, stop_time, logCategories);
     } catch (std::exception& e) {
         std::cout << "ERROR loading crane FMU: " << e.what() << "\n";
         return 1;
     }
     try {
-        CreateActuatorFMU(actuator_fmu, start_time, stop_time, logCategories);
+        CreateActuatorFMU(actuator_fmu, actuator_fmu_filename, actuator_unpack_dir, start_time, stop_time,
+                          logCategories);
     } catch (std::exception& e) {
         std::cout << "ERROR loading actuator FMU: " << e.what() << "\n";
         return 1;
@@ -171,6 +197,8 @@ int main(int argc, char* argv[]) {
     double dt = 5e-4;
 
     while (time < stop_time) {
+        std::cout << "\r" << time << "\r";
+
         // ----------- Actuator input signal -> [actuator]
         fmi2Real Uref = actuation->GetVal(time);
 

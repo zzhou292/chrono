@@ -22,6 +22,22 @@
 #include "actuatorFMU.h"
 
 using namespace chrono;
+using namespace chrono::fmi2;
+
+// -----------------------------------------------------------------------------
+
+// Create an instance of this FMU
+fmu_tools::fmi2::FmuComponentBase* fmu_tools::fmi2::fmi2InstantiateIMPL(fmi2String instanceName,
+                                                                        fmi2Type fmuType,
+                                                                        fmi2String fmuGUID,
+                                                                        fmi2String fmuResourceLocation,
+                                                                        const fmi2CallbackFunctions* functions,
+                                                                        fmi2Boolean visible,
+                                                                        fmi2Boolean loggingOn) {
+    return new FmuComponent(instanceName, fmuType, fmuGUID, fmuResourceLocation, functions, visible, loggingOn);
+}
+
+// -----------------------------------------------------------------------------
 
 FmuComponent::FmuComponent(fmi2String instanceName,
                            fmi2Type fmuType,
@@ -65,14 +81,20 @@ FmuComponent::FmuComponent(fmi2String instanceName,
     AddFmuVariable(&U, "U", FmuVariable::Type::Real, "1", "valve position",                       //
                    FmuVariable::CausalityType::output, FmuVariable::VariabilityType::continuous);  //
 
+    // Specify variable dependencies
+    DeclareVariableDependencies("F", {"s", "sd", "Uref"});
+    DeclareVariableDependencies("p1", {"s", "sd", "Uref"});
+    DeclareVariableDependencies("p2", {"s", "sd", "Uref"});
+    DeclareVariableDependencies("U", {"Uref"});
+
     // Specify functions to process input variables (at beginning of step)
-    m_preStepCallbacks.push_back([this]() { this->m_actuator->SetActuatorLength(s, sd); });
-    m_preStepCallbacks.push_back([this]() { this->m_actuation->SetSetpoint(Uref, this->GetTime()); });
+    AddPreStepFunction([this]() { this->m_actuator->SetActuatorLength(s, sd); });
+    AddPreStepFunction([this]() { this->m_actuation->SetSetpoint(Uref, this->GetTime()); });
 
     // Specify functions to calculate FMU outputs (at end of step)
-    m_postStepCallbacks.push_back([this]() { this->CalculateActuatorForce(); });
-    m_postStepCallbacks.push_back([this]() { this->CalculatePistonPressures(); });
-    m_postStepCallbacks.push_back([this]() { this->CalculateValvePosition(); });
+    AddPostStepFunction([this]() { this->CalculateActuatorForce(); });
+    AddPostStepFunction([this]() { this->CalculatePistonPressures(); });
+    AddPostStepFunction([this]() { this->CalculateValvePosition(); });
 }
 
 void FmuComponent::CalculateActuatorForce() {
@@ -89,15 +111,17 @@ void FmuComponent::CalculateValvePosition() {
     U = m_actuator->GetValvePosition();
 }
 
-void FmuComponent::_preModelDescriptionExport() {
-    _exitInitializationMode();
+void FmuComponent::preModelDescriptionExport() {
+    exitInitializationModeIMPL();
 }
 
-void FmuComponent::_postModelDescriptionExport() {}
+void FmuComponent::postModelDescriptionExport() {}
 
-void FmuComponent::_enterInitializationMode() {}
+fmi2Status FmuComponent::enterInitializationModeIMPL() {
+    return fmi2Status::fmi2OK;
+}
 
-void FmuComponent::_exitInitializationMode() {
+fmi2Status FmuComponent::exitInitializationModeIMPL() {
     // 1. Construct hydraulic actuator (must have parameters)
 
     // Set gravitational acceleration
@@ -125,12 +149,14 @@ void FmuComponent::_exitInitializationMode() {
     CalculatePistonPressures();
     CalculateValvePosition();
 
-    sys.DoAssembly(AssemblyLevel::FULL);
+    sys.DoAssembly(AssemblyAnalysis::Level::FULL);
+
+    return fmi2Status::fmi2OK;
 }
 
-fmi2Status FmuComponent::_doStep(fmi2Real currentCommunicationPoint,
-                                 fmi2Real communicationStepSize,
-                                 fmi2Boolean noSetFMUStatePriorToCurrentPoint) {
+fmi2Status FmuComponent::doStepIMPL(fmi2Real currentCommunicationPoint,
+                                    fmi2Real communicationStepSize,
+                                    fmi2Boolean noSetFMUStatePriorToCurrentPoint) {
     // Set initial actuator length at t=0
     if (!have_s0) {
         std::cout << "Setting s0 = " << s << std::endl;
