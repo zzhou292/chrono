@@ -39,10 +39,6 @@ struct half4 {
 /// @addtogroup sensor_optix
 /// @{
 
-/// @addtogroup sensor_optix
-/// @{
-
-
 /// Ray types, used to determine the shading and miss functions for populating ray information
 enum RayType {
     CAMERA_RAY_TYPE = 0,       /// camera rays
@@ -140,6 +136,7 @@ struct DepthCameraParameters {
     LensParams lens_parameters;      ///< lens fitting parameters (if applicable)
     float* frame_buffer;             ///< buffer of class and instance ids
     curandState_t* rng_buffer;       ///< only initialized if using global illumination
+    float max_depth;                 ///< maximum depth value for the depth camera
 };
 
 /// Parameters need to define a camera that generates semantic segmentation data
@@ -310,6 +307,7 @@ struct PerRayData_camera {
 
 struct PerRayData_depthCamera {
     float depth;
+    float max_depth;
 };
 
 /// Data associated with a single segmentation camera ray

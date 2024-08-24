@@ -30,9 +30,9 @@
     }
 }
 
-// For optional downcasting of polymorphic objects:
+// For optional casting of polymorphic objects:
 %
-    include "../chrono_downcast.i"
+    include "../chrono_cast.i"
 
     // For supporting shared pointers:
     % include<std_shared_ptr.i>

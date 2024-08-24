@@ -9,17 +9,31 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// External project template for building a Chrono co-simulation FMU.
+// External project template for building a Chrono co-simulation FMU for FMI 2.0.
 // =============================================================================
-
 
 #include "chrono/physics/ChBodyEasy.h"
 #include "chrono/physics/ChLinkMate.h"
 
 #include "FmuComponentChrono.h"
 
-
 using namespace chrono;
+using namespace chrono::fmi2;
+
+// -----------------------------------------------------------------------------
+
+// Create an instance of this FMU
+fmu_tools::fmi2::FmuComponentBase* fmu_tools::fmi2::fmi2InstantiateIMPL(fmi2String instanceName,
+                                                                        fmi2Type fmuType,
+                                                                        fmi2String fmuGUID,
+                                                                        fmi2String fmuResourceLocation,
+                                                                        const fmi2CallbackFunctions* functions,
+                                                                        fmi2Boolean visible,
+                                                                        fmi2Boolean loggingOn) {
+    return new FmuComponent(instanceName, fmuType, fmuGUID, fmuResourceLocation, functions, visible, loggingOn);
+}
+
+// -----------------------------------------------------------------------------
 
 FmuComponent::FmuComponent(fmi2String instanceName,
                            fmi2Type fmuType,
@@ -81,6 +95,9 @@ FmuComponent::FmuComponent(fmi2String instanceName,
     AddFmuVariable(&pendulum_mass, "pendulum_mass", FmuVariable::Type::Real, "kg", "cart mass",
                    FmuVariable::CausalityType::parameter, FmuVariable::VariabilityType::fixed);
 
+    AddFmuVariable(&experiment_name, "experiment_name", FmuVariable::Type::String, "", "experiment name",
+                   FmuVariable::CausalityType::input, FmuVariable::VariabilityType::discrete);
+
 #ifdef CHRONO_IRRLICHT
     if (visible == fmi2True) {
         vis = chrono_types::make_shared<irrlicht::ChVisualSystemIrrlicht>();
@@ -96,13 +113,13 @@ FmuComponent::FmuComponent(fmi2String instanceName,
 #endif
 };
 
-void FmuComponent::_preModelDescriptionExport() {
-    _exitInitializationMode();
+void FmuComponent::preModelDescriptionExport() {
+    exitInitializationModeIMPL();
 }
 
-void FmuComponent::_postModelDescriptionExport() {}
+void FmuComponent::postModelDescriptionExport() {}
 
-void FmuComponent::_exitInitializationMode() {
+fmi2Status FmuComponent::exitInitializationModeIMPL() {
     sys.Clear();
 
     auto ground = chrono_types::make_shared<ChBody>();
@@ -140,7 +157,7 @@ void FmuComponent::_exitInitializationMode() {
     pendulum_rev->SetName("pendulum_rev");
     sys.Add(pendulum_rev);
 
-    sys.DoAssembly(AssemblyLevel::FULL);
+    sys.DoAssembly(AssemblyAnalysis::Level::FULL);
 
 #ifdef CHRONO_IRRLICHT
     if (vis)
@@ -150,21 +167,26 @@ void FmuComponent::_exitInitializationMode() {
     // add all the variables to the serializer
     variables_serializer << CHNVP(sys);
 
-    // (re)add the visualization shapes with custom serialization
-    AddFmuVisualShapes(*cart);
-    AddFmuVisualShapes(*pendulum, "pendulum");
+    //// (re)add the visualization shapes with custom serialization
+    // AddFmuVisualShapes(*cart);
+    // AddFmuVisualShapes(*pendulum, "pendulum");
+
+    // it is also possible to parse automatically an entire ChAssembly
+    AddFmuVisualShapes(sys.GetAssembly());
 };
 
-fmi2Status FmuComponent::_doStep(fmi2Real currentCommunicationPoint,
-                                 fmi2Real communicationStepSize,
-                                 fmi2Boolean noSetFMUStatePriorToCurrentPoint) {
+fmi2Status FmuComponent::doStepIMPL(fmi2Real currentCommunicationPoint,
+                                    fmi2Real communicationStepSize,
+                                    fmi2Boolean noSetFMUStatePriorToCurrentPoint) {
     while (m_time < currentCommunicationPoint + communicationStepSize) {
         fmi2Real step_size = std::min((currentCommunicationPoint + communicationStepSize - m_time),
                                       std::min(communicationStepSize, m_stepSize));
 
 #ifdef CHRONO_IRRLICHT
         if (vis) {
-            vis->Run();
+            auto status = vis->Run();
+            if (!status)
+                return fmi2Status::fmi2Discard;
             vis->BeginScene();
             vis->Render();
             vis->EndScene();

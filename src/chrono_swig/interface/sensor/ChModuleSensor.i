@@ -35,8 +35,8 @@
 }
 
 
-// For optional downcasting of polimorphic objects:
-%include "../chrono_downcast.i"
+// For optional casting of polimorphic objects:
+%include "../chrono_cast.i"
 
 // For supporting shared pointers:
 %include <std_shared_ptr.i>
@@ -343,13 +343,13 @@ using namespace chrono::sensor;
 %include "chrono_sensor/ChSensorManager.h"
 %include "chrono_sensor/sensors/ChNoiseModel.h"
 
-%DefSharedPtrDynamicDowncast(chrono::sensor, ChSensor, ChCameraSensor)
-%DefSharedPtrDynamicDowncast(chrono::sensor, ChSensor, ChLidarSensor)
-%DefSharedPtrDynamicDowncast(chrono::sensor, ChSensor, ChAccelerometerSensor)
-%DefSharedPtrDynamicDowncast(chrono::sensor, ChSensor, ChGPSSensor)
-%DefSharedPtrDynamicDowncast(chrono::sensor, ChSensor, ChGyroscopeSensor)
-%DefSharedPtrDynamicDowncast(chrono::sensor, ChSensor, ChRadarSensor)
-%DefSharedPtrDynamicDowncast(chrono::sensor, ChSensor, ChMagnetometerSensor)
+%DefSharedPtrDynamicCast(chrono::sensor, ChSensor, ChCameraSensor)
+%DefSharedPtrDynamicCast(chrono::sensor, ChSensor, ChLidarSensor)
+%DefSharedPtrDynamicCast(chrono::sensor, ChSensor, ChAccelerometerSensor)
+%DefSharedPtrDynamicCast(chrono::sensor, ChSensor, ChGPSSensor)
+%DefSharedPtrDynamicCast(chrono::sensor, ChSensor, ChGyroscopeSensor)
+%DefSharedPtrDynamicCast(chrono::sensor, ChSensor, ChRadarSensor)
+%DefSharedPtrDynamicCast(chrono::sensor, ChSensor, ChMagnetometerSensor)
 
 /// Filter acces templates instances
 // camera
@@ -372,6 +372,7 @@ using namespace chrono::sensor;
 
 //depth camera
 %template(ChFilterDepthAccess) chrono::sensor::ChFilterAccess<chrono::sensor::SensorBufferT<std::shared_ptr<chrono::sensor::PixelDepth[]>>, std::shared_ptr<chrono::sensor::SensorBufferT<std::shared_ptr<chrono::sensor::PixelDepth[]>>>>;
+%template(GetMostRecentDepthBuffer) chrono::sensor::ChSensor::GetMostRecentBuffer< std::shared_ptr < chrono::sensor::SensorBufferT<std::shared_ptr<chrono::sensor::PixelDepth[]>>> > ;
 
 //dynamic 
 %template(ChFilterAccelAccess) chrono::sensor::ChFilterAccess<chrono::sensor::SensorBufferT<std::shared_ptr<chrono::sensor::AccelData[]>>, std::shared_ptr<chrono::sensor::SensorBufferT<std::shared_ptr<chrono::sensor::AccelData[]>>>>;
