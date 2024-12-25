@@ -19,11 +19,13 @@
 #include <limits>
 
 #include "chrono/core/ChGlobal.h"
+
 #include "chrono/assets/ChVisualShapeTriangleMesh.h"
 #include "chrono/assets/ChVisualShapeModelFile.h"
 #include "chrono/assets/ChVisualShapeSphere.h"
 #include "chrono/assets/ChVisualShapeBox.h"
 #include "chrono/assets/ChVisualShapeCylinder.h"
+
 #include "chrono/utils/ChUtilsCreators.h"
 #include "chrono/utils/ChBodyGeometry.h"
 
@@ -40,8 +42,14 @@ ChBodyGeometry::ChBodyGeometry()
 ChBodyGeometry::BoxShape::BoxShape(const ChVector3d& pos, const ChQuaternion<>& rot, const ChVector3d& dims, int matID)
     : pos(pos), rot(rot), dims(dims), matID(matID) {}
 
+ChBodyGeometry::BoxShape::BoxShape(const ChVector3d& pos, const ChQuaternion<>& rot, const ChBox& box, int matID)
+    : pos(pos), rot(rot), dims(box.GetLengths()), matID(matID) {}
+
 ChBodyGeometry::SphereShape::SphereShape(const ChVector3d& pos, double radius, int matID)
     : pos(pos), radius(radius), matID(matID) {}
+
+ChBodyGeometry::SphereShape::SphereShape(const ChVector3d& pos, const ChSphere& sphere, int matID)
+    : pos(pos), radius(sphere.GetRadius()), matID(matID) {}
 
 ChBodyGeometry::CylinderShape::CylinderShape(const ChVector3d& pos,
                                              const ChQuaternion<>& rot,
@@ -56,36 +64,58 @@ ChBodyGeometry::CylinderShape::CylinderShape(const ChVector3d& pos,
                                              double length,
                                              int matID)
     : pos(pos), radius(radius), length(length), matID(matID) {
-    ChMatrix33<> rot;
-    rot.SetFromAxisX(axis);
-    rot = rot.GetQuaternion() * QuatFromAngleY(-CH_PI_2);
+    ChMatrix33<> rot_mat;
+    rot_mat.SetFromAxisX(axis);
+    rot = rot_mat.GetQuaternion() * QuatFromAngleY(-CH_PI_2);
 }
+
+ChBodyGeometry::CylinderShape::CylinderShape(const ChVector3d& pos,
+                                             const ChQuaternion<>& rot,
+                                             const ChCylinder& cylinder,
+                                             int matID)
+    : pos(pos), rot(rot), radius(cylinder.GetRadius()), length(cylinder.GetHeight()), matID(matID) {}
 
 ChBodyGeometry::LineShape::LineShape(const ChVector3d& pos, const ChQuaternion<>& rot, std::shared_ptr<ChLine> line)
     : pos(pos), rot(rot), line(line) {}
 
 ChBodyGeometry::ConvexHullsShape::ConvexHullsShape(const std::string& filename, int matID) : matID(matID) {
     ChTriangleMeshConnected mesh;
-    utils::LoadConvexHulls(GetChronoDataFile(filename), mesh, hulls);
+    utils::LoadConvexHulls(filename, mesh, hulls);
 }
 
 ChBodyGeometry::TrimeshShape::TrimeshShape(const ChVector3d& pos,
                                            const std::string& filename,
+                                           const ChVector3d& interior_point,
                                            double scale,
                                            double radius,
                                            int matID)
     : radius(radius), pos(pos), matID(matID) {
-    trimesh = ChTriangleMeshConnected::CreateFromWavefrontFile(GetChronoDataFile(filename), true, false);
+    trimesh = ChTriangleMeshConnected::CreateFromWavefrontFile(filename, true, false);
     for (auto& v : trimesh->GetCoordsVertices()) {
         v *= scale;
     }
+    int_point = pos + scale * interior_point;
+}
+
+ChBodyGeometry::TrimeshShape::TrimeshShape(const ChVector3d& pos,
+                                           std::shared_ptr<ChTriangleMeshConnected> trimesh,
+                                           const ChVector3d& interior_point,
+                                           double radius,
+                                           int matID)
+    : trimesh(trimesh), radius(radius), pos(pos), matID(matID) {
+    int_point = pos + interior_point;
+}
+
+ChBodyGeometry::TrimeshShape::TrimeshShape(const ChVector3d& pos, const std::string& filename, double radius, int matID)
+    : radius(radius), pos(pos), matID(matID), int_point(VNULL) {
+    trimesh = ChTriangleMeshConnected::CreateFromWavefrontFile(filename, true, false);
 }
 
 ChBodyGeometry::TrimeshShape::TrimeshShape(const ChVector3d& pos,
                                            std::shared_ptr<ChTriangleMeshConnected> trimesh,
                                            double radius,
                                            int matID)
-    : trimesh(trimesh), radius(radius), pos(pos), matID(matID) {}
+    : trimesh(trimesh), radius(radius), pos(pos), matID(matID), int_point(VNULL) {}
 
 std::shared_ptr<ChVisualShape> ChBodyGeometry::AddVisualizationCylinder(std::shared_ptr<ChBody> body,
                                                                         const ChVector3d& p1,
@@ -144,13 +174,13 @@ void ChBodyGeometry::CreateVisualizationAssets(std::shared_ptr<ChBody> body, Vis
 
     if (vis == VisualizationType::MODEL_FILE && !vis_mesh_file.empty()) {
         auto obj_shape = chrono_types::make_shared<ChVisualShapeModelFile>();
-        obj_shape->SetFilename(GetChronoDataFile(vis_mesh_file));
+        obj_shape->SetFilename(vis_mesh_file);
         body->AddVisualShape(obj_shape, ChFrame<>());
         return;
     }
 
     if (vis == VisualizationType::MESH && !vis_mesh_file.empty()) {
-        auto trimesh = ChTriangleMeshConnected::CreateFromWavefrontFile(GetChronoDataFile(vis_mesh_file), true, true);
+        auto trimesh = ChTriangleMeshConnected::CreateFromWavefrontFile(vis_mesh_file, true, true);
         auto trimesh_shape = chrono_types::make_shared<ChVisualShapeTriangleMesh>();
         trimesh_shape->SetMesh(trimesh);
         trimesh_shape->SetName(filesystem::path(vis_mesh_file).stem());
@@ -286,6 +316,21 @@ ChAABB ChBodyGeometry::CalculateAABB() {
     }
 
     return ChAABB(amin, amax);
+}
+
+bool ChBodyGeometry::HasCollision() const {
+    bool empty = coll_boxes.empty() && coll_spheres.empty() && coll_cylinders.empty() && coll_hulls.empty() &&
+                 coll_meshes.empty();
+    return !empty;
+}
+
+bool ChBodyGeometry::HasVisualizationPrimitives() const {
+    bool empty = vis_boxes.empty() && vis_spheres.empty() && vis_cylinders.empty() && vis_lines.empty();
+    return !empty;
+}
+
+bool ChBodyGeometry::HasVisualizationMesh() const {
+    return !vis_mesh_file.empty();
 }
 
 // -----------------------------------------------------------------------------

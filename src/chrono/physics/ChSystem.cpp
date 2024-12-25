@@ -58,6 +58,7 @@ ChSystem::ChSystem()
       stepcount(0),
       setupcount(0),
       solvecount(0),
+      output_dir("."),
       write_matrix(false),
       ncontacts(0),
       composition_strategy(new ChContactMaterialCompositionStrategy),
@@ -618,6 +619,9 @@ void ChSystem::DescriptorPrepareInject(ChSystemDescriptor& sys_descriptor) {
 // allocates or reallocate bookkeeping data/vectors, if any,
 
 void ChSystem::Setup() {
+    if (!is_initialized)
+        assembly.SetupInitial();
+
     CH_PROFILE("Setup");
 
     timer_setup.start();
@@ -1229,10 +1233,8 @@ unsigned int ChSystem::GetNumContacts() {
     return contact_container->GetNumContacts();
 }
 
-double ChSystem::ComputeCollisions() {
+unsigned int ChSystem::ComputeCollisions() {
     CH_PROFILE("ComputeCollisions");
-
-    double mretC = 0.0;
 
     timer_collision.start();
 
@@ -1274,7 +1276,7 @@ double ChSystem::ComputeCollisions() {
 
     timer_collision.stop();
 
-    return mretC;
+    return ncontacts;
 }
 
 // -----------------------------------------------------------------------------
