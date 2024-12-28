@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Aaron Young
+// Authors: Aaron Young, Json Zhou
 // =============================================================================
 //
 // Wraps data from a wheeled vehicle state message into a corresponding C++
@@ -102,6 +102,7 @@ void SynWheeledVehicleDescriptionMessage::ConvertFromFlatBuffers(const SynFlatBu
         SetVisualizationFiles(vehicle_description->chassis_vis_file()->str(),
                               vehicle_description->wheel_vis_file()->str(),
                               vehicle_description->tire_vis_file()->str());
+        SetCollisionFiles(vehicle_description->chassis_col_file()->str());
         SetNumWheels(vehicle_description->num_wheels());
     }
 }
@@ -118,6 +119,7 @@ FlatBufferMessage SynWheeledVehicleDescriptionMessage::ConvertToFlatBuffers(
                                                                       this->chassis_vis_file.c_str(),  //
                                                                       this->wheel_vis_file.c_str(),    //
                                                                       this->tire_vis_file.c_str(),     //
+                                                                      this->chassis_col_file.c_str(),  //
                                                                       this->num_wheels);               //
     }
 
@@ -170,12 +172,32 @@ void SynWheeledVehicleDescriptionMessage::SetZombieVisualizationFilesFromJSON(co
     this->num_wheels = d["Zombie"]["Number of Wheels"].GetInt();
 }
 
+void SynWheeledVehicleDescriptionMessage::SetCollisionFilesFromJSON(const std::string& filename) {
+    // Open and parse the input file
+    rapidjson::Document d;
+    vehicle::ReadFileJSON(filename, d);
+    if (d.IsNull())
+        throw std::runtime_error("Vehicle file not read properly in SetZombieVisualizationFilesFromJSON.");
+
+    // Set the zombie collision files
+    // If the chassis collision file is not specified, disable the collision for this agent
+    if (d["Zombie"].HasMember("Chassis Collision File")) {
+        this->chassis_col_file = d["Zombie"]["Chassis Collision File"].GetString();
+    } else {
+        this->chassis_col_file = "";
+    }
+}
+
 void SynWheeledVehicleDescriptionMessage::SetVisualizationFiles(const std::string& chassis_vis_file,
                                                                 const std::string& wheel_vis_file,
                                                                 const std::string& tire_vis_file) {
     this->chassis_vis_file = chassis_vis_file;
     this->wheel_vis_file = wheel_vis_file;
     this->tire_vis_file = tire_vis_file;
+}
+
+void SynWheeledVehicleDescriptionMessage::SetCollisionFiles(const std::string& chassis_col_file) {
+    this->chassis_col_file = chassis_col_file;
 }
 
 void SynWheeledVehicleDescriptionMessage::SetNumWheels(int num_wheels) {

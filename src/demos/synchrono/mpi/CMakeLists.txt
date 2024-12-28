@@ -10,6 +10,7 @@ set(DEMOS
 if(ENABLE_MODULE_IRRLICHT)
    set(DEMOS ${DEMOS}
        demo_SYN_wheeled
+       demo_SYN_wheeled_collision
        demo_SYN_tracked
        demo_SYN_copter
        demo_SYN_highway

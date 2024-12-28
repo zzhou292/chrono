@@ -40,6 +40,8 @@ table Description {
   wheel_vis_file:string;
   tire_vis_file:string;
 
+  chassis_col_file:string;
+
   num_wheels:int;
 }
 

@@ -22,6 +22,7 @@
 #define SYN_TRACKED_VEHICLE_MESSAGE_H
 
 #include "chrono_synchrono/flatbuffer/message/SynMessage.h"
+#include "chrono_synchrono/utils/SynLog.h"
 
 namespace chrono {
 namespace synchrono {

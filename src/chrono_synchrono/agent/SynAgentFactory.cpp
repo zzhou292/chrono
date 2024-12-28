@@ -64,6 +64,7 @@ std::shared_ptr<SynAgent> SynAgentFactory::CreateAgent(std::shared_ptr<SynMessag
         vehicle_agent->SetZombieVisualizationFiles(wv_description->chassis_vis_file,  //
                                                    wv_description->wheel_vis_file,    //
                                                    wv_description->tire_vis_file);    //
+        vehicle_agent->SetZombieCollisionFiles(wv_description->chassis_col_file);     //
         vehicle_agent->SetNumWheels(wv_description->num_wheels);
 
         agent = vehicle_agent;

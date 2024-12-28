@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Aaron Young
+// Authors: Aaron Young, Json Zhou
 // =============================================================================
 //
 // Class for an agent that wraps a Chrono::Vehicle wheeled vehicle. The
@@ -85,6 +85,11 @@ class SYN_API SynWheeledVehicleAgent : public SynAgent {
     ///@param filename the json specification file
     void SetZombieVisualizationFilesFromJSON(const std::string& filename);
 
+    ///@brief Set the zombie collision files from a JSON specification file
+    ///
+    ///@param filename the json specification file
+    void SetZombieCollisionFilesFromJSON(const std::string& filename);
+
     ///@brief Set the zombie visualization files
     ///
     ///@param chassis_vis_file the file used for chassis visualization
@@ -95,6 +100,11 @@ class SYN_API SynWheeledVehicleAgent : public SynAgent {
                                      std::string tire_vis_file) {
         m_description->SetVisualizationFiles(chassis_vis_file, wheel_vis_file, tire_vis_file);
     }
+
+    ///@brief Set the zombie collision files
+    ///
+    ///@param chassis_col_file the file used for chassis collision
+    void SetZombieCollisionFiles(std::string chassis_col_file) { m_description->SetCollisionFiles(chassis_col_file); }
 
     ///@brief Set the number of wheels of the underlying vehicle
     ///
