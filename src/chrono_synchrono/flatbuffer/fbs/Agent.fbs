@@ -72,6 +72,8 @@ table Description {
   left_road_wheel_vis_file:string;
   right_road_wheel_vis_file:string;
 
+  chassis_col_file:string; 
+
   num_track_shoes:int;
   num_sprockets:int;
   num_idlers:int;

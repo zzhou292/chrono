@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Aaron Young
+// Authors: Aaron Young, Json Zhou
 // =============================================================================
 //
 // Class for an agent that wraps a Chrono::Vehicle tracked vehicle. The
@@ -109,6 +109,13 @@ class SYN_API SynTrackedVehicleAgent : public SynAgent {
                                              left_road_wheel_vis_file, right_road_wheel_vis_file);
     }
 
+    ///@brief Set the zombie collision file
+    ///
+    ///@param chassis_col_file the file used for chassis collision
+    void SetZombieCollisionFiles(const std::string& chassis_col_file) {
+        m_description->SetCollisionFile(chassis_col_file);
+    }
+
     ///@brief Set the number of assembly components
     ///
     ///@param num_track_shoes number of track shoes
@@ -136,8 +143,9 @@ class SYN_API SynTrackedVehicleAgent : public SynAgent {
     ///
     ///@param filename the filename that describes the ChVisualShapeTriangleMesh that should represent the chassis
     ///@param system the system to add the body to
-    std::shared_ptr<ChBodyAuxRef> CreateChassisZombieBody(const std::string& filename, ChSystem* system);
-
+    std::shared_ptr<ChBodyAuxRef> CreateChassisZombieBody(const std::string& chassis_vis_file,
+                                                          const std::string& chassis_col_file,
+                                                          ChSystem* system);
     ///@brief Helper function for adding multiple trimeshes to a vector
     /// Will essentially instantiate a ChBodyAuxRef and set the trimesh as the asset for each
     ///

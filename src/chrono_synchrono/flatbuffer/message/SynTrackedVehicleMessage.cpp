@@ -149,6 +149,8 @@ void SynTrackedVehicleDescriptionMessage::ConvertFromFlatBuffers(const SynFlatBu
                               vehicle_description->left_road_wheel_vis_file()->str(),    //
                               vehicle_description->right_road_wheel_vis_file()->str());  //
 
+        SetCollisionFile(vehicle_description->chassis_col_file()->str());
+
         SetNumAssemblyComponents(vehicle_description->num_track_shoes(),   //
                                  vehicle_description->num_sprockets(),     //
                                  vehicle_description->num_idlers(),        //
@@ -173,6 +175,7 @@ FlatBufferMessage SynTrackedVehicleDescriptionMessage::ConvertToFlatBuffers(
                                                                       this->right_idler_vis_file.c_str(),       //
                                                                       this->left_road_wheel_vis_file.c_str(),   //
                                                                       this->right_road_wheel_vis_file.c_str(),  //
+                                                                      this->chassis_col_file.c_str(),           //
                                                                       this->num_track_shoes,                    //
                                                                       this->num_sprockets,                      //
                                                                       this->num_idlers,                         //
@@ -237,6 +240,12 @@ void SynTrackedVehicleDescriptionMessage::SetZombieVisualizationFilesFromJSON(co
     this->left_road_wheel_vis_file = d["Zombie"]["Left Road Wheel Visualization File"].GetString();
     this->right_road_wheel_vis_file = d["Zombie"]["Right Road Wheel Visualization File"].GetString();
 
+    if (d["Zombie"].HasMember("Chassis Collision File")) {
+        this->chassis_col_file = d["Zombie"]["Chassis Collision File"].GetString();
+    } else {
+        this->chassis_col_file = "";
+    }
+
     // Set number of assembly components
     this->num_track_shoes = d["Zombie"]["Number of Track Shoes"].GetInt();
     this->num_sprockets = d["Zombie"]["Number of Sprockets"].GetInt();
@@ -260,6 +269,10 @@ void SynTrackedVehicleDescriptionMessage::SetVisualizationFiles(const std::strin
     this->right_idler_vis_file = right_idler_vis_file;
     this->left_road_wheel_vis_file = left_road_wheel_vis_file;
     this->right_road_wheel_vis_file = right_road_wheel_vis_file;
+}
+
+void SynTrackedVehicleDescriptionMessage::SetCollisionFile(const std::string& chassis_col_file) {
+    this->chassis_col_file = chassis_col_file;
 }
 
 void SynTrackedVehicleDescriptionMessage::SetNumAssemblyComponents(int num_track_shoes,

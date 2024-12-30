@@ -125,6 +125,11 @@ class SynTrackedVehicleDescriptionMessage : public SynMessage {
                                const std::string& left_road_wheel_vis_file,
                                const std::string& right_road_wheel_vis_file);
 
+    ///@brief Set the collision file
+    ///
+    ///@param chassis_col_file file name for the chassis collision model
+    void SetCollisionFile(const std::string& chassis_col_file);
+
     ///@brief Set the number of each assembly component
     ///
     ///@param num_track_shoes number of track shoes the zombie vehicle has
@@ -148,6 +153,8 @@ class SynTrackedVehicleDescriptionMessage : public SynMessage {
     std::string right_idler_vis_file = "";       ///< file name for the right idler zombie visualization
     std::string left_road_wheel_vis_file = "";   ///< file name for the left road wheel zombie visualization
     std::string right_road_wheel_vis_file = "";  ///< file name for the right road wheel zombie visualization
+
+    std::string chassis_col_file = "";  ///< file name for the chassis collision model
 
     int num_track_shoes = 0;  ///< number of track shoes the zombie vehicle has
     int num_sprockets = 0;    ///< number of sprockets the zombie vehicle has

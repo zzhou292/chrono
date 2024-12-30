@@ -79,11 +79,11 @@ std::shared_ptr<SynAgent> SynAgentFactory::CreateAgent(std::shared_ptr<SynMessag
                                                    tv_description->right_idler_vis_file,        //
                                                    tv_description->left_road_wheel_vis_file,    //
                                                    tv_description->right_road_wheel_vis_file);  //
-
-        vehicle_agent->SetNumAssemblyComponents(tv_description->num_track_shoes,   //
-                                                tv_description->num_sprockets,     //
-                                                tv_description->num_idlers,        //
-                                                tv_description->num_road_wheels);  //
+        vehicle_agent->SetZombieCollisionFiles(tv_description->chassis_col_file);               //
+        vehicle_agent->SetNumAssemblyComponents(tv_description->num_track_shoes,                //
+                                                tv_description->num_sprockets,                  //
+                                                tv_description->num_idlers,                     //
+                                                tv_description->num_road_wheels);               //
 
         agent = vehicle_agent;
     } else if (auto copter_description = std::dynamic_pointer_cast<SynCopterDescriptionMessage>(description)) {

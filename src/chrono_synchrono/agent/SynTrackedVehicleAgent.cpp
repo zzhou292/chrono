@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Aaron Young
+// Authors: Aaron Young, Json Zhou
 // =============================================================================
 //
 // Class for an agent that wraps a Chrono::Vehicle tracked vehicle. The
@@ -43,7 +43,7 @@ SynTrackedVehicleAgent::SynTrackedVehicleAgent(ChTrackedVehicle* vehicle, const 
 SynTrackedVehicleAgent::~SynTrackedVehicleAgent() {}
 
 void SynTrackedVehicleAgent::InitializeZombie(ChSystem* system) {
-    m_zombie_body = CreateChassisZombieBody(m_description->chassis_vis_file, system);
+    m_zombie_body = CreateChassisZombieBody(m_description->chassis_vis_file, m_description->chassis_col_file, system);
 
     auto track_shoe_trimesh = CreateMeshZombieComponent(m_description->track_shoe_vis_file);
     auto left_sprocket_trimesh = CreateMeshZombieComponent(m_description->left_sprocket_vis_file);
@@ -142,13 +142,29 @@ std::shared_ptr<ChVisualShapeTriangleMesh> SynTrackedVehicleAgent::CreateMeshZom
     return trimesh;
 }
 
-std::shared_ptr<ChBodyAuxRef> SynTrackedVehicleAgent::CreateChassisZombieBody(const std::string& filename,
+std::shared_ptr<ChBodyAuxRef> SynTrackedVehicleAgent::CreateChassisZombieBody(const std::string& chassis_vis_file,
+                                                                              const std::string& chassis_col_file,
                                                                               ChSystem* system) {
-    auto trimesh = CreateMeshZombieComponent(filename);
+    auto trimesh = CreateMeshZombieComponent(chassis_vis_file);
 
     auto zombie_body = chrono_types::make_shared<ChBodyAuxRef>();
     zombie_body->AddVisualShape(trimesh);
-    zombie_body->EnableCollision(false);
+
+    // Create collision shape from mesh file if specified
+    if (!chassis_col_file.empty()) {
+        auto collision_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+        collision_mesh->LoadWavefrontMesh(vehicle::GetDataFile(chassis_col_file), true, true);
+        auto collision_mat = ChContactMaterial::DefaultMaterial(system->GetContactMethod());
+        auto collision_shape =
+            chrono_types::make_shared<ChCollisionShapeTriangleMesh>(collision_mat, collision_mesh, false, false, 0.001);
+        zombie_body->AddCollisionShape(collision_shape, ChFrame<>(ChVector3d(0, 0, 0), QUNIT));
+        zombie_body->GetCollisionModel()->SetFamily(WheeledCollisionFamily::CHASSIS);
+
+        zombie_body->EnableCollision(true);
+    } else {
+        zombie_body->EnableCollision(false);
+    }
+
     zombie_body->SetFixed(true);
     zombie_body->SetFrameCOMToRef(ChFrame<>({0, 0, -0.2}, {1, 0, 0, 0}));
     system->Add(zombie_body);

@@ -1384,10 +1384,11 @@ struct Description FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_RIGHT_IDLER_VIS_FILE = 14,
     VT_LEFT_ROAD_WHEEL_VIS_FILE = 16,
     VT_RIGHT_ROAD_WHEEL_VIS_FILE = 18,
-    VT_NUM_TRACK_SHOES = 20,
-    VT_NUM_SPROCKETS = 22,
-    VT_NUM_IDLERS = 24,
-    VT_NUM_ROAD_WHEELS = 26
+    VT_CHASSIS_COL_FILE = 20,
+    VT_NUM_TRACK_SHOES = 22,
+    VT_NUM_SPROCKETS = 24,
+    VT_NUM_IDLERS = 26,
+    VT_NUM_ROAD_WHEELS = 28
   };
   const flatbuffers::String *chassis_vis_file() const {
     return GetPointer<const flatbuffers::String *>(VT_CHASSIS_VIS_FILE);
@@ -1412,6 +1413,9 @@ struct Description FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   }
   const flatbuffers::String *right_road_wheel_vis_file() const {
     return GetPointer<const flatbuffers::String *>(VT_RIGHT_ROAD_WHEEL_VIS_FILE);
+  }
+  const flatbuffers::String *chassis_col_file() const {
+    return GetPointer<const flatbuffers::String *>(VT_CHASSIS_COL_FILE);
   }
   int32_t num_track_shoes() const {
     return GetField<int32_t>(VT_NUM_TRACK_SHOES, 0);
@@ -1443,6 +1447,8 @@ struct Description FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            verifier.VerifyString(left_road_wheel_vis_file()) &&
            VerifyOffset(verifier, VT_RIGHT_ROAD_WHEEL_VIS_FILE) &&
            verifier.VerifyString(right_road_wheel_vis_file()) &&
+           VerifyOffset(verifier, VT_CHASSIS_COL_FILE) &&
+           verifier.VerifyString(chassis_col_file()) &&
            VerifyField<int32_t>(verifier, VT_NUM_TRACK_SHOES) &&
            VerifyField<int32_t>(verifier, VT_NUM_SPROCKETS) &&
            VerifyField<int32_t>(verifier, VT_NUM_IDLERS) &&
@@ -1479,6 +1485,9 @@ struct DescriptionBuilder {
   void add_right_road_wheel_vis_file(flatbuffers::Offset<flatbuffers::String> right_road_wheel_vis_file) {
     fbb_.AddOffset(Description::VT_RIGHT_ROAD_WHEEL_VIS_FILE, right_road_wheel_vis_file);
   }
+  void add_chassis_col_file(flatbuffers::Offset<flatbuffers::String> chassis_col_file) {
+    fbb_.AddOffset(Description::VT_CHASSIS_COL_FILE, chassis_col_file);
+  }
   void add_num_track_shoes(int32_t num_track_shoes) {
     fbb_.AddElement<int32_t>(Description::VT_NUM_TRACK_SHOES, num_track_shoes, 0);
   }
@@ -1512,6 +1521,7 @@ inline flatbuffers::Offset<Description> CreateDescription(
     flatbuffers::Offset<flatbuffers::String> right_idler_vis_file = 0,
     flatbuffers::Offset<flatbuffers::String> left_road_wheel_vis_file = 0,
     flatbuffers::Offset<flatbuffers::String> right_road_wheel_vis_file = 0,
+    flatbuffers::Offset<flatbuffers::String> chassis_col_file = 0,
     int32_t num_track_shoes = 0,
     int32_t num_sprockets = 0,
     int32_t num_idlers = 0,
@@ -1521,6 +1531,7 @@ inline flatbuffers::Offset<Description> CreateDescription(
   builder_.add_num_idlers(num_idlers);
   builder_.add_num_sprockets(num_sprockets);
   builder_.add_num_track_shoes(num_track_shoes);
+  builder_.add_chassis_col_file(chassis_col_file);
   builder_.add_right_road_wheel_vis_file(right_road_wheel_vis_file);
   builder_.add_left_road_wheel_vis_file(left_road_wheel_vis_file);
   builder_.add_right_idler_vis_file(right_idler_vis_file);
@@ -1542,6 +1553,7 @@ inline flatbuffers::Offset<Description> CreateDescriptionDirect(
     const char *right_idler_vis_file = nullptr,
     const char *left_road_wheel_vis_file = nullptr,
     const char *right_road_wheel_vis_file = nullptr,
+    const char *chassis_col_file = nullptr,
     int32_t num_track_shoes = 0,
     int32_t num_sprockets = 0,
     int32_t num_idlers = 0,
@@ -1554,6 +1566,7 @@ inline flatbuffers::Offset<Description> CreateDescriptionDirect(
   auto right_idler_vis_file__ = right_idler_vis_file ? _fbb.CreateString(right_idler_vis_file) : 0;
   auto left_road_wheel_vis_file__ = left_road_wheel_vis_file ? _fbb.CreateString(left_road_wheel_vis_file) : 0;
   auto right_road_wheel_vis_file__ = right_road_wheel_vis_file ? _fbb.CreateString(right_road_wheel_vis_file) : 0;
+  auto chassis_col_file__ = chassis_col_file ? _fbb.CreateString(chassis_col_file) : 0;
   return SynFlatBuffers::Agent::TrackedVehicle::CreateDescription(
       _fbb,
       chassis_vis_file__,
@@ -1564,6 +1577,7 @@ inline flatbuffers::Offset<Description> CreateDescriptionDirect(
       right_idler_vis_file__,
       left_road_wheel_vis_file__,
       right_road_wheel_vis_file__,
+      chassis_col_file__,
       num_track_shoes,
       num_sprockets,
       num_idlers,
