@@ -12,6 +12,7 @@ if(ENABLE_MODULE_IRRLICHT)
        demo_SYN_DDS_wheeled_collision
        demo_SYN_DDS_tracked
        demo_SYN_DDS_tracked_collision
+       demo_SYN_DDS_scm
    )
 endif()
 

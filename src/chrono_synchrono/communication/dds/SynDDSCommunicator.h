@@ -56,17 +56,23 @@ class SynDDSParticipantListener;
 
 const std::string default_prefix = std::string("/syn/node/");
 
+enum class TransportType { UDP, SHARED_MEMORY };
+
 /// Derived communicator used to establish and facilitate communication between nodes.
 /// Uses the Data Distribution Service (DDS) standard
 class SYN_API SynDDSCommunicator : public SynCommunicator {
   public:
-    SynDDSCommunicator(int node_id, const std::string& prefix = default_prefix);
+    SynDDSCommunicator(int node_id,
+                       TransportType transport_type = TransportType::UDP,
+                       const std::string& prefix = default_prefix);
 
     ///@brief Default constructor
     ///
     ///@param name The name to set to the qos
     ///@param prefix prefix to use for the participant
-    SynDDSCommunicator(const std::string& name, const std::string& prefix = default_prefix);
+    SynDDSCommunicator(const std::string& name,
+                       TransportType transport_type = TransportType::UDP,
+                       const std::string& prefix = default_prefix);
 
     ///@brief Set the QoS directly from the constructor
     ///
@@ -129,8 +135,8 @@ class SYN_API SynDDSCommunicator : public SynCommunicator {
     std::shared_ptr<SynDDSTopic> CreateTopic(const std::string& topic_name,
                                              eprosima::fastdds::dds::TopicDataType* data_type,
                                              const std::string& topic_prefix);
-	
-	///@brief Create a topic using the communicator's prefix
+
+    ///@brief Create a topic using the communicator's prefix
     /// The topic will be registered with the participant, if desired
     ///
     ///@param topic_name The name associated with the topic
@@ -179,7 +185,7 @@ class SYN_API SynDDSCommunicator : public SynCommunicator {
     ///@param topic Topic object describing the DDS topic
     ///@param is_managed Whether the SynDDSCommunicator is responsible for using the sending/receiving function calls
     ///@param write_qos Data Writer Quality of Service. Falls back to default if nullptr
-    std::shared_ptr<SynDDSPublisher> CreatePublisher(std::shared_ptr<SynDDSTopic> topic, 
+    std::shared_ptr<SynDDSPublisher> CreatePublisher(std::shared_ptr<SynDDSTopic> topic,
                                                      bool is_managed = false,
                                                      eprosima::fastdds::dds::DataWriterQos* write_qos = nullptr);
 
@@ -199,7 +205,7 @@ class SYN_API SynDDSCommunicator : public SynCommunicator {
     std::string m_prefix;
 
   private:
-    void InitQoS(const std::string& name);
+    void InitQoS(const std::string& name, TransportType transport_type);
 
     ///@brief Creates the underyling participant
     ///

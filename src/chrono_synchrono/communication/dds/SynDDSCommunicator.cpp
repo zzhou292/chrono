@@ -44,6 +44,7 @@
 #include <fastdds/dds/subscriber/DataReader.hpp>
 #include <fastdds/dds/subscriber/qos/DataReaderQos.hpp>
 
+#include <fastdds/rtps/transport/shared_mem/SharedMemTransportDescriptor.h>
 #include <fastdds/rtps/transport/UDPv4TransportDescriptor.h>
 
 using namespace eprosima::fastdds::dds;
@@ -53,13 +54,15 @@ using namespace eprosima::fastrtps::rtps;
 namespace chrono {
 namespace synchrono {
 
-SynDDSCommunicator::SynDDSCommunicator(int node_id, const std::string& prefix) : m_prefix(prefix) {
+SynDDSCommunicator::SynDDSCommunicator(int node_id, TransportType transport_type, const std::string& prefix)
+    : m_prefix(prefix) {
     AgentKey agent_key = AgentKey(node_id, 0);
-    InitQoS(m_prefix + agent_key.GetKeyString());
+    InitQoS(m_prefix + agent_key.GetKeyString(), transport_type);
 }
 
-SynDDSCommunicator::SynDDSCommunicator(const std::string& name, const std::string& prefix) : m_prefix(prefix) {
-    InitQoS(name);
+SynDDSCommunicator::SynDDSCommunicator(const std::string& name, TransportType transport_type, const std::string& prefix)
+    : m_prefix(prefix) {
+    InitQoS(name, transport_type);
 }
 
 SynDDSCommunicator::SynDDSCommunicator(eprosima::fastdds::dds::DomainParticipantQos& qos, const std::string& prefix)
@@ -67,13 +70,20 @@ SynDDSCommunicator::SynDDSCommunicator(eprosima::fastdds::dds::DomainParticipant
     CreateParticipant(qos);
 }
 
-void SynDDSCommunicator::InitQoS(const std::string& name) {
+void SynDDSCommunicator::InitQoS(const std::string& name, TransportType transport_type) {
     // Create domain participant qos and set its name
     DomainParticipantQos qos;
     qos.name(name);
 
     // Use UDP by default
-    qos.transport().user_transports.push_back(chrono_types::make_shared<UDPv4TransportDescriptor>());
+    if (transport_type == TransportType::UDP) {
+        std::cout << "Using UDP transport" << std::endl;
+        qos.transport().user_transports.push_back(chrono_types::make_shared<UDPv4TransportDescriptor>());
+    } else if (transport_type == TransportType::SHARED_MEMORY) {
+        std::cout << "Using Shared Memory transport" << std::endl;
+        qos.transport().user_transports.push_back(chrono_types::make_shared<SharedMemTransportDescriptor>());
+    }
+
     qos.transport().use_builtin_transports = false;
 
     CreateParticipant(qos);
@@ -163,8 +173,7 @@ std::shared_ptr<SynDDSTopic> SynDDSCommunicator::CreateTopic(const std::string& 
     return topic;
 }
 
-std::shared_ptr<SynDDSTopic> SynDDSCommunicator::CreateTopic(const std::string& topic_name,
-                                                             TopicDataType* data_type) {
+std::shared_ptr<SynDDSTopic> SynDDSCommunicator::CreateTopic(const std::string& topic_name, TopicDataType* data_type) {
     auto topic = this->CreateTopic(topic_name, data_type, m_prefix);
     return topic;
 }
@@ -238,11 +247,11 @@ std::shared_ptr<SynDDSSubscriber> SynDDSCommunicator::CreateSubscriber(const std
         SynLog() << "CreateSubscriber: Topic (" << topic_name << ") instantiation FAILED\n";
         return nullptr;
     }
-	for(auto sub : m_subscribers) {
-		if (topic->GetTopicName().find(sub->m_topic->GetTopicName()) != std::string::npos) {
-			return nullptr;
-		}
-	}
+    for (auto sub : m_subscribers) {
+        if (topic->GetTopicName().find(sub->m_topic->GetTopicName()) != std::string::npos) {
+            return nullptr;
+        }
+    }
 
     return CreateSubscriber(topic, callback, message, is_synchronous, is_managed);
 }
