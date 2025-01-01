@@ -68,14 +68,10 @@ int main(int argc, char* argv[]) {
     // -----------------------------------------------------
     // CLI SETUP - Get most parameters from the command line
     // -----------------------------------------------------
-
-    std::cout << "tp0" << std::endl;
     ChCLI cli(argv[0]);
     AddCommandLineOptions(cli);
     if (!cli.Parse(argc, argv, false, false))
         return 0;
-
-    std::cout << "tp1" << std::endl;
 
     // -----------------------
     // Create SynChronoManager
@@ -84,15 +80,12 @@ int main(int argc, char* argv[]) {
     const int num_nodes = cli.GetAsType<int>("num_nodes");
     auto communicator = chrono_types::make_shared<SynDDSCommunicator>(node_id, TransportType::UDP);
     SynChronoManager syn_manager(node_id, num_nodes, communicator);
-    std::cout << "tp2" << std::endl;
 
     // Copyright
     if (node_id == 0) {
         SynLog() << "Copyright (c) 2020 projectchrono.org\n";
         SynLog() << "Chrono version: " << CHRONO_VERSION << "\n\n";
     }
-
-    std::cout << "tp3" << std::endl;
 
     auto step_size = cli.GetAsType<double>("step_size");
     auto end_time = cli.GetAsType<double>("end_time");

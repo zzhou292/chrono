@@ -46,3 +46,8 @@ table Pose {
   pos_dtdt:Vector;
   rot_dtdt:Quaternion;
 }
+
+table Transform {
+  pos:Vector;
+  rot:Quaternion;
+}

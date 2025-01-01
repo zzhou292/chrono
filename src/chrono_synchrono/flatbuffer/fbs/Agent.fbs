@@ -115,6 +115,30 @@ table Description {}
 
 root_type State;
 
+
+// Derived "class" of GenericRobot
+// Creates a GenericRobot agent message
+namespace SynFlatBuffers.Agent.Robot;
+
+table State {
+  time:double;
+
+  items:[Pose];
+}
+
+table Description {
+  num_collidable_items:int;
+  num_visual_items:int;
+
+  collidable_item_vis_file:[string];
+  visual_item_vis_file:[string];
+
+  mesh_item_transform:[Transform];
+
+}
+
+root_type State;
+
 // Base "class"
 // Creates an agent message
 namespace SynFlatBuffers.Agent;
@@ -127,7 +151,9 @@ union Type {
   Environment.State,
   Environment.Description,
   Copter.State,
-  Copter.Description
+  Copter.Description,
+  Robot.State,
+  Robot.Description
 }
 
 table State {
@@ -140,3 +166,6 @@ table Description {
 }
 
 root_type State;
+
+
+

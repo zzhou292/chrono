@@ -163,8 +163,13 @@ bool SynChronoManager::Initialize(ChSystem* system) {
     CreateAgentsFromDescriptions();
 
     // Initialize each zombie with the passed system
-    for (auto& zombie_pair : m_zombies)
-        zombie_pair.second->InitializeZombie(system);
+    for (auto& zombie_pair : m_zombies) {
+        if (zombie_pair.second) {
+            zombie_pair.second->InitializeZombie(system);
+        } else {
+            std::cout << "zombie_pair.second is nullptr" << std::endl;
+        }
+    }
 
     m_initialized = true;
 

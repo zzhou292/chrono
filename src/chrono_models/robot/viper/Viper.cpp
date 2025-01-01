@@ -676,6 +676,148 @@ void Viper::Update() {
     }
 }
 
+std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> Viper::GetCollidableBodiesWithPaths() const {
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> return_bodies_list;
+
+    // Chassis
+    if (m_chassis->GetCollision()) {
+        return_bodies_list.push_back(std::make_pair(
+            m_chassis->GetBody(), GetChronoDataFile("robot/viper/col/" + m_chassis->GetMeshName() + ".obj")));
+    } else {
+        return_bodies_list.push_back(std::make_pair(m_chassis->GetBody(), std::string("")));
+    }
+
+    // Wheels
+    for (const auto& wheel : m_wheels) {
+        if (wheel->GetCollision()) {
+            return_bodies_list.push_back(std::make_pair(
+                wheel->GetBody(), GetChronoDataFile("robot/viper/col/" + wheel->GetMeshName() + ".obj")));
+        } else {
+            return_bodies_list.push_back(std::make_pair(wheel->GetBody(), std::string("")));
+        }
+    }
+
+    // Lower arms
+    for (const auto& lower_arm : m_lower_arms) {
+        if (lower_arm->GetCollision()) {
+            return_bodies_list.push_back(std::make_pair(
+                lower_arm->GetBody(), GetChronoDataFile("robot/viper/col/" + lower_arm->GetMeshName() + ".obj")));
+        } else {
+            return_bodies_list.push_back(std::make_pair(lower_arm->GetBody(), std::string("")));
+        }
+    }
+
+    // Upper arms
+    for (const auto& upper_arm : m_upper_arms) {
+        if (upper_arm->GetCollision()) {
+            return_bodies_list.push_back(std::make_pair(
+                upper_arm->GetBody(), GetChronoDataFile("robot/viper/col/" + upper_arm->GetMeshName() + ".obj")));
+        } else {
+            return_bodies_list.push_back(std::make_pair(upper_arm->GetBody(), std::string("")));
+        }
+    }
+
+    // Uprights
+    for (const auto& upright : m_uprights) {
+        if (upright->GetCollision()) {
+            return_bodies_list.push_back(std::make_pair(
+                upright->GetBody(), GetChronoDataFile("robot/viper/col/" + upright->GetMeshName() + ".obj")));
+        } else {
+            return_bodies_list.push_back(std::make_pair(upright->GetBody(), std::string("")));
+        }
+    }
+
+    return return_bodies_list;
+}
+
+std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> Viper::GetVisualBodiesWithPaths() const {
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> bodies;
+
+    // Chassis
+    if (m_chassis->GetVisualize()) {
+        bodies.push_back(std::make_pair(m_chassis->GetBody(),
+                                        GetChronoDataFile("robot/viper/obj/" + m_chassis->GetMeshName() + ".obj")));
+    } else {
+        bodies.push_back(std::make_pair(m_chassis->GetBody(), std::string("")));
+    }
+
+    // Wheels
+    for (const auto& wheel : m_wheels) {
+        if (wheel->GetVisualize()) {
+            bodies.push_back(std::make_pair(wheel->GetBody(),
+                                            GetChronoDataFile("robot/viper/obj/" + wheel->GetMeshName() + ".obj")));
+        } else {
+            bodies.push_back(std::make_pair(wheel->GetBody(), std::string("")));
+        }
+    }
+
+    // Lower arms
+    for (const auto& lower_arm : m_lower_arms) {
+        if (lower_arm->GetVisualize()) {
+            bodies.push_back(std::make_pair(lower_arm->GetBody(),
+                                            GetChronoDataFile("robot/viper/obj/" + lower_arm->GetMeshName() + ".obj")));
+        } else {
+            bodies.push_back(std::make_pair(lower_arm->GetBody(), std::string("")));
+        }
+    }
+
+    // Upper arms
+    for (const auto& upper_arm : m_upper_arms) {
+        if (upper_arm->GetVisualize()) {
+            bodies.push_back(std::make_pair(upper_arm->GetBody(),
+                                            GetChronoDataFile("robot/viper/obj/" + upper_arm->GetMeshName() + ".obj")));
+        } else {
+            bodies.push_back(std::make_pair(upper_arm->GetBody(), std::string("")));
+        }
+    }
+
+    // Uprights
+    for (const auto& upright : m_uprights) {
+        if (upright->GetVisualize()) {
+            bodies.push_back(std::make_pair(upright->GetBody(),
+                                            GetChronoDataFile("robot/viper/obj/" + upright->GetMeshName() + ".obj")));
+        } else {
+            bodies.push_back(std::make_pair(upright->GetBody(), std::string("")));
+        }
+    }
+
+    return bodies;
+}
+
+std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> Viper::GetMeshTransforms() const {
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> transforms;
+
+    // chassis
+    transforms.push_back(std::make_pair(m_chassis->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+
+    // wheels
+    for (const auto& wheel : m_wheels) {
+        if (wheel->GetName() == "wheel_LF" || wheel->GetName() == "wheel_LB") {
+            transforms.push_back(
+                std::make_pair(wheel->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QuatFromAngleZ(CH_PI))));
+        } else {
+            transforms.push_back(std::make_pair(wheel->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+        }
+    }
+
+    // Lower arms
+    for (const auto& lower_arm : m_lower_arms) {
+        transforms.push_back(std::make_pair(lower_arm->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+    }
+
+    // Upper arms
+    for (const auto& upper_arm : m_upper_arms) {
+        transforms.push_back(std::make_pair(upper_arm->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+    }
+
+    // Uprights
+    for (const auto& upright : m_uprights) {
+        transforms.push_back(std::make_pair(upright->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+    }
+
+    return transforms;
+}
+
 // =============================================================================
 
 ViperDriver::ViperDriver()

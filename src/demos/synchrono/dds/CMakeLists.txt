@@ -6,13 +6,15 @@ set(DEMOS
     demo_SYN_DDS_distributed
 )
 
-if(ENABLE_MODULE_IRRLICHT)
+if(ENABLE_MODULE_IRRLICHT OR ENABLE_MODULE_VSG)
    set(DEMOS ${DEMOS}
        demo_SYN_DDS_wheeled 
        demo_SYN_DDS_wheeled_collision
        demo_SYN_DDS_tracked
        demo_SYN_DDS_tracked_collision
        demo_SYN_DDS_scm
+       demo_SYN_DDS_viper
+       demo_SYN_DDS_curiosity
    )
 endif()
 
@@ -34,6 +36,13 @@ if(ENABLE_MODULE_IRRLICHT)
   list(APPEND LIBS "ChronoEngine_irrlicht")
 endif()
 
+if(ENABLE_MODULE_VSG)
+    include_directories(${CH_VSG_INCLUDES})
+    list(APPEND LIBS "ChronoEngine_vsg")
+    if(ENABLE_MODULE_VEHICLE) 
+      list(APPEND LIBS "ChronoEngine_vehicle_vsg")
+    endif()
+endif()
 foreach(PROGRAM ${DEMOS})
   message(STATUS "...add ${PROGRAM}")
 

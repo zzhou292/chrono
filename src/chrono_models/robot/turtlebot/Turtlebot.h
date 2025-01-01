@@ -33,7 +33,7 @@
 #include "chrono/assets/ChColor.h"
 #include "chrono/physics/ChSystem.h"
 #include "chrono/physics/ChLinkMotorRotationSpeed.h"
-
+#include "chrono_models/robot/IRobotModel.h"
 #include "chrono_models/ChApiModels.h"
 
 namespace chrono {
@@ -344,6 +344,56 @@ class CH_MODELS_API TurtleBot {
 
     /// Get active driver wheel angular velocity
     ChVector3d GetActiveWheelAngVel(WheelID id);
+
+    // // Implementation of the interface method
+    // std::vector<std::shared_ptr<chrono::ChBody>> GetCollidableBodies() const override {
+    //     // Assuming m_bodylist contains all the bodies of the robot
+    //     std::vector<std::shared_ptr<chrono::ChBody>> bodies;
+
+    //     // Add chassis if collidable
+    //     if (m_chassis && m_chassis->m_collide)
+    //         bodies.push_back(m_chassis->GetBody());
+
+    //     // Add drive wheels if collidable
+    //     for (const auto& wheel : m_drive_wheels) {
+    //         if (wheel && wheel->m_collide)
+    //             bodies.push_back(wheel->GetBody());
+    //     }
+
+    //     // Add passive wheels if collidable
+    //     for (const auto& wheel : m_passive_wheels) {
+    //         if (wheel && wheel->m_collide)
+    //             bodies.push_back(wheel->GetBody());
+    //     }
+
+    //     // Add first level rods if collidable
+    //     for (const auto& rod : m_1st_level_rods) {
+    //         if (rod && rod->m_collide)
+    //             bodies.push_back(rod->GetBody());
+    //     }
+
+    //     // Add second level rods if collidable
+    //     for (const auto& rod : m_2nd_level_rods) {
+    //         if (rod && rod->m_collide)
+    //             bodies.push_back(rod->GetBody());
+    //     }
+
+    //     // Add third level rods if collidable
+    //     for (const auto& rod : m_3rd_level_rods) {
+    //         if (rod && rod->m_collide)
+    //             bodies.push_back(rod->GetBody());
+    //     }
+
+    //     // Add plates if collidable
+    //     if (m_bottom_plate && m_bottom_plate->m_collide)
+    //         bodies.push_back(m_bottom_plate->GetBody());
+    //     if (m_middle_plate && m_middle_plate->m_collide)
+    //         bodies.push_back(m_middle_plate->GetBody());
+    //     if (m_top_plate && m_top_plate->m_collide)
+    //         bodies.push_back(m_top_plate->GetBody());
+
+    //     return bodies;
+    // }
 
   private:
     /// This function initializes all parameters for the robot.

@@ -89,5 +89,29 @@ flatbuffers::Offset<SynFlatBuffers::Pose> SynPose::ToFlatBuffers(flatbuffers::Fl
     return fb_pose;
 }
 
+SynTransform::SynTransform(const ChFrame<>& frame) {
+    m_frame = frame;
+}
+
+SynTransform::SynTransform(const ChVector3d& mv, const ChQuaternion<>& mq) {
+    m_frame = ChFrame<>(mv, mq);
+}
+
+SynTransform::SynTransform(const SynFlatBuffers::Transform* transform) {
+    m_frame =
+        ChFrame<>({transform->pos()->x(), transform->pos()->y(), transform->pos()->z()},
+                  {transform->rot()->e0(), transform->rot()->e1(), transform->rot()->e2(), transform->rot()->e3()});
+}
+
+flatbuffers::Offset<SynFlatBuffers::Transform> SynTransform::ToFlatBuffers(
+    flatbuffers::FlatBufferBuilder& builder) const {
+    auto fb_pos =
+        SynFlatBuffers::CreateVector(builder, m_frame.GetPos().x(), m_frame.GetPos().y(), m_frame.GetPos().z());
+    auto fb_rot = SynFlatBuffers::CreateQuaternion(builder, m_frame.GetRot().e0(), m_frame.GetRot().e1(),
+                                                   m_frame.GetRot().e2(), m_frame.GetRot().e3());
+    auto fb_transform = SynFlatBuffers::CreateTransform(builder, fb_pos, fb_rot);
+    return fb_transform;
+}
+
 }  // namespace synchrono
 }  // namespace chrono

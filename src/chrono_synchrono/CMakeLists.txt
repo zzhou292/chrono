@@ -133,6 +133,9 @@ set(SYN_AGENT_FILES
 	agent/SynCopterAgent.h
 	agent/SynCopterAgent.cpp
 
+	agent/SynRobotAgent.h
+	agent/SynRobotAgent.cpp
+
 	agent/SynSCMTerrainAgent.h
 	agent/SynSCMTerrainAgent.cpp
     
@@ -199,6 +202,9 @@ set(SYN_FLATBUFFER_FILES
 	
 	flatbuffer/message/SynSCMMessage.h
 	flatbuffer/message/SynSCMMessage.cpp
+
+	flatbuffer/message/SynRobotMessage.h
+	flatbuffer/message/SynRobotMessage.cpp
     
     flatbuffer/message/SynApproachMessage.h
     flatbuffer/message/SynApproachMessage.cpp

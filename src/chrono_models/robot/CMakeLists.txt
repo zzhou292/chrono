@@ -10,6 +10,8 @@ MESSAGE(STATUS "Robot models...")
 
 set(CRM_COMMON_FILES
     ../ChApiModels.h
+    IRobotModel.h
+
 )
 source_group("" FILES ${CRM_COMMON_FILES})
 

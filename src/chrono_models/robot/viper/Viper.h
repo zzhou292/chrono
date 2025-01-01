@@ -30,6 +30,7 @@
 #include "chrono/physics/ChShaft.h"
 
 #include "chrono_models/ChApiModels.h"
+#include "chrono_models/robot/IRobotModel.h"
 
 namespace chrono {
 
@@ -73,11 +74,20 @@ class CH_MODELS_API ViperPart {
     /// Set the name of the part.
     void SetName(const std::string& name) { m_name = name; }
 
+    /// Get the mesh name.
+    const std::string& GetMeshName() const { return m_mesh_name; }
+
     /// Enable/disable visualization.
     void SetVisualize(bool state) { m_visualize = state; }
 
+    /// Get visualization flag.
+    bool GetVisualize() const { return m_visualize; }
+
     /// Enable/disable collision.
     void EnableCollision(bool state) { m_collide = state; }
+
+    /// Get collision flag.
+    bool GetCollision() const { return m_collide; }
 
     /// Initialize the rover part by attaching it to the specified chassis body.
     void Initialize(std::shared_ptr<ChBodyAuxRef> chassis);
@@ -143,6 +153,8 @@ class CH_MODELS_API ViperChassis : public ViperPart {
 
     /// Initialize the chassis at the specified (absolute) position.
     void Initialize(ChSystem* system, const ChFrame<>& pos);
+
+    friend class Viper;
 };
 
 /// Viper rover Wheel.
@@ -200,14 +212,14 @@ class ViperDriver;
 /// Viper rover class.
 /// This class encapsulates the location and rotation information of all Viper parts wrt the chassis.
 /// This class should be the entry point to create a complete rover.
-class CH_MODELS_API Viper {
+class CH_MODELS_API Viper : public chrono::models::IRobotModel {
   public:
     Viper(ChSystem* system, ViperWheelType wheel_type = ViperWheelType::RealWheel);
 
     ~Viper() {}
 
     /// Get the containing system.
-    ChSystem* GetSystem() const { return m_system; }
+    ChSystem* GetSystem() const override { return m_system; }
 
     /// Attach a driver system.
     void SetDriver(std::shared_ptr<ViperDriver> driver);
@@ -307,6 +319,13 @@ class CH_MODELS_API Viper {
     /// Viper update function.
     /// This function must be called before each integration step.
     void Update();
+
+    // Implementation of the interface method
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> GetCollidableBodiesWithPaths() const override;
+
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> GetVisualBodiesWithPaths() const override;
+
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> GetMeshTransforms() const override;
 
   private:
     /// Create the rover parts.

@@ -82,6 +82,35 @@ class SYN_API SynPose {
     ChFrameMoving<> m_frame;
 };
 
+/// @addtogroup synchrono_flatbuffer
+/// @{
+
+/// Wrapper for several constructs that are common to many flatbuffer messages (Vectors, Quaternions, frames)
+class SYN_API SynTransform {
+  public:
+    ///@brief Construct a new Transform object
+    SynTransform(const ChVector3d& mv = ChVector3d(0, 0, 0), const ChQuaternion<>& mq = ChQuaternion<>(1, 0, 0, 0));
+
+    ///@brief Construct a new Transform object
+    SynTransform(const ChFrame<>& frame);
+
+    ///@brief Construct a new Pose object from a FlatBuffers pose object
+    ///
+    ///@param pose the FlatBuffers pose object
+    SynTransform(const SynFlatBuffers::Transform* pose);
+
+    ///@brief Convert this pose object to a flatbuffers pose type
+    ///
+    ///@param builder the FlatBuffer builder used to construct messages
+    ///@return flatbuffers::Offset<SynFlatBuffers::Transform> the flatbuffer transform
+    flatbuffers::Offset<SynFlatBuffers::Transform> ToFlatBuffers(flatbuffers::FlatBufferBuilder& builder) const;
+
+    ChFrame<>& GetFrame() { return m_frame; }
+
+  private:
+    ChFrame<> m_frame;
+};
+
 /// @} synchrono_flatbuffer
 
 }  // namespace synchrono

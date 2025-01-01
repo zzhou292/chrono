@@ -31,6 +31,7 @@
 #include "chrono/physics/ChLinkMotorRotation.h"
 
 #include "chrono_models/ChApiModels.h"
+#include "chrono_models/robot/IRobotModel.h"
 
 namespace chrono {
 
@@ -76,11 +77,21 @@ class CH_MODELS_API CuriosityPart {
     /// Set the name of the part.
     void SetName(const std::string& name) { m_name = name; }
 
+    /// Get the mesh name of the part.
+    const std::string& GetMeshName() const { return m_mesh_name; }
+    void SetMeshName(const std::string& mesh_name) { m_mesh_name = mesh_name; }
+
     /// Enable/disable visualization.
     void SetVisualize(bool state) { m_visualize = state; }
 
+    /// Return the visualization state.
+    bool GetVisualize() const { return m_visualize; }
+
     /// Enable/disable collision.
     void EnableCollision(bool state) { m_collide = state; }
+
+    /// Return the collision state.
+    bool GetCollision() const { return m_collide; }
 
     /// Return the ChBody of the corresponding Curiosity part.
     std::shared_ptr<ChBodyAuxRef> GetBody() const { return m_body; }
@@ -152,6 +163,8 @@ class CH_MODELS_API CuriosityChassis : public CuriosityPart {
 
   private:
     CuriosityChassisType m_chassis_type;
+
+    friend class Curiosity;
 };
 
 /// Curiosity rover Wheel.
@@ -227,7 +240,7 @@ class CuriosityDriver;
 /// Curiosity rover class.
 /// This class encapsulates the location and rotation information of all Curiosity parts wrt the chassis.
 /// This class should be the entry point to create a complete rover.
-class CH_MODELS_API Curiosity {
+class CH_MODELS_API Curiosity : public chrono::models::IRobotModel {
   public:
     Curiosity(ChSystem* system,
               CuriosityChassisType chassis_type = CuriosityChassisType::FullRover,
@@ -318,6 +331,9 @@ class CH_MODELS_API Curiosity {
     /// Get total wheel mass.
     double GetWheelMass() const;
 
+    /// Get the underlying ChSystem.
+    ChSystem* GetSystem() const { return m_system; }
+
     /// Get drive motor function.
     std::shared_ptr<ChFunctionSetpoint> GetDriveMotorFunc(CuriosityWheelID id) const { return m_drive_motor_funcs[id]; }
     /// Get rocker steer motor function (side: 0 for left and 1 for right).
@@ -331,6 +347,13 @@ class CH_MODELS_API Curiosity {
     std::shared_ptr<ChLinkMotorRotation> GetRockerSteerMotor(int side) const { return m_rocker_motors[side]; }
     /// Get bogie steer motor (side: 0 for left and 1 for right).
     std::shared_ptr<ChLinkMotorRotation> GetBogieSteerMotor(int side) const { return m_bogie_motors[side]; }
+
+    // Implementation of the interface method
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> GetCollidableBodiesWithPaths() const override;
+
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> GetVisualBodiesWithPaths() const override;
+
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> GetMeshTransforms() const override;
 
   private:
     /// Create the rover parts.

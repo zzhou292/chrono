@@ -689,6 +689,179 @@ void Curiosity::Update() {
     }
 }
 
+std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> Curiosity::GetCollidableBodiesWithPaths() const {
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> return_bodies_list;
+
+    // Chassis
+    if (m_chassis->GetCollision()) {
+        return_bodies_list.push_back(std::make_pair(
+            m_chassis->GetBody(), GetChronoDataFile("robot/curiosity/col/" + m_chassis->GetMeshName() + ".obj")));
+    } else {
+        return_bodies_list.push_back(std::make_pair(m_chassis->GetBody(), std::string("")));
+    }
+
+    // Wheels
+    for (auto& wheel : m_wheels) {
+        if (wheel->GetCollision()) {
+            return_bodies_list.push_back(std::make_pair(
+                wheel->GetBody(), GetChronoDataFile("robot/curiosity/col/" + wheel->GetMeshName() + ".obj")));
+        } else {
+            return_bodies_list.push_back(std::make_pair(wheel->GetBody(), std::string("")));
+        }
+    }
+
+    // Rocker
+    for (auto& rocker : m_rockers) {
+        if (rocker->GetCollision()) {
+            return_bodies_list.push_back(std::make_pair(
+                rocker->GetBody(), GetChronoDataFile("robot/curiosity/col/" + rocker->GetMeshName() + ".obj")));
+        } else {
+            return_bodies_list.push_back(std::make_pair(rocker->GetBody(), std::string("")));
+        }
+    }
+
+    // Bogie
+    for (auto& bogie : m_bogies) {
+        if (bogie->GetCollision()) {
+            return_bodies_list.push_back(std::make_pair(
+                bogie->GetBody(), GetChronoDataFile("robot/curiosity/col/" + bogie->GetMeshName() + ".obj")));
+        } else {
+            return_bodies_list.push_back(std::make_pair(bogie->GetBody(), std::string("")));
+        }
+    }
+
+    // rocker_uprights
+    for (auto& rocker_upright : m_rocker_uprights) {
+        if (rocker_upright->GetCollision()) {
+            return_bodies_list.push_back(
+                std::make_pair(rocker_upright->GetBody(),
+                               GetChronoDataFile("robot/curiosity/col/" + rocker_upright->GetMeshName() + ".obj")));
+        } else {
+            return_bodies_list.push_back(std::make_pair(rocker_upright->GetBody(), std::string("")));
+        }
+    }
+
+    // bogie_uprights
+    for (auto& bogie_upright : m_bogie_uprights) {
+        if (bogie_upright->GetCollision()) {
+            return_bodies_list.push_back(
+                std::make_pair(bogie_upright->GetBody(),
+                               GetChronoDataFile("robot/curiosity/col/" + bogie_upright->GetMeshName() + ".obj")));
+        } else {
+            return_bodies_list.push_back(std::make_pair(bogie_upright->GetBody(), std::string("")));
+        }
+    }
+
+    return return_bodies_list;
+}
+
+std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> Curiosity::GetVisualBodiesWithPaths() const {
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, std::string>> bodies;
+
+    // Chassis
+    if (m_chassis->GetVisualize()) {
+        bodies.push_back(std::make_pair(m_chassis->GetBody(),
+                                        GetChronoDataFile("robot/curiosity/obj/" + m_chassis->GetMeshName() + ".obj")));
+    } else {
+        bodies.push_back(std::make_pair(m_chassis->GetBody(), std::string("")));
+    }
+
+    // Wheels
+    for (auto& wheel : m_wheels) {
+        if (wheel->GetVisualize()) {
+            bodies.push_back(std::make_pair(wheel->GetBody(),
+                                            GetChronoDataFile("robot/curiosity/obj/" + wheel->GetMeshName() + ".obj")));
+        } else {
+            bodies.push_back(std::make_pair(wheel->GetBody(), std::string("")));
+        }
+    }
+
+    // Rocker
+    for (auto& rocker : m_rockers) {
+        if (rocker->GetVisualize()) {
+            bodies.push_back(std::make_pair(
+                rocker->GetBody(), GetChronoDataFile("robot/curiosity/obj/" + rocker->GetMeshName() + ".obj")));
+        } else {
+            bodies.push_back(std::make_pair(rocker->GetBody(), std::string("")));
+        }
+    }
+
+    // Bogie
+    for (auto& bogie : m_bogies) {
+        if (bogie->GetVisualize()) {
+            bodies.push_back(std::make_pair(bogie->GetBody(),
+                                            GetChronoDataFile("robot/curiosity/obj/" + bogie->GetMeshName() + ".obj")));
+        } else {
+            bodies.push_back(std::make_pair(bogie->GetBody(), std::string("")));
+        }
+    }
+
+    // rocker_uprights
+    for (auto& rocker_upright : m_rocker_uprights) {
+        if (rocker_upright->GetVisualize()) {
+            bodies.push_back(
+                std::make_pair(rocker_upright->GetBody(),
+                               GetChronoDataFile("robot/curiosity/obj/" + rocker_upright->GetMeshName() + ".obj")));
+        } else {
+            bodies.push_back(std::make_pair(rocker_upright->GetBody(), std::string("")));
+        }
+    }
+
+    // bogie_uprights
+    for (auto& bogie_upright : m_bogie_uprights) {
+        if (bogie_upright->GetVisualize()) {
+            bodies.push_back(
+                std::make_pair(bogie_upright->GetBody(),
+                               GetChronoDataFile("robot/curiosity/obj/" + bogie_upright->GetMeshName() + ".obj")));
+        } else {
+            bodies.push_back(std::make_pair(bogie_upright->GetBody(), std::string("")));
+        }
+    }
+
+    return bodies;
+}
+
+std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> Curiosity::GetMeshTransforms() const {
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> transforms;
+
+    // chassis
+    transforms.push_back(std::make_pair(m_chassis->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+
+    // wheels
+    for (int i = 0; i < 6; i++) {
+        if (i == C_RF || i == C_RM || i == C_RB)
+            transforms.push_back(
+                std::make_pair(m_wheels[i]->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QuatFromAngleZ(CH_PI))));
+        else
+            transforms.push_back(std::make_pair(m_wheels[i]->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+    }
+    for (auto& wheel : m_wheels) {
+        transforms.push_back(std::make_pair(wheel->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+    }
+
+    // Rocker
+    for (auto& rocker : m_rockers) {
+        transforms.push_back(std::make_pair(rocker->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+    }
+
+    // Bogie
+    for (auto& bogie : m_bogies) {
+        transforms.push_back(std::make_pair(bogie->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+    }
+
+    // rocker_uprights
+    for (auto& rocker_upright : m_rocker_uprights) {
+        transforms.push_back(std::make_pair(rocker_upright->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+    }
+
+    // bogie_uprights
+    for (auto& bogie_upright : m_bogie_uprights) {
+        transforms.push_back(std::make_pair(bogie_upright->GetBody(), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)));
+    }
+
+    return transforms;
+}
+
 // =============================================================================
 
 CuriosityDriver::CuriosityDriver() : drive_speeds({0, 0, 0, 0, 0, 0}), steer_angles({0, 0, 0, 0}), curiosity(nullptr) {}
