@@ -1,10 +1,9 @@
-#ifndef SYN_ROBOT_AGENT_H
-#define SYN_ROBOT_AGENT_H
+#ifndef SYN_ROBOENVIRONMENT_AGENT_H
+#define SYN_ROBOENVIRONMENT_AGENT_H
 
 #include "chrono_synchrono/SynApi.h"
 #include "chrono_synchrono/agent/SynAgent.h"
-#include "chrono_synchrono/flatbuffer/message/SynRobotMessage.h"
-#include "chrono_models/robot/IRobotModel.h"
+#include "chrono_synchrono/flatbuffer/message/SynRoboEnvironmentMessage.h"
 
 #include "chrono/physics/ChBodyAuxRef.h"
 
@@ -16,15 +15,17 @@ namespace synchrono {
 
 /// Agent wrapper of a robot, in particular holds a pointer to an IRobotModel and sends out
 /// SynRobotMessage-s to synchronize its state
-class SYN_API SynRobotAgent : public SynAgent {
+class SYN_API SynRoboEnvironmentAgent : public SynAgent {
   public:
     ///@brief Construct a robot agent with optionally a robot model
     ///
-    ///@param robot the robot model this agent is responsible for (will be null if agent's a zombie)
-    SynRobotAgent(chrono::models::IRobotModel* robot = nullptr);
+    ///@param bodies_files the files of the bodies to be added to the environment
+    SynRoboEnvironmentAgent(
+        std::vector<std::pair<std::shared_ptr<ChBody>, std::pair<std::string, SynTransform>>> added_body_list = {},
+        ChSystem* system = nullptr);
 
     ///@brief Destructor.
-    virtual ~SynRobotAgent();
+    virtual ~SynRoboEnvironmentAgent();
 
     ///@brief Initialize this agent's zombie representation
     /// Bodies are added and represented in the lead agent's world.
@@ -71,13 +72,15 @@ class SYN_API SynRobotAgent : public SynAgent {
     virtual void SetKey(AgentKey agent_key) override;
 
   protected:
-    chrono::models::IRobotModel* m_robot;  ///< Pointer to the robot model this class wraps
-
     std::vector<SynPose> items;
+    std::vector<std::shared_ptr<ChBody>> m_master_bodies_list;
     std::vector<std::shared_ptr<ChBodyAuxRef>> m_zombie_bodies_list;
 
-    std::shared_ptr<SynRobotStateMessage> m_state;              ///< State of the robot
-    std::shared_ptr<SynRobotDescriptionMessage> m_description;  ///< Description for zombie creation on discovery
+    std::shared_ptr<SynRoboEnvironmentStateMessage> m_state;  ///< State of the robot
+    std::shared_ptr<SynRoboEnvironmentDescriptionMessage>
+        m_description;  ///< Description for zombie creation on discovery
+
+    ChSystem* m_system;
 };
 
 /// @} synchrono_agent

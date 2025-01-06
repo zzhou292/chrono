@@ -28,6 +28,7 @@
 #include "chrono_synchrono/flatbuffer/message/SynEnvironmentMessage.h"
 #include "chrono_synchrono/flatbuffer/message/SynSimulationMessage.h"
 #include "chrono_synchrono/flatbuffer/message/SynRobotMessage.h"
+#include "chrono_synchrono/flatbuffer/message/SynRoboEnvironmentMessage.h"
 namespace chrono {
 namespace synchrono {
 
@@ -62,6 +63,8 @@ std::shared_ptr<SynMessage> SynMessageFactory::GenerateMessage(const SynFlatBuff
             message = chrono_types::make_shared<SynCopterStateMessage>(source_key, destination_key);
         } else if (agent_state->message_type() == SynFlatBuffers::Agent::Type_Robot_State) {
             message = chrono_types::make_shared<SynRobotStateMessage>(source_key, destination_key);
+        } else if (agent_state->message_type() == SynFlatBuffers::Agent::Type_RoboEnvironment_State) {
+            message = chrono_types::make_shared<SynRoboEnvironmentStateMessage>(source_key, destination_key);
         } else {
             throw std::invalid_argument("SynMessageFactory::GenerateMessage: Unknown AGENT STATE type.");
         }
@@ -78,6 +81,8 @@ std::shared_ptr<SynMessage> SynMessageFactory::GenerateMessage(const SynFlatBuff
             message = chrono_types::make_shared<SynCopterDescriptionMessage>(source_key, destination_key);
         } else if (agent_description->description_type() == SynFlatBuffers::Agent::Type_Robot_Description) {
             message = chrono_types::make_shared<SynRobotDescriptionMessage>(source_key, destination_key);
+        } else if (agent_description->description_type() == SynFlatBuffers::Agent::Type_RoboEnvironment_Description) {
+            message = chrono_types::make_shared<SynRoboEnvironmentDescriptionMessage>(source_key, destination_key);
         } else {
             throw std::invalid_argument("SynMessageFactory::GenerateMessage: Unknown AGENT DESCRIPTION type.");
         }

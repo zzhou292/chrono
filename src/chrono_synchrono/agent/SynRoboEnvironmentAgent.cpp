@@ -1,27 +1,28 @@
-#include "chrono_synchrono/agent/SynRobotAgent.h"
+#include "chrono_synchrono/agent/SynRoboEnvironmentAgent.h"
 
 #include "chrono_synchrono/utils/SynLog.h"
 
 namespace chrono {
 namespace synchrono {
 
-SynRobotAgent::SynRobotAgent(chrono::models::IRobotModel* robot) : SynAgent(), m_robot(robot) {
-    m_state = chrono_types::make_shared<SynRobotStateMessage>();
-    m_description = chrono_types::make_shared<SynRobotDescriptionMessage>();
+SynRoboEnvironmentAgent::SynRoboEnvironmentAgent(
+    std::vector<std::pair<std::shared_ptr<ChBody>, std::pair<std::string, SynTransform>>> added_body_list,
+    ChSystem* system)
+    : SynAgent() {
+    m_state = chrono_types::make_shared<SynRoboEnvironmentStateMessage>();
+    m_description = chrono_types::make_shared<SynRoboEnvironmentDescriptionMessage>();
 
-    if (robot) {
+    m_system = system;
+
+    if (added_body_list.size() > 0) {
         std::vector<std::string> visual_files;
         std::vector<std::string> collision_files;
         std::vector<SynTransform> mesh_transforms;
-        for (auto& body : robot->GetCollidableBodiesWithPaths()) {
-            collision_files.push_back(body.second);
-        }
-        for (auto& body : robot->GetVisualBodiesWithPaths()) {
-            visual_files.push_back(body.second);
-        }
-
-        for (auto& transform : robot->GetMeshTransforms()) {
-            mesh_transforms.push_back(transform.second);
+        for (auto& body : added_body_list) {
+            m_master_bodies_list.push_back(body.first);
+            collision_files.push_back(body.second.first);
+            visual_files.push_back(body.second.first);
+            mesh_transforms.push_back(body.second.second);
         }
 
         SetZombieVisualizationFiles(visual_files);
@@ -30,15 +31,15 @@ SynRobotAgent::SynRobotAgent(chrono::models::IRobotModel* robot) : SynAgent(), m
     }
 }
 
-SynRobotAgent::~SynRobotAgent() {}
+SynRoboEnvironmentAgent::~SynRoboEnvironmentAgent() {}
 
-void SynRobotAgent::SetKey(AgentKey agent_key) {
+void SynRoboEnvironmentAgent::SetKey(AgentKey agent_key) {
     m_description->SetSourceKey(agent_key);
     m_state->SetSourceKey(agent_key);
     m_agent_key = agent_key;
 }
 
-void SynRobotAgent::InitializeZombie(ChSystem* system) {
+void SynRoboEnvironmentAgent::InitializeZombie(ChSystem* system) {
     std::vector<std::string> visual_files = m_description->visual_files;
     std::vector<std::string> collision_files = m_description->collision_files;
     std::vector<SynTransform> mesh_transforms = m_description->mesh_transforms;
@@ -79,22 +80,22 @@ void SynRobotAgent::InitializeZombie(ChSystem* system) {
     }
 }
 
-void SynRobotAgent::SynchronizeZombie(std::shared_ptr<SynMessage> message) {
-    if (auto state = std::dynamic_pointer_cast<SynRobotStateMessage>(message)) {
+void SynRoboEnvironmentAgent::SynchronizeZombie(std::shared_ptr<SynMessage> message) {
+    if (auto state = std::dynamic_pointer_cast<SynRoboEnvironmentStateMessage>(message)) {
         for (size_t i = 0; i < m_zombie_bodies_list.size(); i++) {
             m_zombie_bodies_list[i]->SetFrameRefToAbs(state->GetItems()[i].GetFrame());
         }
     }
 }
 
-void SynRobotAgent::Update() {
-    if (!this->m_robot)
+void SynRoboEnvironmentAgent::Update() {
+    if (!m_system)
         return;
 
-    items.resize(this->m_robot->GetCollidableBodiesWithPaths().size());
+    items.resize(m_master_bodies_list.size());
 
-    for (size_t i = 0; i < this->m_robot->GetCollidableBodiesWithPaths().size(); i++) {
-        auto item_abs = this->m_robot->GetCollidableBodiesWithPaths()[i].first->GetFrameRefToAbs();
+    for (size_t i = 0; i < m_master_bodies_list.size(); i++) {
+        auto item_abs = m_master_bodies_list[i]->GetFrameRefToAbs();
 
         SynPose item_pose(item_abs.GetPos(), item_abs.GetRot());
         item_pose.GetFrame().SetPosDt(item_abs.GetPosDt());
@@ -105,8 +106,8 @@ void SynRobotAgent::Update() {
         items[i] = item_pose;
     }
 
-    auto time = this->m_robot->GetSystem()->GetChTime();
-    this->m_state->SetState(time, items);
+    auto time = m_system->GetChTime();
+    m_state->SetState(time, items);
 }
 
 }  // namespace synchrono

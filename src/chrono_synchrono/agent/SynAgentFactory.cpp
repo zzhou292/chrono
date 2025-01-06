@@ -28,7 +28,7 @@
 #include "chrono_synchrono/agent/SynSCMTerrainAgent.h"
 #include "chrono_synchrono/agent/SynEnvironmentAgent.h"
 #include "chrono_synchrono/agent/SynRobotAgent.h"
-
+#include "chrono_synchrono/agent/SynRoboEnvironmentAgent.h"
 using namespace rapidjson;
 
 namespace chrono {
@@ -102,6 +102,14 @@ std::shared_ptr<SynAgent> SynAgentFactory::CreateAgent(std::shared_ptr<SynMessag
         robot_agent->SetZombieCollisionFiles(robot_description->collision_files);
         robot_agent->SetZombieMeshTransforms(robot_description->mesh_transforms);
         agent = robot_agent;
+    } else if (auto roboenv_description =
+                   std::dynamic_pointer_cast<SynRoboEnvironmentDescriptionMessage>(description)) {
+        auto roboenv_agent = chrono_types::make_shared<SynRoboEnvironmentAgent>();
+        roboenv_agent->SetKey(source_key);
+        roboenv_agent->SetZombieVisualizationFiles(roboenv_description->visual_files);
+        roboenv_agent->SetZombieCollisionFiles(roboenv_description->collision_files);
+        roboenv_agent->SetZombieMeshTransforms(roboenv_description->mesh_transforms);
+        agent = roboenv_agent;
     } else if (auto terrain_message = std::dynamic_pointer_cast<SynSCMMessage>(description)) {
         auto terrain_agent = chrono_types::make_shared<SynSCMTerrainAgent>();
         agent = terrain_agent;

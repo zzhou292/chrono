@@ -13,8 +13,10 @@ if(ENABLE_MODULE_IRRLICHT OR ENABLE_MODULE_VSG)
        demo_SYN_DDS_tracked
        demo_SYN_DDS_tracked_collision
        demo_SYN_DDS_scm
-       demo_SYN_DDS_viper
-       demo_SYN_DDS_curiosity
+       jz_SYN_DDS_viper
+       jz_SYN_DDS_viper_smc
+       jz_SYN_DDS_curiosity
+       jz_SYN_DDS_roboenv
    )
 endif()
 

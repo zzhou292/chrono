@@ -12,15 +12,15 @@
 // Authors: Jason Zhou
 // =============================================================================
 //
-// Demo to show Curiosity Rover operated on Rigid Terrain
-// This Demo includes operation to spawn a Curiosity rover, control wheel speed, and
+// Demo to show Viper Rover operated on Rigid Terrain
+// This Demo includes operation to spawn a Viper rover, control wheel speed, and
 // control rover steering
 //
 // =============================================================================
 
-#include "chrono_models/robot/curiosity/Curiosity.h"
+#include "chrono_models/robot/viper/Viper.h"
 
-#include "chrono/physics/ChSystemNSC.h"
+#include "chrono/physics/ChSystemSMC.h"
 #include "chrono/physics/ChBodyEasy.h"
 
 #include "chrono_synchrono/SynConfig.h"
@@ -29,6 +29,8 @@
 #include "chrono_synchrono/communication/dds/SynDDSCommunicator.h"
 #include "chrono_synchrono/utils/SynLog.h"
 #include "chrono_synchrono/utils/SynDataLoader.h"
+
+#include "demos/SetChronoSolver.h"
 
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 
@@ -47,31 +49,26 @@ using namespace chrono::vsg3d;
 #endif
 
 using namespace chrono;
-using namespace chrono::curiosity;
+using namespace chrono::viper;
 using namespace chrono::synchrono;
 
 // -----------------------------------------------------------------------------
-ChVisualSystem::Type vis_type = ChVisualSystem::Type::IRRLICHT;
+ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
 
-// Define Curiosity rover chassis type
-CuriosityChassisType chassis_type = CuriosityChassisType::FullRover;
-
-// Define Curiosity rover wheel type
-CuriosityWheelType wheel_type = CuriosityWheelType::SimpleWheel;
+// Define Viper rover wheel type
+ViperWheelType wheel_type = ViperWheelType::RealWheel;
 
 // Simulation step sizes
-double step_size = 1e-3;
+double step_size = 2e-3;
 
 // How often SynChrono state messages are interchanged
-double heartbeat = 1e-3;  // 100[Hz]
+double heartbeat = step_size * 100;  // 1000[Hz]
 
 // -----------------------------------------------------------------------------
 
 void AddCommandLineOptions(ChCLI& cli);
 
 int main(int argc, char* argv[]) {
-    std::cout << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << std::endl;
-
     ChCLI cli(argv[0]);
 
     AddCommandLineOptions(cli);
@@ -84,6 +81,9 @@ int main(int argc, char* argv[]) {
 
     const int node_id = cli.GetAsType<int>("node_id");
     const int num_nodes = cli.GetAsType<int>("num_nodes");
+
+    std::cout << "node_id: " << node_id << std::endl;
+    std::cout << "num_nodes: " << num_nodes << std::endl;
 
     // Print help, if necessary
     if (cli.CheckHelp() && node_id == 1) {
@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
     syn_manager.SetHeartbeat(heartbeat);
 
     // Create the Chrono system with gravity in the negative Z direction
-    ChSystemNSC sys;
+    ChSystemSMC sys;
     sys.SetGravitationalAcceleration(ChVector3d(0, 0, -9.81));
 
     sys.SetCollisionSystemType(ChCollisionSystem::Type::BULLET);
@@ -108,18 +108,18 @@ int main(int argc, char* argv[]) {
     ChCollisionModel::SetDefaultSuggestedMargin(0.0025);
 
     // Create the ground.
-    auto ground_mat = chrono_types::make_shared<ChContactMaterialNSC>();
+    auto ground_mat = chrono_types::make_shared<ChContactMaterialSMC>();
     auto ground = chrono_types::make_shared<ChBodyEasyBox>(30, 30, 1, 1000, true, true, ground_mat);
     ground->SetPos(ChVector3d(0, 0, -0.5));
     ground->SetFixed(true);
     ground->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/concrete.jpg"), 60, 45);
     sys.Add(ground);
 
-    // Construct a Curiosity rover and the asociated driver
-    auto driver = chrono_types::make_shared<CuriosityDCMotorControl>();
+    // Construct a Viper rover and the asociated driver
+    auto driver = chrono_types::make_shared<ViperDCMotorControl>();
 
-    Curiosity rover(&sys, chassis_type, wheel_type);
-    rover.SetDriver(driver);
+    Viper viper(&sys, wheel_type);
+    viper.SetDriver(driver);
 
     ChVector3d pos;
     ChQuaternion<> rot = QUNIT;
@@ -138,14 +138,18 @@ int main(int argc, char* argv[]) {
         rot = QUNIT;
     }
 
-    rover.Initialize(ChFrame<>(pos, rot));
+    viper.Initialize(ChFrame<>(pos, rot));
 
-    auto agent = chrono_types::make_shared<SynRobotAgent>(&rover);
+    auto agent = chrono_types::make_shared<SynRobotAgent>(&viper);
     syn_manager.AddAgent(agent);
-    syn_manager.Initialize(rover.GetSystem());
+    syn_manager.Initialize(viper.GetSystem());
 
-    std::cout << "Curiosity total mass: " << rover.GetRoverMass() << std::endl;
-
+    std::cout << "Viper total mass: " << viper.GetRoverMass() << std::endl;
+    std::cout << "  chassis:        " << viper.GetChassis()->GetBody()->GetMass() << std::endl;
+    std::cout << "  upper arm:      " << viper.GetUpperArm(ViperWheelID::V_LF)->GetBody()->GetMass() << std::endl;
+    std::cout << "  lower arm:      " << viper.GetLowerArm(ViperWheelID::V_LF)->GetBody()->GetMass() << std::endl;
+    std::cout << "  upright:        " << viper.GetUpright(ViperWheelID::V_LF)->GetBody()->GetMass() << std::endl;
+    std::cout << "  wheel:          " << viper.GetWheel(ViperWheelID::V_LF)->GetBody()->GetMass() << std::endl;
     std::cout << std::endl;
 
     std::shared_ptr<ChVisualSystem> vis;
@@ -196,6 +200,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    SetChronoSolver(*viper.GetSystem(), ChSolver::Type::PSOR, ChTimestepper::Type::EULER_IMPLICIT_LINEARIZED);
+
+    // Start timing
+    auto start_time = std::chrono::high_resolution_clock::now();
+    size_t step_count = 0;
     // Simulation loop
     while (vis->Run() && syn_manager.IsOk()) {
 #if defined(CHRONO_IRRLICHT) || defined(CHRONO_VSG)
@@ -205,7 +214,7 @@ int main(int argc, char* argv[]) {
 #endif
 
         // Set current steering angle
-        double time = rover.GetSystem()->GetChTime();
+        double time = viper.GetSystem()->GetChTime();
         double max_steering = CH_PI / 6;
         double steering = 0;
         if (time > 2 && time < 7)
@@ -214,12 +223,26 @@ int main(int argc, char* argv[]) {
             steering = max_steering * (12 - time) / 5;
         driver->SetSteering(steering);
 
-        // Update Curiosity controls
-        rover.Update();
+        // Update Viper controls
+        viper.Update();
 
         sys.DoStepDynamics(step_size);
+        // syn_manager.PrintStepStatistics(std::cout);
 
         syn_manager.Synchronize(time);  // Synchronize between nodes
+
+        step_count++;
+
+        if (step_count % 1000 == 0) {
+            auto end_time = std::chrono::high_resolution_clock::now();
+
+            std::chrono::duration<double> elapsed = end_time - start_time;
+            std::cout << "RTF: " << (elapsed.count() - 2.0) / sys.GetChTime() << std::endl;
+        }
+
+        if (step_count == 2000) {
+            start_time = std::chrono::high_resolution_clock::now();
+        }
     }
 
     syn_manager.QuitSimulation();
@@ -233,5 +256,5 @@ void AddCommandLineOptions(ChCLI& cli) {
 
     // DDS Specific
     cli.AddOption<int>("DDS", "d,node_id", "ID for this Node", "1");
-    cli.AddOption<int>("DDS", "n,num_nodes", "Number of Nodes", "2");
+    cli.AddOption<int>("DDS", "n,num_nodes", "Number of Nodes", "3");
 }
