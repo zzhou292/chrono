@@ -2,7 +2,7 @@ ATTENTION
 =========
 Although Chrono is released under BSD 3 license, any new code under this repo, except the 'main' fork which is pegged to 'main' in Project Chrono, is release under GPL v3.0 license.
 
-This Fork of Chrono contains untested/unmerged features of Chrono authored by Jason Zhou (zzhou292@wisc.edu).
+This Fork of Chrono contains untested/unmerged features of Chrono authored by Json Zhou (zzhou292@wisc.edu).
 
 These features are not in the main repo for a reason. They might be undocumented, untested, unstable, and there is no guarantee anything will work, even the orginal chrono structure. ORDINARY USERS ARE STRONGLY ENCOURAGED TO USE THE OFFICIAL CHRONO RELEASE, NOT THIS FORK!!!!
 
