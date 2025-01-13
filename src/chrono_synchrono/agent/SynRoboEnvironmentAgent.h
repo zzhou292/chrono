@@ -4,6 +4,7 @@
 #include "chrono_synchrono/SynApi.h"
 #include "chrono_synchrono/agent/SynAgent.h"
 #include "chrono_synchrono/flatbuffer/message/SynRoboEnvironmentMessage.h"
+#include "chrono_synchrono/collision/ChCollisionSystemSynchrono.h"
 
 #include "chrono/physics/ChBodyAuxRef.h"
 

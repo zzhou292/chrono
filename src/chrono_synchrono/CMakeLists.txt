@@ -238,6 +238,12 @@ set(SYN_UTILS_FILES
 )
 source_group("utils" FILES ${SYN_UTILS_FILES})
 
+set(SYN_COLLISION_FILES
+    collision/ChCollisionSystemSynchrono.h
+    collision/ChCollisionSystemSynchrono.cpp
+)
+source_group("collision" FILES ${SYN_COLLISION_FILES})
+
 #-----------------------------------------------------------------------------
 # Create the ChronoEngine_synchrono library
 #-----------------------------------------------------------------------------
@@ -276,6 +282,7 @@ add_library(ChronoEngine_synchrono
     ${SYN_COMMUNICATION_FILES}
     ${SYN_FLATBUFFER_FILES}
     ${SYN_UTILS_FILES}
+    ${SYN_COLLISION_FILES}
 )
 
 # windows builds should disable warning 4661 and 4005

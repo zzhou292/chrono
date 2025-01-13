@@ -1,5 +1,4 @@
 #include "chrono_synchrono/agent/SynRobotAgent.h"
-
 #include "chrono_synchrono/utils/SynLog.h"
 
 namespace chrono {
@@ -39,9 +38,19 @@ void SynRobotAgent::SetKey(AgentKey agent_key) {
 }
 
 void SynRobotAgent::InitializeZombie(ChSystem* system) {
+    // Get collision system
+    auto collision_system = std::dynamic_pointer_cast<ChCollisionSystemSynchrono>(system->GetCollisionSystem());
+    if (!collision_system) {
+        throw std::runtime_error("SynRobotAgent requires ChCollisionSystemSynchrono");
+    }
+
     std::vector<std::string> visual_files = m_description->visual_files;
     std::vector<std::string> collision_files = m_description->collision_files;
     std::vector<SynTransform> mesh_transforms = m_description->mesh_transforms;
+
+    // Get the rank from the description's source key
+    int source_rank = m_description->GetSourceKey().GetNodeID();
+
     for (size_t i = 0; i < visual_files.size(); i++) {
         auto zombie_body = chrono_types::make_shared<ChBodyAuxRef>();
 
@@ -75,8 +84,13 @@ void SynRobotAgent::InitializeZombie(ChSystem* system) {
         zombie_body->SetFrameCOMToRef(ChFrame<>({0, 0, -0.2}, {1, 0, 0, 0}));
         system->Add(zombie_body);
 
+        // Register the body with its source rank
+        collision_system->AddBodyRank(zombie_body, source_rank);
+
         m_zombie_bodies_list.push_back(zombie_body);
     }
+    // test on force reporting
+    collision_system->ReportContacts();
 }
 
 void SynRobotAgent::SynchronizeZombie(std::shared_ptr<SynMessage> message) {
