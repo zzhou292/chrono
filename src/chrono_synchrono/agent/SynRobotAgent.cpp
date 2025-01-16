@@ -89,8 +89,6 @@ void SynRobotAgent::InitializeZombie(ChSystem* system) {
 
         m_zombie_bodies_list.push_back(zombie_body);
     }
-    // test on force reporting
-    collision_system->ReportContacts();
 }
 
 void SynRobotAgent::SynchronizeZombie(std::shared_ptr<SynMessage> message) {
