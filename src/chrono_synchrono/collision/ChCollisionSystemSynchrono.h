@@ -18,9 +18,10 @@ class SYN_API ChCollisionSystemSynchrono : public ChCollisionSystemBullet {
     // Structure to hold accumulated contact data between ranks
     struct RankContactData {
         ChBody* body;
+        unsigned int body_index;  // the remote body index
+        unsigned int rank;        // the rank of the body
         ChVector3d total_force = ChVector3d(0, 0, 0);
         ChVector3d total_torque = ChVector3d(0, 0, 0);
-        int contact_count = 0;
     };
 
     ChCollisionSystemSynchrono(std::shared_ptr<SynAgent> agent, int rank)
@@ -30,6 +31,10 @@ class SYN_API ChCollisionSystemSynchrono : public ChCollisionSystemBullet {
     }
 
     void AddBodyRank(std::shared_ptr<ChBody> body, int rank) { m_body_ranks[body.get()] = rank; }
+
+    void AddBodyIndex(std::shared_ptr<ChBody> body, unsigned int index) { m_body_indices[body.get()] = index; }
+
+    std::unordered_map<ChBody*, RankContactData>& GetContactData() { return m_rank_contacts; }
 
     virtual ~ChCollisionSystemSynchrono() {}
 
@@ -41,8 +46,12 @@ class SYN_API ChCollisionSystemSynchrono : public ChCollisionSystemBullet {
           public:
             ContactCollector(int my_rank,
                              std::unordered_map<ChBody*, int>& body_ranks,
-                             std::unordered_map<ChBody*, RankContactData>& rank_contacts)
-                : m_my_rank(my_rank), m_body_ranks(body_ranks), m_rank_contacts(rank_contacts) {}
+                             std::unordered_map<ChBody*, RankContactData>& rank_contacts,
+                             std::unordered_map<ChBody*, unsigned int>& body_indices)
+                : m_my_rank(my_rank),
+                  m_body_ranks(body_ranks),
+                  m_rank_contacts(rank_contacts),
+                  m_body_indices(body_indices) {}
 
             virtual bool OnReportContact(const ChVector3d& pA,
                                          const ChVector3d& pB,
@@ -66,19 +75,11 @@ class SYN_API ChCollisionSystemSynchrono : public ChCollisionSystemBullet {
                         // record the contact data on the body located on the remote rank, using the ChBody* as the key
                         auto remote_body = (m_body_ranks.find(bodyA) != m_body_ranks.end()) ? bodyA : bodyB;
                         m_rank_contacts[remote_body].body = remote_body;
+                        m_rank_contacts[remote_body].body_index = m_body_indices[remote_body];
+                        m_rank_contacts[remote_body].rank = m_body_ranks[remote_body];
                         m_rank_contacts[remote_body].total_force += cforce;
                         m_rank_contacts[remote_body].total_torque += ctorque;
-                        m_rank_contacts[remote_body].contact_count++;
                     }
-                }
-
-                // print out all stored contact data
-                for (auto& contact : m_rank_contacts) {
-                    printf("Body on rank %d, Force: %7.3f, %7.3f, %7.3f, Torque: %7.3f, %7.3f, %7.3f, Count: %d\n",
-                           m_body_ranks[contact.first], contact.second.total_force.x(), contact.second.total_force.y(),
-                           contact.second.total_force.z(), contact.second.total_torque.x(),
-                           contact.second.total_torque.y(), contact.second.total_torque.z(),
-                           contact.second.contact_count);
                 }
 
                 // continue to report contacts
@@ -89,10 +90,12 @@ class SYN_API ChCollisionSystemSynchrono : public ChCollisionSystemBullet {
           private:
             int m_my_rank;
             std::unordered_map<ChBody*, int>& m_body_ranks;
+            std::unordered_map<ChBody*, unsigned int>& m_body_indices;
             std::unordered_map<ChBody*, RankContactData>& m_rank_contacts;
         };
 
-        auto collector = chrono_types::make_shared<ContactCollector>(m_my_rank, m_body_ranks, m_rank_contacts);
+        auto collector =
+            chrono_types::make_shared<ContactCollector>(m_my_rank, m_body_ranks, m_rank_contacts, m_body_indices);
         container->ReportAllContacts(collector);
 
         // Let parent handle normal contact reporting
@@ -104,6 +107,7 @@ class SYN_API ChCollisionSystemSynchrono : public ChCollisionSystemBullet {
     int m_my_rank;                      ///< Rank of this collision system
     std::unordered_map<ChBody*, int> m_body_ranks;
     std::unordered_map<ChBody*, RankContactData> m_rank_contacts;
+    std::unordered_map<ChBody*, unsigned int> m_body_indices;
 
   private:
     /// Custom callback class for culling broadphase collisions.

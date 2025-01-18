@@ -29,7 +29,8 @@ class SynRoboEnvironmentDescriptionMessage : public SynMessage {
 
     void SetDescription(const std::vector<std::string>& collidable_files,
                         const std::vector<std::string>& visual_files,
-                        const std::vector<SynTransform>& mesh_transforms);
+                        const std::vector<SynTransform>& mesh_transforms,
+                        const std::vector<unsigned int>& body_indices);
 
     virtual void ConvertFromFlatBuffers(const SynFlatBuffers::Message* message) override;
     virtual FlatBufferMessage ConvertToFlatBuffers(flatbuffers::FlatBufferBuilder& builder) const override;
@@ -37,6 +38,7 @@ class SynRoboEnvironmentDescriptionMessage : public SynMessage {
     std::vector<std::string> collision_files;
     std::vector<std::string> visual_files;
     std::vector<SynTransform> mesh_transforms;
+    std::vector<unsigned int> body_indices;
 
     int num_collidable_items;
     int num_visual_items;

@@ -641,6 +641,14 @@ ChVector3d ChContactContainerSMC::GetContactableTorque(ChContactable* contactabl
     return ChVector3d(0);
 }
 
+void ChContactContainerSMC::SetContactableForce(ChContactable* contactable, const ChVector3d& force) {
+    contact_forces[contactable].force = force;
+}
+
+void ChContactContainerSMC::SetContactableTorque(ChContactable* contactable, const ChVector3d& torque) {
+    contact_forces[contactable].torque = torque;
+}
+
 template <class Tcont>
 void _ReportAllContacts(std::list<Tcont*>& contactlist, ChContactContainer::ReportContactCallback* mcallback) {
     typename std::list<Tcont*>::iterator itercontact = contactlist.begin();

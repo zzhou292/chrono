@@ -7,28 +7,87 @@ namespace synchrono {
 
 SynRoboEnvironmentAgent::SynRoboEnvironmentAgent(
     std::vector<std::pair<std::shared_ptr<ChBody>, std::pair<std::string, SynTransform>>> added_body_list,
+    std::vector<unsigned int> body_indices,
     ChSystem* system)
     : SynAgent() {
     m_state = chrono_types::make_shared<SynRoboEnvironmentStateMessage>();
     m_description = chrono_types::make_shared<SynRoboEnvironmentDescriptionMessage>();
+    m_contact_message = chrono_types::make_shared<SynContactMessage>();
 
     m_system = system;
 
     if (added_body_list.size() > 0) {
-        std::vector<std::string> visual_files;
-        std::vector<std::string> collision_files;
-        std::vector<SynTransform> mesh_transforms;
-        for (auto& body : added_body_list) {
-            m_master_bodies_list.push_back(body.first);
-            collision_files.push_back(body.second.first);
-            visual_files.push_back(body.second.first);
-            mesh_transforms.push_back(body.second.second);
+        std::vector<std::string> vec_visual_files;
+        std::vector<std::string> vec_collision_files;
+        std::vector<SynTransform> vec_mesh_transforms;
+        std::vector<unsigned int> vec_body_indices;
+
+        for (size_t i = 0; i < added_body_list.size(); i++) {
+            m_master_bodies_list.push_back(added_body_list[i].first);
+            vec_collision_files.push_back(added_body_list[i].second.first);
+            vec_visual_files.push_back(added_body_list[i].second.first);
+            vec_mesh_transforms.push_back(added_body_list[i].second.second);
+            vec_body_indices.push_back(body_indices[i]);
         }
 
-        SetZombieVisualizationFiles(visual_files);
-        SetZombieCollisionFiles(collision_files);
-        SetZombieMeshTransforms(mesh_transforms);
+        SetZombieVisualizationFiles(vec_visual_files);
+        SetZombieCollisionFiles(vec_collision_files);
+        SetZombieMeshTransforms(vec_mesh_transforms);
+        SetZombieBodyIndices(vec_body_indices);
     }
+
+    SetProcessMessageCallback([this](std::shared_ptr<SynMessage> message) {
+        // create an unordered map to store bodies which have been added force and torque
+        std::unordered_map<ChBody*, std::pair<ChVector3d, ChVector3d>> force_torque_map;
+
+        if (auto contact = std::dynamic_pointer_cast<SynContactMessage>(message)) {
+            for (const auto& contact_data : contact->vec_contacts) {
+                auto body = m_system->GetBodies()[contact_data.body_index];
+                auto new_force = contact_data.total_force;
+                auto new_torque = contact_data.total_torque;
+
+                // if body has force list with size 0, add
+                if (body->GetForces().size() == 0) {
+                    auto force = chrono_types::make_shared<ChForce>();
+
+                    body->AddForce(force);
+                    force->SetMode(ChForce::FORCE);  // Force mode (not torque)
+                    // force->SetFrame(ChForce::WORLD);
+                    force->SetDir(new_force);              // Set direction and magnitude
+                    force->SetMforce(new_force.Length());  // Scale factor of 1.0
+
+                    auto torque = chrono_types::make_shared<ChForce>();
+                    body->AddForce(torque);
+                    torque->SetMode(ChForce::TORQUE);
+                    // torque->SetFrame(ChForce::WORLD);
+                    torque->SetDir(new_torque);
+                    torque->SetMforce(new_torque.Length());
+
+                } else {
+                    // if body has force list with size 2, add
+                    body->GetForces()[0]->SetDir(new_force);
+                    body->GetForces()[0]->SetMforce(new_force.Length());
+                    body->GetForces()[1]->SetDir(new_torque);
+                    body->GetForces()[1]->SetMforce(new_torque.Length());
+                }
+
+                force_torque_map[body.get()] = std::make_pair(new_force, new_torque);
+            }
+        }
+
+        // check body list from system and apply 0 force and 0 torque if force_torque_map doesn't have the body element
+        // for (auto& body : m_system->GetBodies()) {
+        //     if (!body->GetForces().size()) {
+        //         if (force_torque_map.find(body.get()) == force_torque_map.end()) {
+        //             body->GetForces()[0]->SetDir(ChVector3d(0, 0, 0));
+        //             body->GetForces()[0]->SetMforce(0);
+
+        //             body->GetForces()[1]->SetDir(ChVector3d(0, 0, 0));
+        //             body->GetForces()[1]->SetMforce(0);
+        //         }
+        //     }
+        // }
+    });
 }
 
 SynRoboEnvironmentAgent::~SynRoboEnvironmentAgent() {}
@@ -36,6 +95,7 @@ SynRoboEnvironmentAgent::~SynRoboEnvironmentAgent() {}
 void SynRoboEnvironmentAgent::SetKey(AgentKey agent_key) {
     m_description->SetSourceKey(agent_key);
     m_state->SetSourceKey(agent_key);
+    m_contact_message->SetSourceKey(agent_key);
     m_agent_key = agent_key;
 }
 
@@ -43,6 +103,7 @@ void SynRoboEnvironmentAgent::InitializeZombie(ChSystem* system) {
     std::vector<std::string> visual_files = m_description->visual_files;
     std::vector<std::string> collision_files = m_description->collision_files;
     std::vector<SynTransform> mesh_transforms = m_description->mesh_transforms;
+    std::vector<unsigned int> body_indices = m_description->body_indices;
 
     // Get collision system
     auto collision_system = std::dynamic_pointer_cast<ChCollisionSystemSynchrono>(system->GetCollisionSystem());
@@ -87,6 +148,7 @@ void SynRoboEnvironmentAgent::InitializeZombie(ChSystem* system) {
 
         // Register the body with its source rank
         collision_system->AddBodyRank(zombie_body, source_rank);
+        collision_system->AddBodyIndex(zombie_body, body_indices[i]);
 
         m_zombie_bodies_list.push_back(zombie_body);
     }
@@ -98,6 +160,18 @@ void SynRoboEnvironmentAgent::SynchronizeZombie(std::shared_ptr<SynMessage> mess
             m_zombie_bodies_list[i]->SetFrameRefToAbs(state->GetItems()[i].GetFrame());
         }
     }
+
+    // if (auto contact = std::dynamic_pointer_cast<SynContactMessage>(message)) {
+    //     for (size_t i = 0; i < contact->vec_contacts.size(); i++) {
+    //         auto current_force = m_system->GetBodies()[contact->vec_contacts[i].body_index]->GetContactForce();
+    //         auto new_force = contact->vec_contacts[i].total_force;
+    //         // print out the force
+    //         std::cout << " ======== " << std::endl;
+    //         printf("Current force: %7.3f, %7.3f, %7.3f\n", current_force.x(), current_force.y(), current_force.z());
+    //         printf("New force: %7.3f, %7.3f, %7.3f\n", new_force.x(), new_force.y(), new_force.z());
+    //     }
+    // }
+    // std::cout << " tp2 " << std::endl;
 }
 
 void SynRoboEnvironmentAgent::Update() {
@@ -120,6 +194,28 @@ void SynRoboEnvironmentAgent::Update() {
 
     auto time = m_system->GetChTime();
     m_state->SetState(time, items);
+}
+
+void SynRoboEnvironmentAgent::GatherMessages(SynMessageList& messages) {
+    messages.push_back(m_state);
+
+    // Get collision system and gather contact data
+    if (m_system) {
+        if (auto collision_system =
+                std::dynamic_pointer_cast<ChCollisionSystemSynchrono>(m_system->GetCollisionSystem())) {
+            auto contact_map = collision_system->GetContactData();
+            if (!contact_map.empty()) {
+                std::vector<RankContactData> contacts;
+                contacts.reserve(contact_map.size());
+                for (const auto& pair : contact_map) {
+                    contacts.push_back(
+                        {pair.second.body_index, pair.second.rank, pair.second.total_force, pair.second.total_torque});
+                }
+                m_contact_message->SetState(m_system->GetChTime(), contacts);
+                messages.push_back(m_contact_message);
+            }
+        }
+    }
 }
 
 }  // namespace synchrono

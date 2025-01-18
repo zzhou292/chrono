@@ -134,6 +134,8 @@ table Description {
   visual_item_vis_file:[string];
 
   mesh_item_transform:[Transform];
+
+  body_indices:[uint];
 }
 
 root_type State;
@@ -156,6 +158,8 @@ table Description {
   visual_item_vis_file:[string];
 
   mesh_item_transform:[Transform];
+
+  body_indices:[uint];
 }
 
 root_type State;

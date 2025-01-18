@@ -818,6 +818,35 @@ std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> Viper::GetMes
     return transforms;
 }
 
+std::vector<std::pair<std::shared_ptr<chrono::ChBody>, unsigned int>> Viper::GetBodyIndices() const {
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, unsigned int>> body_indices;
+
+    // chassis
+    body_indices.push_back(std::make_pair(m_chassis->GetBody(), m_chassis->GetBody()->GetIndex()));
+
+    // wheels
+    for (const auto& wheel : m_wheels) {
+        body_indices.push_back(std::make_pair(wheel->GetBody(), wheel->GetBody()->GetIndex()));
+    }
+
+    // Lower arms
+    for (const auto& lower_arm : m_lower_arms) {
+        body_indices.push_back(std::make_pair(lower_arm->GetBody(), lower_arm->GetBody()->GetIndex()));
+    }
+
+    // Upper arms
+    for (const auto& upper_arm : m_upper_arms) {
+        body_indices.push_back(std::make_pair(upper_arm->GetBody(), upper_arm->GetBody()->GetIndex()));
+    }
+
+    // Uprights
+    for (const auto& upright : m_uprights) {
+        body_indices.push_back(std::make_pair(upright->GetBody(), upright->GetBody()->GetIndex()));
+    }
+
+    return body_indices;
+}
+
 // =============================================================================
 
 ViperDriver::ViperDriver()

@@ -24,6 +24,7 @@ include "MAP.fbs";
 include "Terrain.fbs";
 include "Approach.fbs";
 include "Simulation.fbs";
+include "Contact.fbs";
 
 namespace SynFlatBuffers;
 
@@ -34,7 +35,8 @@ union Type {
   MAP.State, 
   Terrain.State, 
   Approach.State,
-  Simulation.State
+  Simulation.State,
+  Contact.State
 }
 
 table Buffer {

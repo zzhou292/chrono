@@ -140,6 +140,16 @@ struct StateBuilder;
 
 }  // namespace Simulation
 
+namespace Contact {
+
+struct ContactData;
+struct ContactDataBuilder;
+
+struct State;
+struct StateBuilder;
+
+}  // namespace Contact
+
 struct Buffer;
 struct BufferBuilder;
 
@@ -361,11 +371,12 @@ enum Type : uint8_t {
   Type_Terrain_State = 5,
   Type_Approach_State = 6,
   Type_Simulation_State = 7,
+  Type_Contact_State = 8,
   Type_MIN = Type_NONE,
-  Type_MAX = Type_Simulation_State
+  Type_MAX = Type_Contact_State
 };
 
-inline const Type (&EnumValuesType())[8] {
+inline const Type (&EnumValuesType())[9] {
   static const Type values[] = {
     Type_NONE,
     Type_Agent_State,
@@ -374,13 +385,14 @@ inline const Type (&EnumValuesType())[8] {
     Type_MAP_State,
     Type_Terrain_State,
     Type_Approach_State,
-    Type_Simulation_State
+    Type_Simulation_State,
+    Type_Contact_State
   };
   return values;
 }
 
 inline const char * const *EnumNamesType() {
-  static const char * const names[9] = {
+  static const char * const names[10] = {
     "NONE",
     "Agent_State",
     "Agent_Description",
@@ -389,13 +401,14 @@ inline const char * const *EnumNamesType() {
     "Terrain_State",
     "Approach_State",
     "Simulation_State",
+    "Contact_State",
     nullptr
   };
   return names;
 }
 
 inline const char *EnumNameType(Type e) {
-  if (flatbuffers::IsOutRange(e, Type_NONE, Type_Simulation_State)) return "";
+  if (flatbuffers::IsOutRange(e, Type_NONE, Type_Contact_State)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesType()[index];
 }
@@ -430,6 +443,10 @@ template<> struct TypeTraits<SynFlatBuffers::Approach::State> {
 
 template<> struct TypeTraits<SynFlatBuffers::Simulation::State> {
   static const Type enum_value = Type_Simulation_State;
+};
+
+template<> struct TypeTraits<SynFlatBuffers::Contact::State> {
+  static const Type enum_value = Type_Contact_State;
 };
 
 bool VerifyType(flatbuffers::Verifier &verifier, const void *obj, Type type);
@@ -2007,7 +2024,8 @@ struct Description FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_NUM_VISUAL_ITEMS = 6,
     VT_COLLIDABLE_ITEM_VIS_FILE = 8,
     VT_VISUAL_ITEM_VIS_FILE = 10,
-    VT_MESH_ITEM_TRANSFORM = 12
+    VT_MESH_ITEM_TRANSFORM = 12,
+    VT_BODY_INDICES = 14
   };
   int32_t num_collidable_items() const {
     return GetField<int32_t>(VT_NUM_COLLIDABLE_ITEMS, 0);
@@ -2024,6 +2042,9 @@ struct Description FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   const flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Transform>> *mesh_item_transform() const {
     return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Transform>> *>(VT_MESH_ITEM_TRANSFORM);
   }
+  const flatbuffers::Vector<uint32_t> *body_indices() const {
+    return GetPointer<const flatbuffers::Vector<uint32_t> *>(VT_BODY_INDICES);
+  }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int32_t>(verifier, VT_NUM_COLLIDABLE_ITEMS) &&
@@ -2037,6 +2058,8 @@ struct Description FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            VerifyOffset(verifier, VT_MESH_ITEM_TRANSFORM) &&
            verifier.VerifyVector(mesh_item_transform()) &&
            verifier.VerifyVectorOfTables(mesh_item_transform()) &&
+           VerifyOffset(verifier, VT_BODY_INDICES) &&
+           verifier.VerifyVector(body_indices()) &&
            verifier.EndTable();
   }
 };
@@ -2060,6 +2083,9 @@ struct DescriptionBuilder {
   void add_mesh_item_transform(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Transform>>> mesh_item_transform) {
     fbb_.AddOffset(Description::VT_MESH_ITEM_TRANSFORM, mesh_item_transform);
   }
+  void add_body_indices(flatbuffers::Offset<flatbuffers::Vector<uint32_t>> body_indices) {
+    fbb_.AddOffset(Description::VT_BODY_INDICES, body_indices);
+  }
   explicit DescriptionBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -2077,8 +2103,10 @@ inline flatbuffers::Offset<Description> CreateDescription(
     int32_t num_visual_items = 0,
     flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>> collidable_item_vis_file = 0,
     flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>> visual_item_vis_file = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Transform>>> mesh_item_transform = 0) {
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Transform>>> mesh_item_transform = 0,
+    flatbuffers::Offset<flatbuffers::Vector<uint32_t>> body_indices = 0) {
   DescriptionBuilder builder_(_fbb);
+  builder_.add_body_indices(body_indices);
   builder_.add_mesh_item_transform(mesh_item_transform);
   builder_.add_visual_item_vis_file(visual_item_vis_file);
   builder_.add_collidable_item_vis_file(collidable_item_vis_file);
@@ -2093,17 +2121,20 @@ inline flatbuffers::Offset<Description> CreateDescriptionDirect(
     int32_t num_visual_items = 0,
     const std::vector<flatbuffers::Offset<flatbuffers::String>> *collidable_item_vis_file = nullptr,
     const std::vector<flatbuffers::Offset<flatbuffers::String>> *visual_item_vis_file = nullptr,
-    const std::vector<flatbuffers::Offset<SynFlatBuffers::Transform>> *mesh_item_transform = nullptr) {
+    const std::vector<flatbuffers::Offset<SynFlatBuffers::Transform>> *mesh_item_transform = nullptr,
+    const std::vector<uint32_t> *body_indices = nullptr) {
   auto collidable_item_vis_file__ = collidable_item_vis_file ? _fbb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(*collidable_item_vis_file) : 0;
   auto visual_item_vis_file__ = visual_item_vis_file ? _fbb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(*visual_item_vis_file) : 0;
   auto mesh_item_transform__ = mesh_item_transform ? _fbb.CreateVector<flatbuffers::Offset<SynFlatBuffers::Transform>>(*mesh_item_transform) : 0;
+  auto body_indices__ = body_indices ? _fbb.CreateVector<uint32_t>(*body_indices) : 0;
   return SynFlatBuffers::Agent::Robot::CreateDescription(
       _fbb,
       num_collidable_items,
       num_visual_items,
       collidable_item_vis_file__,
       visual_item_vis_file__,
-      mesh_item_transform__);
+      mesh_item_transform__,
+      body_indices__);
 }
 
 }  // namespace Robot
@@ -2181,7 +2212,8 @@ struct Description FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_NUM_VISUAL_ITEMS = 6,
     VT_COLLIDABLE_ITEM_VIS_FILE = 8,
     VT_VISUAL_ITEM_VIS_FILE = 10,
-    VT_MESH_ITEM_TRANSFORM = 12
+    VT_MESH_ITEM_TRANSFORM = 12,
+    VT_BODY_INDICES = 14
   };
   int32_t num_collidable_items() const {
     return GetField<int32_t>(VT_NUM_COLLIDABLE_ITEMS, 0);
@@ -2198,6 +2230,9 @@ struct Description FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   const flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Transform>> *mesh_item_transform() const {
     return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Transform>> *>(VT_MESH_ITEM_TRANSFORM);
   }
+  const flatbuffers::Vector<uint32_t> *body_indices() const {
+    return GetPointer<const flatbuffers::Vector<uint32_t> *>(VT_BODY_INDICES);
+  }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int32_t>(verifier, VT_NUM_COLLIDABLE_ITEMS) &&
@@ -2211,6 +2246,8 @@ struct Description FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            VerifyOffset(verifier, VT_MESH_ITEM_TRANSFORM) &&
            verifier.VerifyVector(mesh_item_transform()) &&
            verifier.VerifyVectorOfTables(mesh_item_transform()) &&
+           VerifyOffset(verifier, VT_BODY_INDICES) &&
+           verifier.VerifyVector(body_indices()) &&
            verifier.EndTable();
   }
 };
@@ -2234,6 +2271,9 @@ struct DescriptionBuilder {
   void add_mesh_item_transform(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Transform>>> mesh_item_transform) {
     fbb_.AddOffset(Description::VT_MESH_ITEM_TRANSFORM, mesh_item_transform);
   }
+  void add_body_indices(flatbuffers::Offset<flatbuffers::Vector<uint32_t>> body_indices) {
+    fbb_.AddOffset(Description::VT_BODY_INDICES, body_indices);
+  }
   explicit DescriptionBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
@@ -2251,8 +2291,10 @@ inline flatbuffers::Offset<Description> CreateDescription(
     int32_t num_visual_items = 0,
     flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>> collidable_item_vis_file = 0,
     flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>> visual_item_vis_file = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Transform>>> mesh_item_transform = 0) {
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Transform>>> mesh_item_transform = 0,
+    flatbuffers::Offset<flatbuffers::Vector<uint32_t>> body_indices = 0) {
   DescriptionBuilder builder_(_fbb);
+  builder_.add_body_indices(body_indices);
   builder_.add_mesh_item_transform(mesh_item_transform);
   builder_.add_visual_item_vis_file(visual_item_vis_file);
   builder_.add_collidable_item_vis_file(collidable_item_vis_file);
@@ -2267,17 +2309,20 @@ inline flatbuffers::Offset<Description> CreateDescriptionDirect(
     int32_t num_visual_items = 0,
     const std::vector<flatbuffers::Offset<flatbuffers::String>> *collidable_item_vis_file = nullptr,
     const std::vector<flatbuffers::Offset<flatbuffers::String>> *visual_item_vis_file = nullptr,
-    const std::vector<flatbuffers::Offset<SynFlatBuffers::Transform>> *mesh_item_transform = nullptr) {
+    const std::vector<flatbuffers::Offset<SynFlatBuffers::Transform>> *mesh_item_transform = nullptr,
+    const std::vector<uint32_t> *body_indices = nullptr) {
   auto collidable_item_vis_file__ = collidable_item_vis_file ? _fbb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(*collidable_item_vis_file) : 0;
   auto visual_item_vis_file__ = visual_item_vis_file ? _fbb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(*visual_item_vis_file) : 0;
   auto mesh_item_transform__ = mesh_item_transform ? _fbb.CreateVector<flatbuffers::Offset<SynFlatBuffers::Transform>>(*mesh_item_transform) : 0;
+  auto body_indices__ = body_indices ? _fbb.CreateVector<uint32_t>(*body_indices) : 0;
   return SynFlatBuffers::Agent::RoboEnvironment::CreateDescription(
       _fbb,
       num_collidable_items,
       num_visual_items,
       collidable_item_vis_file__,
       visual_item_vis_file__,
-      mesh_item_transform__);
+      mesh_item_transform__,
+      body_indices__);
 }
 
 }  // namespace RoboEnvironment
@@ -2757,6 +2802,197 @@ inline flatbuffers::Offset<State> CreateState(
 
 }  // namespace Simulation
 
+namespace Contact {
+
+struct ContactData FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  typedef ContactDataBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_BODY_INDEX = 4,
+    VT_RANK = 6,
+    VT_TOTAL_FORCE_X = 8,
+    VT_TOTAL_FORCE_Y = 10,
+    VT_TOTAL_FORCE_Z = 12,
+    VT_TOTAL_TORQUE_X = 14,
+    VT_TOTAL_TORQUE_Y = 16,
+    VT_TOTAL_TORQUE_Z = 18
+  };
+  uint32_t body_index() const {
+    return GetField<uint32_t>(VT_BODY_INDEX, 0);
+  }
+  uint32_t rank() const {
+    return GetField<uint32_t>(VT_RANK, 0);
+  }
+  double total_force_x() const {
+    return GetField<double>(VT_TOTAL_FORCE_X, 0.0);
+  }
+  double total_force_y() const {
+    return GetField<double>(VT_TOTAL_FORCE_Y, 0.0);
+  }
+  double total_force_z() const {
+    return GetField<double>(VT_TOTAL_FORCE_Z, 0.0);
+  }
+  double total_torque_x() const {
+    return GetField<double>(VT_TOTAL_TORQUE_X, 0.0);
+  }
+  double total_torque_y() const {
+    return GetField<double>(VT_TOTAL_TORQUE_Y, 0.0);
+  }
+  double total_torque_z() const {
+    return GetField<double>(VT_TOTAL_TORQUE_Z, 0.0);
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<uint32_t>(verifier, VT_BODY_INDEX) &&
+           VerifyField<uint32_t>(verifier, VT_RANK) &&
+           VerifyField<double>(verifier, VT_TOTAL_FORCE_X) &&
+           VerifyField<double>(verifier, VT_TOTAL_FORCE_Y) &&
+           VerifyField<double>(verifier, VT_TOTAL_FORCE_Z) &&
+           VerifyField<double>(verifier, VT_TOTAL_TORQUE_X) &&
+           VerifyField<double>(verifier, VT_TOTAL_TORQUE_Y) &&
+           VerifyField<double>(verifier, VT_TOTAL_TORQUE_Z) &&
+           verifier.EndTable();
+  }
+};
+
+struct ContactDataBuilder {
+  typedef ContactData Table;
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_body_index(uint32_t body_index) {
+    fbb_.AddElement<uint32_t>(ContactData::VT_BODY_INDEX, body_index, 0);
+  }
+  void add_rank(uint32_t rank) {
+    fbb_.AddElement<uint32_t>(ContactData::VT_RANK, rank, 0);
+  }
+  void add_total_force_x(double total_force_x) {
+    fbb_.AddElement<double>(ContactData::VT_TOTAL_FORCE_X, total_force_x, 0.0);
+  }
+  void add_total_force_y(double total_force_y) {
+    fbb_.AddElement<double>(ContactData::VT_TOTAL_FORCE_Y, total_force_y, 0.0);
+  }
+  void add_total_force_z(double total_force_z) {
+    fbb_.AddElement<double>(ContactData::VT_TOTAL_FORCE_Z, total_force_z, 0.0);
+  }
+  void add_total_torque_x(double total_torque_x) {
+    fbb_.AddElement<double>(ContactData::VT_TOTAL_TORQUE_X, total_torque_x, 0.0);
+  }
+  void add_total_torque_y(double total_torque_y) {
+    fbb_.AddElement<double>(ContactData::VT_TOTAL_TORQUE_Y, total_torque_y, 0.0);
+  }
+  void add_total_torque_z(double total_torque_z) {
+    fbb_.AddElement<double>(ContactData::VT_TOTAL_TORQUE_Z, total_torque_z, 0.0);
+  }
+  explicit ContactDataBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  flatbuffers::Offset<ContactData> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<ContactData>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<ContactData> CreateContactData(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    uint32_t body_index = 0,
+    uint32_t rank = 0,
+    double total_force_x = 0.0,
+    double total_force_y = 0.0,
+    double total_force_z = 0.0,
+    double total_torque_x = 0.0,
+    double total_torque_y = 0.0,
+    double total_torque_z = 0.0) {
+  ContactDataBuilder builder_(_fbb);
+  builder_.add_total_torque_z(total_torque_z);
+  builder_.add_total_torque_y(total_torque_y);
+  builder_.add_total_torque_x(total_torque_x);
+  builder_.add_total_force_z(total_force_z);
+  builder_.add_total_force_y(total_force_y);
+  builder_.add_total_force_x(total_force_x);
+  builder_.add_rank(rank);
+  builder_.add_body_index(body_index);
+  return builder_.Finish();
+}
+
+struct State FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  typedef StateBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_TIME = 4,
+    VT_NUM_CONTACTS = 6,
+    VT_CONTACTS = 8
+  };
+  double time() const {
+    return GetField<double>(VT_TIME, 0.0);
+  }
+  uint32_t num_contacts() const {
+    return GetField<uint32_t>(VT_NUM_CONTACTS, 0);
+  }
+  const flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Contact::ContactData>> *contacts() const {
+    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Contact::ContactData>> *>(VT_CONTACTS);
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyField<double>(verifier, VT_TIME) &&
+           VerifyField<uint32_t>(verifier, VT_NUM_CONTACTS) &&
+           VerifyOffset(verifier, VT_CONTACTS) &&
+           verifier.VerifyVector(contacts()) &&
+           verifier.VerifyVectorOfTables(contacts()) &&
+           verifier.EndTable();
+  }
+};
+
+struct StateBuilder {
+  typedef State Table;
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_time(double time) {
+    fbb_.AddElement<double>(State::VT_TIME, time, 0.0);
+  }
+  void add_num_contacts(uint32_t num_contacts) {
+    fbb_.AddElement<uint32_t>(State::VT_NUM_CONTACTS, num_contacts, 0);
+  }
+  void add_contacts(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Contact::ContactData>>> contacts) {
+    fbb_.AddOffset(State::VT_CONTACTS, contacts);
+  }
+  explicit StateBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  flatbuffers::Offset<State> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<State>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<State> CreateState(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    double time = 0.0,
+    uint32_t num_contacts = 0,
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<SynFlatBuffers::Contact::ContactData>>> contacts = 0) {
+  StateBuilder builder_(_fbb);
+  builder_.add_time(time);
+  builder_.add_contacts(contacts);
+  builder_.add_num_contacts(num_contacts);
+  return builder_.Finish();
+}
+
+inline flatbuffers::Offset<State> CreateStateDirect(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    double time = 0.0,
+    uint32_t num_contacts = 0,
+    const std::vector<flatbuffers::Offset<SynFlatBuffers::Contact::ContactData>> *contacts = nullptr) {
+  auto contacts__ = contacts ? _fbb.CreateVector<flatbuffers::Offset<SynFlatBuffers::Contact::ContactData>>(*contacts) : 0;
+  return SynFlatBuffers::Contact::CreateState(
+      _fbb,
+      time,
+      num_contacts,
+      contacts__);
+}
+
+}  // namespace Contact
+
 struct Buffer FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef BufferBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
@@ -2845,6 +3081,9 @@ struct Message FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   const SynFlatBuffers::Simulation::State *message_as_Simulation_State() const {
     return message_type() == SynFlatBuffers::Type_Simulation_State ? static_cast<const SynFlatBuffers::Simulation::State *>(message()) : nullptr;
   }
+  const SynFlatBuffers::Contact::State *message_as_Contact_State() const {
+    return message_type() == SynFlatBuffers::Type_Contact_State ? static_cast<const SynFlatBuffers::Contact::State *>(message()) : nullptr;
+  }
   const SynFlatBuffers::AgentKey *source_key() const {
     return GetStruct<const SynFlatBuffers::AgentKey *>(VT_SOURCE_KEY);
   }
@@ -2888,6 +3127,10 @@ template<> inline const SynFlatBuffers::Approach::State *Message::message_as<Syn
 
 template<> inline const SynFlatBuffers::Simulation::State *Message::message_as<SynFlatBuffers::Simulation::State>() const {
   return message_as_Simulation_State();
+}
+
+template<> inline const SynFlatBuffers::Contact::State *Message::message_as<SynFlatBuffers::Contact::State>() const {
+  return message_as_Contact_State();
 }
 
 struct MessageBuilder {
@@ -2980,6 +3223,10 @@ namespace SCM {
 namespace Simulation {
 
 }  // namespace Simulation
+
+namespace Contact {
+
+}  // namespace Contact
 
 namespace Agent {
 
@@ -3114,6 +3361,10 @@ inline bool VerifyType(flatbuffers::Verifier &verifier, const void *obj, Type ty
     }
     case Type_Simulation_State: {
       auto ptr = reinterpret_cast<const SynFlatBuffers::Simulation::State *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case Type_Contact_State: {
+      auto ptr = reinterpret_cast<const SynFlatBuffers::Contact::State *>(obj);
       return verifier.VerifyTable(ptr);
     }
     default: return true;

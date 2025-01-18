@@ -8,6 +8,7 @@
 #include "chrono_synchrono/collision/ChCollisionSystemSynchrono.h"
 
 #include "chrono/physics/ChBodyAuxRef.h"
+#include "chrono_synchrono/flatbuffer/message/SynContactMessage.h"
 
 namespace chrono {
 namespace synchrono {
@@ -49,7 +50,7 @@ class SYN_API SynRobotAgent : public SynAgent {
     /// Will create or get messages and pass them into the referenced message vector
     ///
     ///@param messages a referenced vector containing messages to be distributed from this rank
-    virtual void GatherMessages(SynMessageList& messages) override { messages.push_back(m_state); }
+    virtual void GatherMessages(SynMessageList& messages) override;
 
     ///@brief Get the description messages for this agent
     /// A single agent may have multiple description messages
@@ -69,6 +70,8 @@ class SYN_API SynRobotAgent : public SynAgent {
         m_description->mesh_transforms = mesh_transforms;
     }
 
+    void SetZombieBodyIndices(std::vector<unsigned int> body_indices) { m_description->body_indices = body_indices; }
+
     virtual void SetKey(AgentKey agent_key) override;
 
   protected:
@@ -79,6 +82,7 @@ class SYN_API SynRobotAgent : public SynAgent {
 
     std::shared_ptr<SynRobotStateMessage> m_state;              ///< State of the robot
     std::shared_ptr<SynRobotDescriptionMessage> m_description;  ///< Description for zombie creation on discovery
+    std::shared_ptr<SynContactMessage> m_contact_message;       ///< Contact data for this robot
 };
 
 /// @} synchrono_agent

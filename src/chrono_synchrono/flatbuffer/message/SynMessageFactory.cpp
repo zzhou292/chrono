@@ -29,6 +29,8 @@
 #include "chrono_synchrono/flatbuffer/message/SynSimulationMessage.h"
 #include "chrono_synchrono/flatbuffer/message/SynRobotMessage.h"
 #include "chrono_synchrono/flatbuffer/message/SynRoboEnvironmentMessage.h"
+#include "chrono_synchrono/flatbuffer/message/SynContactMessage.h"
+
 namespace chrono {
 namespace synchrono {
 
@@ -88,6 +90,8 @@ std::shared_ptr<SynMessage> SynMessageFactory::GenerateMessage(const SynFlatBuff
         }
     } else if (incoming_message->message_type() == SynFlatBuffers::Type_Simulation_State) {
         message = chrono_types::make_shared<SynSimulationMessage>(source_key, destination_key);
+    } else if (incoming_message->message_type() == SynFlatBuffers::Type_Contact_State) {
+        message = chrono_types::make_shared<SynContactMessage>(source_key, destination_key);
     } else if (incoming_message->message_type() == SynFlatBuffers::Type_SPAT_State) {
         message = chrono_types::make_shared<SynSPATMessage>(source_key, destination_key);
     } else if (incoming_message->message_type() == SynFlatBuffers::Type_MAP_State) {

@@ -195,6 +195,9 @@ set(SYN_FLATBUFFER_FILES
     flatbuffer/message/SynSimulationMessage.h
     flatbuffer/message/SynSimulationMessage.cpp
 
+	flatbuffer/message/SynContactMessage.h
+	flatbuffer/message/SynContactMessage.cpp
+
 	flatbuffer/message/SynWheeledVehicleMessage.h
 	flatbuffer/message/SynWheeledVehicleMessage.cpp
 	flatbuffer/message/SynTrackedVehicleMessage.h

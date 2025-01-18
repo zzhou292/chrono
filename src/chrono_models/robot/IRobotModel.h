@@ -22,6 +22,9 @@ class IRobotModel {
     // New method to retrieve mesh transforms
     virtual std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> GetMeshTransforms() const = 0;
 
+    // New method to retrieve body indices
+    virtual std::vector<std::pair<std::shared_ptr<chrono::ChBody>, unsigned int>> GetBodyIndices() const = 0;
+
     virtual ChSystem* GetSystem() const = 0;
 };
 

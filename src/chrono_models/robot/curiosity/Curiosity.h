@@ -355,6 +355,8 @@ class CH_MODELS_API Curiosity : public chrono::models::IRobotModel {
 
     std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> GetMeshTransforms() const override;
 
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, unsigned int>> GetBodyIndices() const override;
+
   private:
     /// Create the rover parts.
     void Create(CuriosityChassisType chassis_type, CuriosityWheelType wheel_type);

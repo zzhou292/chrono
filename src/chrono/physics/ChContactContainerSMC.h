@@ -33,11 +33,11 @@ class ChApi ChContactContainerSMC : public ChContactContainer {
 
     typedef ChContactSMC<ChContactable_1vars<6>, ChContactable_1vars<3> > ChContactSMC_6_3;
     typedef ChContactSMC<ChContactable_1vars<6>, ChContactable_1vars<6> > ChContactSMC_6_6;
-    
+
     typedef ChContactSMC<ChContactable_3vars<3, 3, 3>, ChContactable_1vars<3> > ChContactSMC_333_3;
     typedef ChContactSMC<ChContactable_3vars<3, 3, 3>, ChContactable_1vars<6> > ChContactSMC_333_6;
     typedef ChContactSMC<ChContactable_3vars<3, 3, 3>, ChContactable_3vars<3, 3, 3> > ChContactSMC_333_333;
-    
+
     typedef ChContactSMC<ChContactable_3vars<6, 6, 6>, ChContactable_1vars<3> > ChContactSMC_666_3;
     typedef ChContactSMC<ChContactable_3vars<6, 6, 6>, ChContactable_1vars<6> > ChContactSMC_666_6;
     typedef ChContactSMC<ChContactable_3vars<6, 6, 6>, ChContactable_3vars<3, 3, 3> > ChContactSMC_666_333;
@@ -88,11 +88,11 @@ class ChApi ChContactContainerSMC : public ChContactContainer {
 
     int n_added_6_3;
     int n_added_6_6;
-    
+
     int n_added_333_3;
     int n_added_333_6;
     int n_added_333_333;
-    
+
     int n_added_666_3;
     int n_added_666_6;
     int n_added_666_333;
@@ -200,6 +200,12 @@ class ChApi ChContactContainerSMC : public ChContactContainer {
 
     /// Return the resultant contact torque acting on the specified contactable object.
     virtual ChVector3d GetContactableTorque(ChContactable* contactable) override;
+
+    /// Set the resultant contact force acting on the specified contactable object.
+    virtual void SetContactableForce(ChContactable* contactable, const ChVector3d& force) override;
+
+    /// Set the resultant contact torque acting on the specified contactable object.
+    virtual void SetContactableTorque(ChContactable* contactable, const ChVector3d& torque) override;
 
     // STATE FUNCTIONS
 

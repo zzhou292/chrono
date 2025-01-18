@@ -168,6 +168,12 @@ class ChApi ChContactContainerNSC : public ChContactContainer {
     /// Return the resultant contact torque acting on the specified contactable object.
     virtual ChVector3d GetContactableTorque(ChContactable* contactable) override;
 
+    /// Set the resultant contact force acting on the specified contactable object.
+    virtual void SetContactableForce(ChContactable* contactable, const ChVector3d& force) override;
+
+    /// Set the resultant contact torque acting on the specified contactable object.
+    virtual void SetContactableTorque(ChContactable* contactable, const ChVector3d& torque) override;
+
     // STATE FUNCTIONS
 
     virtual void IntStateGatherReactions(const unsigned int off_L, ChVectorDynamic<>& L) override;

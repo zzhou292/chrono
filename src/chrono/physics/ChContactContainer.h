@@ -125,6 +125,12 @@ class ChApi ChContactContainer : public ChPhysicsItem {
     /// Return the resultant contact torque acting on the specified contactable object.
     virtual ChVector3d GetContactableTorque(ChContactable* contactable) = 0;
 
+    /// Set the resultant contact force acting on the specified contactable object.
+    virtual void SetContactableForce(ChContactable* contactable, const ChVector3d& force) = 0;
+
+    /// Set the resultant contact torque acting on the specified contactable object.
+    virtual void SetContactableTorque(ChContactable* contactable, const ChVector3d& torque) = 0;
+
     /// Method for serialization of transient data to archives.
     virtual void ArchiveOut(ChArchiveOut& archive_out);
 

@@ -862,6 +862,42 @@ std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> Curiosity::Ge
     return transforms;
 }
 
+std::vector<std::pair<std::shared_ptr<chrono::ChBody>, unsigned int>> Curiosity::GetBodyIndices() const {
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, unsigned int>> body_indices;
+
+    assert(m_initialized);
+
+    // chassis
+    body_indices.push_back(std::make_pair(m_chassis->GetBody(), m_chassis->GetBody()->GetIndex()));
+
+    // wheels
+    for (int i = 0; i < 6; i++) {
+        body_indices.push_back(std::make_pair(m_wheels[i]->GetBody(), m_wheels[i]->GetBody()->GetIndex()));
+    }
+
+    // Rocker
+    for (auto& rocker : m_rockers) {
+        body_indices.push_back(std::make_pair(rocker->GetBody(), rocker->GetBody()->GetIndex()));
+    }
+
+    // Bogie
+    for (auto& bogie : m_bogies) {
+        body_indices.push_back(std::make_pair(bogie->GetBody(), bogie->GetBody()->GetIndex()));
+    }
+
+    // rocker_uprights
+    for (auto& rocker_upright : m_rocker_uprights) {
+        body_indices.push_back(std::make_pair(rocker_upright->GetBody(), rocker_upright->GetBody()->GetIndex()));
+    }
+
+    // bogie_uprights
+    for (auto& bogie_upright : m_bogie_uprights) {
+        body_indices.push_back(std::make_pair(bogie_upright->GetBody(), bogie_upright->GetBody()->GetIndex()));
+    }
+
+    return body_indices;
+}
+
 // =============================================================================
 
 CuriosityDriver::CuriosityDriver() : drive_speeds({0, 0, 0, 0, 0, 0}), steer_angles({0, 0, 0, 0}), curiosity(nullptr) {}

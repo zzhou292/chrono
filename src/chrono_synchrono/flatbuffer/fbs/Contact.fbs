@@ -1,0 +1,39 @@
+// =============================================================================
+// PROJECT CHRONO - http://projectchrono.org
+//
+// Copyright (c) 2020 projectchrono.org
+// All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can be found
+// in the LICENSE file at the top level of the distribution and at
+// http://projectchrono.org/license-chrono.txt.
+//
+// =============================================================================
+// Authors: Json Zhou
+// =============================================================================
+//
+// Schema file that defines contact information
+//  - contact data is defined as a list of ContactData, which contains the body index, total force, total torque, and contact count.
+// 
+// =============================================================================
+
+namespace SynFlatBuffers.Contact;
+
+table ContactData {
+  body_index:uint;
+  rank:uint;
+  total_force_x:double;
+  total_force_y:double;
+  total_force_z:double;
+  total_torque_x:double;
+  total_torque_y:double;
+  total_torque_z:double;
+}
+
+table State {
+  time:double;
+  num_contacts:uint;
+  contacts:[ContactData];
+}
+
+root_type State; 

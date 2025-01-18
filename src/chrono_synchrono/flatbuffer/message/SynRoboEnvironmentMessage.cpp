@@ -50,9 +50,11 @@ SynRoboEnvironmentDescriptionMessage::SynRoboEnvironmentDescriptionMessage(Agent
 
 void SynRoboEnvironmentDescriptionMessage::SetDescription(const std::vector<std::string>& collidable_files,
                                                           const std::vector<std::string>& visual_files,
-                                                          const std::vector<SynTransform>& mesh_transforms) {
+                                                          const std::vector<SynTransform>& mesh_transforms,
+                                                          const std::vector<unsigned int>& body_indices) {
     this->collision_files = collision_files;
     this->visual_files = visual_files;
+    this->body_indices = body_indices;
 
     this->num_collidable_items = collision_files.size();
     this->num_visual_items = visual_files.size();
@@ -84,6 +86,10 @@ void SynRoboEnvironmentDescriptionMessage::ConvertFromFlatBuffers(const SynFlatB
     mesh_transforms.clear();
     for (auto transform : *robo_environment_description->mesh_item_transform())
         mesh_transforms.emplace_back(transform);
+
+    body_indices.clear();
+    for (auto index : *robo_environment_description->body_indices())
+        body_indices.emplace_back(index);
 }
 
 FlatBufferMessage SynRoboEnvironmentDescriptionMessage::ConvertToFlatBuffers(
@@ -105,12 +111,17 @@ FlatBufferMessage SynRoboEnvironmentDescriptionMessage::ConvertToFlatBuffers(
     for (const auto& item_transform : this->mesh_transforms)
         flatbuffer_mesh_transforms.push_back(item_transform.ToFlatBuffers(builder));
 
+    std::vector<uint32_t> flatbuffer_body_indices;
+    flatbuffer_body_indices.reserve(this->body_indices.size());
+    for (const auto& item_body_index : this->body_indices)
+        flatbuffer_body_indices.push_back(item_body_index);
+
     flatbuffers::Offset<SynFlatBuffers::Agent::RoboEnvironment::Description> robo_environment_description = 0;
 
     auto robot_type = SynFlatBuffers::Agent::Type_RoboEnvironment_Description;
     robo_environment_description = SynFlatBuffers::Agent::RoboEnvironment::CreateDescriptionDirect(
         builder, num_collidable_items, num_visual_items, &flatbuffer_collision_files, &flatbuffer_visual_files,
-        &flatbuffer_mesh_transforms);
+        &flatbuffer_mesh_transforms, &flatbuffer_body_indices);
 
     auto flatbuffer_description =
         SynFlatBuffers::Agent::CreateDescription(builder, robot_type, robo_environment_description.Union());

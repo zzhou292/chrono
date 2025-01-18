@@ -898,6 +898,14 @@ ChVector3d ChBody::GetContactTorque() {
     return GetSystem()->GetContactContainer()->GetContactableTorque(this);
 }
 
+void ChBody::SetContactForce(const ChVector3d& force) {
+    GetSystem()->GetContactContainer()->SetContactableForce(this, force);
+}
+
+void ChBody::SetContactTorque(const ChVector3d& torque) {
+    GetSystem()->GetContactContainer()->SetContactableTorque(this, torque);
+}
+
 // ---------------------------------------------------------------------------
 
 void ChBody::LoadableGetVariables(std::vector<ChVariables*>& mvars) {

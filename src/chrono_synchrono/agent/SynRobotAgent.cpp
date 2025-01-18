@@ -7,11 +7,13 @@ namespace synchrono {
 SynRobotAgent::SynRobotAgent(chrono::models::IRobotModel* robot) : SynAgent(), m_robot(robot) {
     m_state = chrono_types::make_shared<SynRobotStateMessage>();
     m_description = chrono_types::make_shared<SynRobotDescriptionMessage>();
+    m_contact_message = chrono_types::make_shared<SynContactMessage>();
 
     if (robot) {
         std::vector<std::string> visual_files;
         std::vector<std::string> collision_files;
         std::vector<SynTransform> mesh_transforms;
+        std::vector<unsigned int> body_indices;
         for (auto& body : robot->GetCollidableBodiesWithPaths()) {
             collision_files.push_back(body.second);
         }
@@ -23,9 +25,14 @@ SynRobotAgent::SynRobotAgent(chrono::models::IRobotModel* robot) : SynAgent(), m
             mesh_transforms.push_back(transform.second);
         }
 
+        for (auto& body : robot->GetBodyIndices()) {
+            body_indices.push_back(body.second);
+        }
+
         SetZombieVisualizationFiles(visual_files);
         SetZombieCollisionFiles(collision_files);
         SetZombieMeshTransforms(mesh_transforms);
+        SetZombieBodyIndices(body_indices);
     }
 }
 
@@ -34,6 +41,7 @@ SynRobotAgent::~SynRobotAgent() {}
 void SynRobotAgent::SetKey(AgentKey agent_key) {
     m_description->SetSourceKey(agent_key);
     m_state->SetSourceKey(agent_key);
+    m_contact_message->SetSourceKey(agent_key);
     m_agent_key = agent_key;
 }
 
@@ -47,6 +55,7 @@ void SynRobotAgent::InitializeZombie(ChSystem* system) {
     std::vector<std::string> visual_files = m_description->visual_files;
     std::vector<std::string> collision_files = m_description->collision_files;
     std::vector<SynTransform> mesh_transforms = m_description->mesh_transforms;
+    std::vector<unsigned int> body_indices = m_description->body_indices;
 
     // Get the rank from the description's source key
     int source_rank = m_description->GetSourceKey().GetNodeID();
@@ -86,6 +95,7 @@ void SynRobotAgent::InitializeZombie(ChSystem* system) {
 
         // Register the body with its source rank
         collision_system->AddBodyRank(zombie_body, source_rank);
+        collision_system->AddBodyIndex(zombie_body, body_indices[i]);
 
         m_zombie_bodies_list.push_back(zombie_body);
     }
@@ -119,6 +129,29 @@ void SynRobotAgent::Update() {
 
     auto time = this->m_robot->GetSystem()->GetChTime();
     this->m_state->SetState(time, items);
+}
+
+void SynRobotAgent::GatherMessages(SynMessageList& messages) {
+    messages.push_back(m_state);
+
+    // Get collision system and gather contact data
+    if (m_robot) {
+        auto system = m_robot->GetSystem();
+        if (auto collision_system =
+                std::dynamic_pointer_cast<ChCollisionSystemSynchrono>(system->GetCollisionSystem())) {
+            auto contact_map = collision_system->GetContactData();
+            if (!contact_map.empty()) {
+                std::vector<RankContactData> contacts;
+                contacts.reserve(contact_map.size());
+                for (const auto& pair : contact_map) {
+                    contacts.push_back(
+                        {pair.second.body_index, pair.second.rank, pair.second.total_force, pair.second.total_torque});
+                }
+                m_contact_message->SetState(system->GetChTime(), contacts);
+                messages.push_back(m_contact_message);
+            }
+        }
+    }
 }
 
 }  // namespace synchrono

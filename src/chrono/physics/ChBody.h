@@ -38,15 +38,16 @@ class ChSystem;
 /// A rigid body is an entity with mass and inertia properties moving in the 3D space.
 /// Optionally, an object of the ChBody class (or derived) can:
 /// - be involved in collision, if a collision model is provided (@ref collisions) and the collision is enabled;
-/// - be visualized, if a visual model is provided and a proper visualization system is available (@ref visualization_system);
+/// - be visualized, if a visual model is provided and a proper visualization system is available (@ref
+/// visualization_system);
 /// - be constrained by means of ChLink objects (@ref links);
 /// - be loaded by ChLoad objects (@ref loads);
 /// - be used in coordinate transformation, being itself inherited from ChFrameMoving;
-/// 
+///
 /// Location and orientation of the ChBody refer to its Center of Mass (CoM).
 /// Since no additional frame is available, also visual and collision shapes refer to the same frame.
 /// Derived classes might offer additional frames (e.g. @ref ChBodyAuxRef).
-/// 
+///
 /// Further info at the @ref rigid_bodies manual page.
 
 class ChApi ChBody : public ChPhysicsItem, public ChBodyFrame, public ChContactable_1vars<6>, public ChLoadableUVW {
@@ -356,6 +357,12 @@ class ChApi ChBody : public ChPhysicsItem, public ChBodyFrame, public ChContacta
 
     /// Get the resultant contact torque acting on this body.
     ChVector3d GetContactTorque();
+
+    /// Set the resultant contact force acting on this body.
+    void SetContactForce(const ChVector3d& force);
+
+    /// Set the resultant contact torque acting on this body.
+    void SetContactTorque(const ChVector3d& torque);
 
     /// This is only for backward compatibility
     virtual ChPhysicsItem* GetPhysicsItem() override { return this; }

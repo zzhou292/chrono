@@ -149,7 +149,11 @@ int main(int argc, char* argv[]) {
         {rock_bodies[1],
          {GetChronoDataFile("robot/curiosity/rocks/rock1.obj"), ChFrame<>(ChVector3d(0, 0, 0), QUNIT)}}};
 
-    auto agent = chrono_types::make_shared<SynRoboEnvironmentAgent>(added_bodies, &sys);
+    std::vector<unsigned int> body_indices = {rock_bodies[0]->GetIndex(), rock_bodies[1]->GetIndex()};
+
+    std::cout << "Body indices: " << body_indices[0] << ", " << body_indices[1] << std::endl;
+
+    auto agent = chrono_types::make_shared<SynRoboEnvironmentAgent>(added_bodies, body_indices, &sys);
     syn_manager.AddAgent(agent);
 
     // Create and initialize the custom SynChrono collision system

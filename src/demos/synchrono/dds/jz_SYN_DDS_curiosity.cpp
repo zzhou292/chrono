@@ -134,6 +134,8 @@ int main(int argc, char* argv[]) {
         rot = QUNIT;
     }
 
+    rover.Initialize(ChFrame<>(pos, rot));
+
     auto agent = chrono_types::make_shared<SynRobotAgent>(&rover);
     syn_manager.AddAgent(agent);
 
@@ -145,7 +147,6 @@ int main(int argc, char* argv[]) {
     ChCollisionModel::SetDefaultSuggestedEnvelope(0.0025);
     ChCollisionModel::SetDefaultSuggestedMargin(0.0025);
 
-    rover.Initialize(ChFrame<>(pos, rot));
     syn_manager.Initialize(rover.GetSystem());
 
     std::cout << "Curiosity total mass: " << rover.GetRoverMass() << std::endl;

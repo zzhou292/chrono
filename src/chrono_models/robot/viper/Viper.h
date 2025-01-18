@@ -327,6 +327,8 @@ class CH_MODELS_API Viper : public chrono::models::IRobotModel {
 
     std::vector<std::pair<std::shared_ptr<chrono::ChBody>, ChFrame<>>> GetMeshTransforms() const override;
 
+    std::vector<std::pair<std::shared_ptr<chrono::ChBody>, unsigned int>> GetBodyIndices() const override;
+
   private:
     /// Create the rover parts.
     void Create(ViperWheelType wheel_type);

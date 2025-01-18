@@ -5,6 +5,7 @@
 #include "chrono_synchrono/agent/SynAgent.h"
 #include "chrono_synchrono/flatbuffer/message/SynRoboEnvironmentMessage.h"
 #include "chrono_synchrono/collision/ChCollisionSystemSynchrono.h"
+#include "chrono_synchrono/flatbuffer/message/SynContactMessage.h"
 
 #include "chrono/physics/ChBodyAuxRef.h"
 
@@ -23,6 +24,7 @@ class SYN_API SynRoboEnvironmentAgent : public SynAgent {
     ///@param bodies_files the files of the bodies to be added to the environment
     SynRoboEnvironmentAgent(
         std::vector<std::pair<std::shared_ptr<ChBody>, std::pair<std::string, SynTransform>>> added_body_list = {},
+        std::vector<unsigned int> body_indices = {},
         ChSystem* system = nullptr);
 
     ///@brief Destructor.
@@ -50,7 +52,7 @@ class SYN_API SynRoboEnvironmentAgent : public SynAgent {
     /// Will create or get messages and pass them into the referenced message vector
     ///
     ///@param messages a referenced vector containing messages to be distributed from this rank
-    virtual void GatherMessages(SynMessageList& messages) override { messages.push_back(m_state); }
+    virtual void GatherMessages(SynMessageList& messages) override;
 
     ///@brief Get the description messages for this agent
     /// A single agent may have multiple description messages
@@ -70,6 +72,8 @@ class SYN_API SynRoboEnvironmentAgent : public SynAgent {
         m_description->mesh_transforms = mesh_transforms;
     }
 
+    void SetZombieBodyIndices(std::vector<unsigned int> body_indices) { m_description->body_indices = body_indices; }
+
     virtual void SetKey(AgentKey agent_key) override;
 
   protected:
@@ -79,7 +83,8 @@ class SYN_API SynRoboEnvironmentAgent : public SynAgent {
 
     std::shared_ptr<SynRoboEnvironmentStateMessage> m_state;  ///< State of the robot
     std::shared_ptr<SynRoboEnvironmentDescriptionMessage>
-        m_description;  ///< Description for zombie creation on discovery
+        m_description;                                     ///< Description for zombie creation on discovery
+    std::shared_ptr<SynContactMessage> m_contact_message;  ///< Contact data for this environment
 
     ChSystem* m_system;
 };

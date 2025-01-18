@@ -101,6 +101,7 @@ std::shared_ptr<SynAgent> SynAgentFactory::CreateAgent(std::shared_ptr<SynMessag
         robot_agent->SetZombieVisualizationFiles(robot_description->visual_files);
         robot_agent->SetZombieCollisionFiles(robot_description->collision_files);
         robot_agent->SetZombieMeshTransforms(robot_description->mesh_transforms);
+        robot_agent->SetZombieBodyIndices(robot_description->body_indices);
         agent = robot_agent;
     } else if (auto roboenv_description =
                    std::dynamic_pointer_cast<SynRoboEnvironmentDescriptionMessage>(description)) {
@@ -109,6 +110,7 @@ std::shared_ptr<SynAgent> SynAgentFactory::CreateAgent(std::shared_ptr<SynMessag
         roboenv_agent->SetZombieVisualizationFiles(roboenv_description->visual_files);
         roboenv_agent->SetZombieCollisionFiles(roboenv_description->collision_files);
         roboenv_agent->SetZombieMeshTransforms(roboenv_description->mesh_transforms);
+        roboenv_agent->SetZombieBodyIndices(roboenv_description->body_indices);
         agent = roboenv_agent;
     } else if (auto terrain_message = std::dynamic_pointer_cast<SynSCMMessage>(description)) {
         auto terrain_agent = chrono_types::make_shared<SynSCMTerrainAgent>();

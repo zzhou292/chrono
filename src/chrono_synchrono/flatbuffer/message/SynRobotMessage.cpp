@@ -48,7 +48,8 @@ SynRobotDescriptionMessage::SynRobotDescriptionMessage(AgentKey source_key, Agen
 
 void SynRobotDescriptionMessage::SetDescription(const std::vector<std::string>& collidable_files,
                                                 const std::vector<std::string>& visual_files,
-                                                const std::vector<SynTransform>& mesh_transforms) {
+                                                const std::vector<SynTransform>& mesh_transforms,
+                                                const std::vector<unsigned int>& body_indices) {
     this->collision_files = collision_files;
     this->visual_files = visual_files;
 
@@ -56,6 +57,8 @@ void SynRobotDescriptionMessage::SetDescription(const std::vector<std::string>& 
     this->num_visual_items = visual_files.size();
 
     this->mesh_transforms = mesh_transforms;
+
+    this->body_indices = body_indices;
 }
 
 void SynRobotDescriptionMessage::ConvertFromFlatBuffers(const SynFlatBuffers::Message* message) {
@@ -82,6 +85,10 @@ void SynRobotDescriptionMessage::ConvertFromFlatBuffers(const SynFlatBuffers::Me
     mesh_transforms.clear();
     for (auto transform : *robot_description->mesh_item_transform())
         mesh_transforms.emplace_back(transform);
+
+    body_indices.clear();
+    for (auto index : *robot_description->body_indices())
+        body_indices.emplace_back(index);
 }
 
 FlatBufferMessage SynRobotDescriptionMessage::ConvertToFlatBuffers(flatbuffers::FlatBufferBuilder& builder) const {
@@ -102,12 +109,17 @@ FlatBufferMessage SynRobotDescriptionMessage::ConvertToFlatBuffers(flatbuffers::
     for (const auto& item_transform : this->mesh_transforms)
         flatbuffer_mesh_transforms.push_back(item_transform.ToFlatBuffers(builder));
 
+    std::vector<uint32_t> flatbuffer_body_indices;
+    flatbuffer_body_indices.reserve(this->body_indices.size());
+    for (const auto& item_body_index : this->body_indices)
+        flatbuffer_body_indices.push_back(item_body_index);
+
     flatbuffers::Offset<SynFlatBuffers::Agent::Robot::Description> robot_description = 0;
 
     auto robot_type = SynFlatBuffers::Agent::Type_Robot_Description;
     robot_description = SynFlatBuffers::Agent::Robot::CreateDescriptionDirect(
         builder, num_collidable_items, num_visual_items, &flatbuffer_collision_files, &flatbuffer_visual_files,
-        &flatbuffer_mesh_transforms);
+        &flatbuffer_mesh_transforms, &flatbuffer_body_indices);
 
     auto flatbuffer_description =
         SynFlatBuffers::Agent::CreateDescription(builder, robot_type, robot_description.Union());
