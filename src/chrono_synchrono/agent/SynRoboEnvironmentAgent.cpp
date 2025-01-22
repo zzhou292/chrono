@@ -1,5 +1,5 @@
 #include "chrono_synchrono/agent/SynRoboEnvironmentAgent.h"
-
+#include "chrono/physics/ChInertiaUtils.h"
 #include "chrono_synchrono/utils/SynLog.h"
 
 namespace chrono {
@@ -41,10 +41,15 @@ SynRoboEnvironmentAgent::SynRoboEnvironmentAgent(
         std::unordered_map<ChBody*, std::pair<ChVector3d, ChVector3d>> force_torque_map;
 
         if (auto contact = std::dynamic_pointer_cast<SynContactMessage>(message)) {
+            std::cout << "msg time: " << contact->time << "system time: " << m_system->GetChTime() << std::endl;
             for (const auto& contact_data : contact->vec_contacts) {
                 auto body = m_system->GetBodies()[contact_data.body_index];
                 auto new_force = contact_data.total_force;
                 auto new_torque = contact_data.total_torque;
+
+                std::cout << "body index: " << contact_data.body_index << "force: " << new_force.x() << " "
+                          << new_force.y() << " " << new_force.z() << "torque: " << new_torque.x() << " "
+                          << new_torque.y() << " " << new_torque.z() << std::endl;
 
                 // if body has force list with size 0, add
                 if (body->GetForces().size() == 0) {
@@ -72,6 +77,19 @@ SynRoboEnvironmentAgent::SynRoboEnvironmentAgent(
                 }
 
                 force_torque_map[body.get()] = std::make_pair(new_force, new_torque);
+
+                // for other bodies with no force, set them to 0
+                for (auto& body : m_system->GetBodies()) {
+                    if (force_torque_map.find(body.get()) == force_torque_map.end()) {
+                        if (body->GetForces().size() == 2) {
+                            body->GetForces()[0]->SetDir(ChVector3d(0, 0, 0));
+                            body->GetForces()[0]->SetMforce(0);
+
+                            body->GetForces()[1]->SetDir(ChVector3d(0, 0, 0));
+                            body->GetForces()[1]->SetMforce(0);
+                        }
+                    }
+                }
             }
         }
 
@@ -138,12 +156,26 @@ void SynRoboEnvironmentAgent::InitializeZombie(ChSystem* system) {
                 collision_mat, collision_mesh, false, false, 0.001);
             zombie_body->AddCollisionShape(collision_shape, ChFrame<>(ChVector3d(0, 0, 0), QUNIT));
             zombie_body->EnableCollision(true);
+
+            // Compute mass properties
+            double mass;
+            ChVector3d cog;
+            ChMatrix33<> inertia;
+            double density = 900;  // Example density
+            collision_mesh->ComputeMassProperties(true, mass, cog, inertia);
+            ChMatrix33<> principal_inertia_rot;
+            ChVector3d principal_I;
+            ChInertiaUtils::PrincipalInertia(inertia, principal_I, principal_inertia_rot);
+
+            zombie_body->SetMass(mass * density);
+            zombie_body->SetInertiaXX(density * principal_I);
+            zombie_body->SetFrameCOMToRef(ChFrame<>(cog, principal_inertia_rot));
+
         } else {
             zombie_body->EnableCollision(false);
         }
 
         zombie_body->SetFixed(true);
-        zombie_body->SetFrameCOMToRef(ChFrame<>({0, 0, -0.2}, {1, 0, 0, 0}));
         system->Add(zombie_body);
 
         // Register the body with its source rank
@@ -194,6 +226,10 @@ void SynRoboEnvironmentAgent::Update() {
 
     auto time = m_system->GetChTime();
     m_state->SetState(time, items);
+
+    // clear contact data
+    m_contact_message->vec_contacts.clear();
+    m_contact_message->num_contacts = 0;
 }
 
 void SynRoboEnvironmentAgent::GatherMessages(SynMessageList& messages) {
@@ -208,9 +244,14 @@ void SynRoboEnvironmentAgent::GatherMessages(SynMessageList& messages) {
                 std::vector<RankContactData> contacts;
                 contacts.reserve(contact_map.size());
                 for (const auto& pair : contact_map) {
+                    std::cout << "body index: " << pair.second.body_index << "force: " << pair.second.total_force.x()
+                              << " " << pair.second.total_force.y() << " " << pair.second.total_force.z()
+                              << "torque: " << pair.second.total_torque.x() << " " << pair.second.total_torque.y()
+                              << " " << pair.second.total_torque.z() << std::endl;
                     contacts.push_back(
                         {pair.second.body_index, pair.second.rank, pair.second.total_force, pair.second.total_torque});
                 }
+                std::cout << "contacts size: " << contacts.size() << std::endl;
                 m_contact_message->SetState(m_system->GetChTime(), contacts);
                 messages.push_back(m_contact_message);
             }

@@ -17,6 +17,9 @@ if(ENABLE_MODULE_IRRLICHT OR ENABLE_MODULE_VSG)
        jz_SYN_DDS_viper_smc
        jz_SYN_DDS_curiosity
        jz_SYN_DDS_roboenv
+       jz2_SYN_DDS_drop
+       jz2_SYN_DDS_drop_2
+       jz2_SYN_DDS_drop_2_whole
    )
 endif()
 
