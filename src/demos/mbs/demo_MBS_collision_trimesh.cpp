@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
 
     auto coll_shape = chrono_types::make_shared<ChCollisionShapeTriangleMesh>(mesh_mat, mesh, false, false, 0.005);
 
-    for (int j = 0; j < 15; ++j) {
+    for (int j = 0; j < 40; ++j) {
         auto falling = chrono_types::make_shared<ChBodyAuxRef>();
 
         // Set the COG coordinates to barycenter, without displacing the REF reference.
@@ -162,21 +162,21 @@ int main(int argc, char* argv[]) {
         falling->EnableCollision(true);
     }
 
-    // Shared contact material for falling objects
-    auto obj_mat = chrono_types::make_shared<ChContactMaterialNSC>();
-    obj_mat->SetFriction(0.2f);
+    // // Shared contact material for falling objects
+    // auto obj_mat = chrono_types::make_shared<ChContactMaterialNSC>();
+    // obj_mat->SetFriction(0.2f);
 
-    // Create a falling rigid bodies
-    for (int bi = 0; bi < 20; bi++) {
-        auto sphereBody = chrono_types::make_shared<ChBodyEasySphere>(0.05,      // radius size
-                                                                      1000,      // density
-                                                                      true,      // visualization?
-                                                                      true,      // collision?
-                                                                      obj_mat);  // contact material
-        sphereBody->SetPos(ChVector3d(-0.5 + ChRandom::Get() * 1, 1.4, -0.5 + ChRandom::Get()));
-        sphereBody->GetVisualShape(0)->SetColor(ChColor(0.3f, 0.3f, 0.6f));
-        sys.Add(sphereBody);
-    }
+    // // Create a falling rigid bodies
+    // for (int bi = 0; bi < 20; bi++) {
+    //     auto sphereBody = chrono_types::make_shared<ChBodyEasySphere>(0.05,      // radius size
+    //                                                                   1000,      // density
+    //                                                                   true,      // visualization?
+    //                                                                   true,      // collision?
+    //                                                                   obj_mat);  // contact material
+    //     sphereBody->SetPos(ChVector3d(-0.5 + ChRandom::Get() * 1, 1.4, -0.5 + ChRandom::Get()));
+    //     sphereBody->GetVisualShape(0)->SetColor(ChColor(0.3f, 0.3f, 0.6f));
+    //     sys.Add(sphereBody);
+    // }
 
     // Create the Irrlicht visualization system
     auto vis = chrono_types::make_shared<ChVisualSystemIrrlicht>();

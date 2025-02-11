@@ -148,6 +148,8 @@ class SYN_API ChCollisionSystemSynchrono : public ChCollisionSystemBullet {
             int& local_rank = (bodyARank == m_rank) ? bodyARank : bodyBRank;
             int& remote_rank = (bodyARank == m_rank) ? bodyBRank : bodyARank;
             return local_rank < remote_rank;
+
+            return true;
         }
 
       private:
