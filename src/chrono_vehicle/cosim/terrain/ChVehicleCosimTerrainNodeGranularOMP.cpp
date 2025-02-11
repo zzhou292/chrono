@@ -124,7 +124,12 @@ ChVehicleCosimTerrainNodeGranularOMP::ChVehicleCosimTerrainNodeGranularOMP(doubl
     m_system->GetSettings()->collision.narrowphase_algorithm = ChNarrowphase::Algorithm::HYBRID;
 
     // Set default number of threads
-    m_system->SetNumThreads(1);
+    m_system->SetNumThreads(std::min(8, ChOMP::GetNumProcs()));
+
+    // Set associated path
+    m_path_points.push_back({0, 0, 0});
+    m_path_points.push_back({m_dimX / 2, 0, 0});
+    m_path_points.push_back({m_dimX, 0, 0});
 }
 
 ChVehicleCosimTerrainNodeGranularOMP::ChVehicleCosimTerrainNodeGranularOMP(ChContactMethod method,
@@ -163,6 +168,9 @@ ChVehicleCosimTerrainNodeGranularOMP::ChVehicleCosimTerrainNodeGranularOMP(ChCon
         }
     }
 
+    // Create an associated collision system
+    m_system->SetCollisionSystemType(ChCollisionSystem::Type::MULTICORE);
+
     // Solver settings independent of method type
     m_system->SetGravitationalAcceleration(ChVector3d(0, 0, m_gacc));
     m_system->GetSettings()->solver.use_full_inertia_tensor = false;
@@ -171,10 +179,15 @@ ChVehicleCosimTerrainNodeGranularOMP::ChVehicleCosimTerrainNodeGranularOMP(ChCon
     m_system->GetSettings()->collision.narrowphase_algorithm = ChNarrowphase::Algorithm::HYBRID;
 
     // Set default number of threads
-    m_system->SetNumThreads(1);
+    m_system->SetNumThreads(std::min(8, ChOMP::GetNumProcs()));
 
     // Read granular OMP terrain parameters from provided specfile
     SetFromSpecfile(specfile);
+
+    // Set associated path
+    m_path_points.push_back({0, 0, 0});
+    m_path_points.push_back({m_dimX / 2, 0, 0});
+    m_path_points.push_back({m_dimX, 0, 0});
 }
 
 ChVehicleCosimTerrainNodeGranularOMP::~ChVehicleCosimTerrainNodeGranularOMP() {}
@@ -377,25 +390,25 @@ void ChVehicleCosimTerrainNodeGranularOMP::Construct() {
 
     // Bottom box
     utils::AddBoxGeometry(container.get(), m_material_terrain, ChVector3d(m_dimX, m_dimY, m_thick),
-                          ChVector3d(0, 0, -m_thick / 2), ChQuaternion<>(1, 0, 0, 0), true);
+                          ChVector3d(hdimX, 0, -hthick), ChQuaternion<>(1, 0, 0, 0), true);
     // Front box
     utils::AddBoxGeometry(container.get(), m_material_terrain, ChVector3d(m_thick, m_dimY, m_init_depth + m_thick),
-                          ChVector3d(hdimX + hthick, 0, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0), false);
+                          ChVector3d(+m_dimX + hthick, 0, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0), true);
     // Rear box
     utils::AddBoxGeometry(container.get(), m_material_terrain, ChVector3d(m_thick, m_dimY, m_init_depth + m_thick),
-                          ChVector3d(-hdimX - hthick, 0, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0), false);
+                          ChVector3d(-hthick, 0, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0), true);
     // Left box
     utils::AddBoxGeometry(container.get(), m_material_terrain, ChVector3d(m_dimX, m_thick, m_init_depth + m_thick),
-                          ChVector3d(0, hdimY + hthick, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0), false);
+                          ChVector3d(hdimX, +hdimY + hthick, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0), true);
     // Right box
     utils::AddBoxGeometry(container.get(), m_material_terrain, ChVector3d(m_dimX, m_thick, m_init_depth + m_thick),
-                          ChVector3d(0, -hdimY - hthick, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0), false);
+                          ChVector3d(hdimX, -hdimY - hthick, hdimZ - hthick), ChQuaternion<>(1, 0, 0, 0), true);
 
     // Enable deactivation of bodies that exit a specified bounding box.
     // We set this bounding box to encapsulate the container with a conservative height.
     m_system->GetSettings()->collision.use_aabb_active = true;
-    m_system->GetSettings()->collision.aabb_min = real3(-hdimX - hthick, -hdimY - hthick, -hthick);
-    m_system->GetSettings()->collision.aabb_max = real3(+hdimX + hthick, +hdimY + hthick, 2 * hdimZ + 2);
+    m_system->GetSettings()->collision.aabb_min = real3(-hthick, -hdimY - hthick, -hthick);
+    m_system->GetSettings()->collision.aabb_max = real3(+m_dimX + hthick, +hdimY + hthick, 2 * hdimZ + 2);
 
     // --------------------------
     // Generate granular material
@@ -433,16 +446,16 @@ void ChVehicleCosimTerrainNodeGranularOMP::Construct() {
 
     if (m_in_layers) {
         ChVector3d hdims(hdimX - r, hdimY - r, 0);
-        double z = delta;
+        double z = r;
         while (z < m_init_depth) {
-            gen.CreateObjectsBox(*sampler, ChVector3d(0, 0, z), hdims);
+            gen.CreateObjectsBox(*sampler, ChVector3d(hdimX, 0, z), hdims);
             if (m_verbose)
                 cout << "   z =  " << z << "\tnum particles = " << gen.GetTotalNumBodies() << endl;
             z += delta;
         }
     } else {
         ChVector3d hdims(hdimX - r, hdimY - r, m_init_depth / 2 - r);
-        gen.CreateObjectsBox(*sampler, ChVector3d(0, 0, m_init_depth / 2), hdims);
+        gen.CreateObjectsBox(*sampler, ChVector3d(hdimX, 0, m_init_depth / 2), hdims);
     }
 
     m_num_particles = gen.GetTotalNumBodies();
@@ -761,9 +774,9 @@ void ChVehicleCosimTerrainNodeGranularOMP::CreateMeshProxy(unsigned int i) {
     auto proxy = chrono_types::make_shared<ProxyBodySet>();
 
     // Note: it is assumed that there is one and only one mesh defined!
-    auto nt = m_geometry[i_shape].m_coll_meshes[0].m_trimesh->GetNumTriangles();
-    auto i_mat = m_geometry[i_shape].m_coll_meshes[0].m_matID;
-    auto material = m_geometry[i_shape].m_materials[i_mat].CreateMaterial(m_method);
+    auto nt = m_geometry[i_shape].coll_meshes[0].trimesh->GetNumTriangles();
+    auto i_mat = m_geometry[i_shape].coll_meshes[0].matID;
+    auto material = m_geometry[i_shape].materials[i_mat].CreateMaterial(m_method);
 
     //// RADU TODO:  better approximation of mass / inertia?
     double mass_p = m_load_mass[i_shape] / nt;
@@ -811,11 +824,11 @@ void ChVehicleCosimTerrainNodeGranularOMP::CreateRigidProxy(unsigned int i) {
     body->EnableCollision(true);
 
     // Create visualization assets (use collision shapes)
-    m_geometry[i_shape].CreateVisualizationAssets(body, VisualizationType::PRIMITIVES, true);
+    m_geometry[i_shape].CreateVisualizationAssets(body, VisualizationType::COLLISION);
 
     // Create collision shapes
-    for (auto& mesh : m_geometry[i_shape].m_coll_meshes)
-        mesh.m_radius = m_radius_p;
+    for (auto& mesh : m_geometry[i_shape].coll_meshes)
+        mesh.radius = m_radius_p;
     m_geometry[i_shape].CreateCollisionShapes(body, 1, m_method);
     body->GetCollisionModel()->SetFamily(1);
     body->GetCollisionModel()->DisallowCollisionsWith(1);
@@ -834,7 +847,19 @@ void ChVehicleCosimTerrainNodeGranularOMP::OnInitialize(unsigned int num_objects
 
     // Create the visualization window
     if (m_renderRT) {
-#if defined(CHRONO_VSG)
+#if defined(CHRONO_OPENGL)
+        auto vsys_gl = chrono_types::make_shared<opengl::ChVisualSystemOpenGL>();
+        vsys_gl->AttachSystem(m_system);
+        vsys_gl->SetWindowTitle("Terrain Node (GranularOMP)");
+        vsys_gl->SetWindowSize(1280, 720);
+        vsys_gl->SetRenderMode(opengl::SOLID);
+        vsys_gl->Initialize();
+        vsys_gl->AddCamera(m_cam_pos, ChVector3d(0, 0, 0));
+        vsys_gl->SetCameraProperties(0.05f);
+        vsys_gl->SetCameraVertical(CameraVerticalDir::Z);
+
+        m_vsys = vsys_gl;
+#elif defined(CHRONO_VSG)
         auto vsys_vsg = chrono_types::make_shared<vsg3d::ChVisualSystemVSG>();
         vsys_vsg->AttachSystem(m_system);
         vsys_vsg->SetWindowTitle("Terrain Node (GranularOMP)");
@@ -850,18 +875,6 @@ void ChVehicleCosimTerrainNodeGranularOMP::OnInitialize(unsigned int num_objects
         vsys_vsg->Initialize();
 
         m_vsys = vsys_vsg;
-#elif defined(CHRONO_OPENGL)
-        auto vsys_gl = chrono_types::make_shared<opengl::ChVisualSystemOpenGL>();
-        vsys_gl->AttachSystem(m_system);
-        vsys_gl->SetWindowTitle("Terrain Node (GranularOMP)");
-        vsys_gl->SetWindowSize(1280, 720);
-        vsys_gl->SetRenderMode(opengl::WIREFRAME);
-        vsys_gl->Initialize();
-        vsys_gl->AddCamera(m_cam_pos, ChVector3d(0, 0, 0));
-        vsys_gl->SetCameraProperties(0.05f);
-        vsys_gl->SetCameraVertical(CameraVerticalDir::Z);
-
-        m_vsys = vsys_gl;
 #endif
     }
 }
@@ -880,7 +893,7 @@ void ChVehicleCosimTerrainNodeGranularOMP::UpdateMeshProxy(unsigned int i, MeshS
     auto proxy = std::static_pointer_cast<ProxyBodySet>(m_proxies[i]);
 
     // Note: it is assumed that there is one and only one mesh defined!
-    const auto& trimesh = m_geometry[i_shape].m_coll_meshes[0].m_trimesh;
+    const auto& trimesh = m_geometry[i_shape].coll_meshes[0].trimesh;
     const auto& idx_verts = trimesh->GetIndicesVertexes();
     int nt = trimesh->GetNumTriangles();
 
@@ -969,7 +982,7 @@ void ChVehicleCosimTerrainNodeGranularOMP::GetForceMeshProxy(unsigned int i, Mes
     auto proxy = std::static_pointer_cast<ProxyBodySet>(m_proxies[i]);
 
     // Note: it is assumed that there is one and only one mesh defined!
-    const auto& trimesh = m_geometry[i_shape].m_coll_meshes[0].m_trimesh;
+    const auto& trimesh = m_geometry[i_shape].coll_meshes[0].trimesh;
     const auto& idx_verts = trimesh->GetIndicesVertexes();
     int nt = trimesh->GetNumTriangles();
 
@@ -1046,11 +1059,8 @@ void ChVehicleCosimTerrainNodeGranularOMP::OnRender() {
     if (!m_vsys->Run())
         MPI_Abort(MPI_COMM_WORLD, 1);
 
-    if (m_track && !m_proxies.empty()) {
-        auto proxy = std::static_pointer_cast<ProxyBodySet>(m_proxies[0]);  // proxy for first object
-        ChVector3d cam_point = proxy->bodies[0]->GetPos();                  // position of first body in proxy set
-        m_vsys->UpdateCamera(m_cam_pos, cam_point);
-    }
+    if (m_track)
+        m_vsys->UpdateCamera(m_cam_pos, m_chassis_loc);
 
     m_vsys->BeginScene();
     m_vsys->Render();

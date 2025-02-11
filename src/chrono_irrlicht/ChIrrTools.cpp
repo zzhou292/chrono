@@ -10,6 +10,8 @@
 //
 // =============================================================================
 
+#include <cmath>
+
 #include "chrono/solver/ChIterativeSolverVI.h"
 #include "chrono/solver/ChIterativeSolverLS.h"
 #include "chrono/physics/ChContactContainer.h"
@@ -188,6 +190,10 @@ class _draw_reporter_class : public ChContactContainer::ReportContactCallback {
                 break;
             case ContactsDrawMode::CONTACT_NORMALS:
                 v2 = pA + vn * clen;
+
+                v1 = pB;
+                v2 = pB - vn * clen;
+
                 mcol = irr::video::SColor(200, 0, 100, 255);
                 break;
             case ContactsDrawMode::CONTACT_FORCES_N:
@@ -790,8 +796,8 @@ void drawCircle(ChVisualSystemIrrlicht* vis,
 
     for (int iu = 1; iu <= resolution; iu++) {
         phaseB = CH_2PI * (double)iu / (double)resolution;
-        ChVector3d V1(radius * cos(phaseA), radius * sin(phaseA), 0);
-        ChVector3d V2(radius * cos(phaseB), radius * sin(phaseB), 0);
+        ChVector3d V1(radius * std::cos(phaseA), radius * std::sin(phaseA), 0);
+        ChVector3d V2(radius * std::cos(phaseB), radius * std::sin(phaseB), 0);
         drawSegment(vis, pos.TransformPointLocalToParent(V1), pos.TransformPointLocalToParent(V2), col, use_Zbuffer);
         phaseA = phaseB;
     }
@@ -830,8 +836,8 @@ void drawSpring(ChVisualSystemIrrlicht* vis,
     for (int iu = 1; iu <= resolution; iu++) {
         phaseB = turns * CH_2PI * (double)iu / (double)resolution;
         heightB = length * ((double)iu / (double)resolution);
-        ChVector3d V1(heightA, radius * cos(phaseA), radius * sin(phaseA));
-        ChVector3d V2(heightB, radius * cos(phaseB), radius * sin(phaseB));
+        ChVector3d V1(heightA, radius * std::cos(phaseA), radius * std::sin(phaseA));
+        ChVector3d V2(heightB, radius * std::cos(phaseB), radius * std::sin(phaseB));
         drawSegment(vis, pos.TransformPointLocalToParent(V1), pos.TransformPointLocalToParent(V2), col, use_Zbuffer);
         phaseA = phaseB;
         heightA = heightB;
@@ -1079,11 +1085,11 @@ void drawCoordsys(ChVisualSystemIrrlicht* vis, const ChCoordsys<>& coord, double
 // Draw a line arrow in 3D space with given color.
 // -----------------------------------------------------------------------------
 void drawArrow(ChVisualSystemIrrlicht* vis,
-               ChVector3d start,
-               ChVector3d end,
-               ChVector3d plane_normal,
+               const ChVector3d& start,
+               const ChVector3d& end,
+               const ChVector3d& plane_normal,
                bool sharp,
-               ChColor col,
+               const ChColor& col,
                bool use_Zbuffer) {
     drawSegment(vis, start, end, col, use_Zbuffer);  // main segment
     ChVector3d dir = (end - start).GetNormalized();
@@ -1099,6 +1105,24 @@ void drawArrow(ChVisualSystemIrrlicht* vis,
     }
     drawSegment(vis, end, p1, col, use_Zbuffer);  // arrow segment 1
     drawSegment(vis, end, p2, col, use_Zbuffer);  // arrow segment 2
+}
+
+// -----------------------------------------------------------------------------
+// Draw a label in 3D scene at given position.
+// -----------------------------------------------------------------------------
+void drawLabel3D(ChVisualSystemIrrlicht* vis,
+               const std::string& text,
+               const ChVector3d& position,
+               const ChColor& color,
+               bool use_Zbuffer) {
+    irr::core::position2di spos =
+        vis->GetSceneManager()->getSceneCollisionManager()->getScreenCoordinatesFrom3DPosition(
+            irr::core::vector3dfCH(position));
+    auto font = vis->GetGUIEnvironment()->getFont(GetChronoDataFile("fonts/arial8.xml").c_str());
+    if (font) {
+        font->draw(text.c_str(), irr::core::rect<irr::s32>(spos.X - 15, spos.Y, spos.X + 15, spos.Y + 10),
+                   tools::ToIrrlichtSColor(color));
+    }
 }
 
 }  // end namespace tools

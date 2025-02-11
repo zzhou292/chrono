@@ -2,7 +2,7 @@ ATTENTION
 =========
 Although Chrono is released under BSD 3 license, any new code under this repo, except the 'main' fork which is pegged to 'main' in Project Chrono, is release under GPL v3.0 license.
 
-This Fork of Chrono contains untested/unmerged features of Chrono authored by Jason Zhou (zzhou292@wisc.edu).
+This Fork of Chrono contains untested/unmerged features of Chrono authored by Json Zhou (zzhou292@wisc.edu).
 
 These features are not in the main repo for a reason. They might be undocumented, untested, unstable, and there is no guarantee anything will work, even the orginal chrono structure. ORDINARY USERS ARE STRONGLY ENCOURAGED TO USE THE OFFICIAL CHRONO RELEASE, NOT THIS FORK!!!!
 
@@ -24,10 +24,11 @@ Distributed under a permissive BSD license, Chrono is an open-source multi-physi
 -	granular dynamics using either a non-smooth contact formulation resulting in differential  variational inequality (DVI) problems or a smooth contact formulation resulting in DAEs
 -	fluid-solid interaction problems whose dynamics is governed by coupled DAEs and PDEs
 -	first-order dynamic systems governed by ordinary differential equations (ODE)
+-	sensors (camera, LiDAR, GPS, IMU, SPAD) to support simulation in robotics and autonomous agents via a ROS2 interface
 
-Chrono provides a mature and stable code base that continues to be augmented with new features and modules.  The core functionality of Chrono provides support for the modeling, simulation, and visualization of rigid and flexible multibody systems with additional capabilities offered through optional modules. These modules provide support for additional classes of problems (e.g., granular dynamics and fluid-solid interaction), modeling and simulation of specialized systems (such as ground vehicles), co-simulation, run-time visualization, post-processing, interfaces to external linear solvers, or specialized parallel computing algorithms (multi-core, GPU, and distributed) for large-scale simulations.
+Chrono provides a mature and stable code base that continues to be augmented with new features and modules.  The core functionality of Chrono provides support for the modeling, simulation, and visualization of rigid and flexible multibody systems with additional capabilities offered through optional modules. These modules provide support for additional classes of problems (e.g., granular dynamics and fluid-solid interaction), modeling and simulation of specialized systems (such as ground vehicles and robots), co-simulation, run-time visualization, post-processing, interfaces to external linear solvers, or specialized parallel computing algorithms (multi-core, GPU, and distributed) for large-scale simulations.
 
-Used in many different scientific and engineering problems by researchers from academia, industry, and government, Chrono has mature and sophisticated support for multibody dynamics, finite element analysis, granular dynamics, fluid-solid interaction, ground vehicle simulation and vehicle-terrain interaction.  
+Used in many different scientific and engineering problems by researchers from academia, industry, and federal government, Chrono has mature support for multibody dynamics, finite element analysis, granular dynamics, fluid-solid interaction, ground vehicle simulation, robotics, embodied AI, and terramechanics.  
 
 Implemented almost entirely in C++, Chrono also provides Python and C# APIs. The build system is based on CMake. Chrono is platform-independent and is actively tested on Linux, Windows, and MacOS using a variety of compilers.
 

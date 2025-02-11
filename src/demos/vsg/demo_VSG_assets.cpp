@@ -16,6 +16,8 @@
 //
 // =============================================================================
 
+#include <cmath>
+
 #include "chrono/physics/ChSystemNSC.h"
 #include "chrono/physics/ChParticleCloud.h"
 #include "chrono/physics/ChBodyEasy.h"
@@ -382,11 +384,13 @@ int main(int argc, char* argv[]) {
     unsigned int frame_number = 0;
     while (vis->Run()) {
         double time = sys.GetChTime();
-        if (frame_number == 42) {
-            vis->WriteImageToFile(out_dir + "/assets.png");  // does not work with frame == 0!
+        if (frame_number > 2) {
+            std::string imgName("/assets-");
+            imgName.append(std::to_string(frame_number) + ".png");
+            vis->WriteImageToFile(out_dir + imgName);  // does not work with frame == 0!
         }
 
-        vis->UpdateVisualModel(teapotId1, ChFrame<>(ChVector3d(0, 3.5 + 0.5 * sin(CH_PI * time / 10), 3), Zup));
+        vis->UpdateVisualModel(teapotId1, ChFrame<>(ChVector3d(0, 3.5 + 0.5 * std::sin(CH_PI * time / 10), 3), Zup));
         vis->UpdateVisualModel(teapotId2, ChFrame<>(ChVector3d(-5, 3.5, 3), Zup * QuatFromAngleY(time / 20)));
         vis->UpdateVisualModel(boxId, ChFrame<>(ChVector3d(0, 0.01 * time, 0), QUNIT));
         vis->UpdateVisualModel(ellId, ChFrame<>(ellPos, Zup * QuatFromAngleY(0.2 * time) * QuatFromAngleZ(0.1 * time)));
@@ -404,7 +408,8 @@ int main(int argc, char* argv[]) {
         sys.DoStepDynamics(step_size);
 
         rt.Spin(step_size);
-
+        if (frame_number == 100)
+            break;
         frame_number++;
     }
 
