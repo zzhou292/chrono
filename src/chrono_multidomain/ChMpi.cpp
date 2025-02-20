@@ -413,6 +413,27 @@ int ChMPI::ReduceAll(double send, double& received_result, eCh_mpiReduceOperatio
     return MPI_Allreduce(&send, &received_result, 1, MPI_DOUBLE, mpi_operation, MPI_COMM_WORLD);
 }
 
+template <typename T>
+void ChMPI::ChBroadcast(std::vector<T>& data, int root) {
+    // First broadcast the size
+    int size = data.size();
+    MPI_Bcast(&size, 1, MPI_INT, root, MPI_COMM_WORLD);
+
+    std::cout << "chbroadcast size: " << size * sizeof(T) << std::endl;
+    // Resize receiving buffers on non-root ranks
+    if (GetRank() != root) {
+        data.resize(size);
+    }
+
+    // Broadcast the actual data
+    MPI_Bcast(data.data(), size * sizeof(T), MPI_BYTE, root, MPI_COMM_WORLD);
+}
+
+int ChMPI::GetRank() {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    return rank;
+}
 ////////////////////////////////////////////////////
 
 double f(double);
@@ -480,6 +501,38 @@ void Ch_test_mpi::run_test() {
     char* faa = (char*)"";
     ccmain(foo, &faa);
 }
+
+template void ChMPI::ChBroadcast<AABB>(std::vector<AABB>& data, int root);
+
+template <typename T>
+void ChMPI::ChAllreduce(const std::vector<T>& sendbuf, std::vector<T>& recvbuf, ChOperation op) {
+    MPI_Op mpi_op;
+    switch (op) {
+        case ChOperation::MAX:
+            mpi_op = MPI_MAX;
+            break;
+        case ChOperation::MIN:
+            mpi_op = MPI_MIN;
+            break;
+        case ChOperation::SUM:
+            mpi_op = MPI_SUM;
+            break;
+        case ChOperation::PROD:
+            mpi_op = MPI_PROD;
+            break;
+        default:
+            mpi_op = MPI_SUM;
+    }
+
+    // Ensure receive buffer has same size
+    recvbuf.resize(sendbuf.size());
+
+    // Perform the allreduce operation
+    MPI_Allreduce(sendbuf.data(), recvbuf.data(), sendbuf.size() * sizeof(T), MPI_BYTE, mpi_op, MPI_COMM_WORLD);
+}
+
+// Add template instantiation for AABB
+template void ChMPI::ChAllreduce<AABB>(const std::vector<AABB>&, std::vector<AABB>&, ChOperation);
 
 }  // end namespace multidomain
 }  // end namespace chrono

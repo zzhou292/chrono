@@ -27,6 +27,8 @@ endif()
 
 
 SET(ChronoEngine_MULTIDOMAIN_SOURCES 
+    BVH_Builder/bvh_builder.cpp
+    BVH_Builder/domain_tracker.cpp
     ChDomain.cpp
     ChDomainBuilder.cpp
     ChDomainManager.cpp
@@ -40,6 +42,8 @@ SET(ChronoEngine_MULTIDOMAIN_SOURCES
 )
 
 SET(ChronoEngine_MULTIDOMAIN_HEADERS
+    BVH_Builder/bvh_builder.hpp
+    BVH_Builder/domain_tracker.hpp
     ChApiMultiDomain.h
     ChDomain.h
     ChDomainBuilder.h

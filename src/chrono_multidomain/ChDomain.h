@@ -43,7 +43,7 @@ namespace multidomain {
 
 class ChApiMultiDomain ChDomainInterface {
   public:
-    ChDomainInterface() {};
+    ChDomainInterface(){};
     ~ChDomainInterface() {}
 
     ChDomainInterface(const ChDomainInterface& other) {
