@@ -15,16 +15,16 @@ namespace chrono {
 namespace multidomain {
 
 struct ChApiMultiDomain AABB {
-    std::array<float, 3> min;
-    std::array<float, 3> max;
+    std::array<double, 3> min;
+    std::array<double, 3> max;
 
     std::vector<int> tags;
 
     AABB() = default;
 
     AABB(const ChVector3d& min_vec, const ChVector3d& max_vec, const std::vector<int>& tags) {
-        min = {(float)min_vec.x(), (float)min_vec.y(), (float)min_vec.z()};
-        max = {(float)max_vec.x(), (float)max_vec.y(), (float)max_vec.z()};
+        min = {min_vec.x(), min_vec.y(), min_vec.z()};
+        max = {max_vec.x(), max_vec.y(), max_vec.z()};
         this->tags = tags;
     }
 
@@ -34,16 +34,16 @@ struct ChApiMultiDomain AABB {
 // this is a AABB class with fixed size array for tags
 template <size_t N>
 struct ChApiMultiDomain AABB_static {
-    std::array<float, 3> min;
-    std::array<float, 3> max;
+    std::array<double, 3> min;
+    std::array<double, 3> max;
     int tag_size;
     std::array<int, N> tags;
 
     AABB_static() = default;
 
     AABB_static(const ChVector3d& min_vec, const ChVector3d& max_vec, int tag_size, const std::array<int, N>& tags) {
-        min = {(float)min_vec.x(), (float)min_vec.y(), (float)min_vec.z()};
-        max = {(float)max_vec.x(), (float)max_vec.y(), (float)max_vec.z()};
+        min = {min_vec.x(), min_vec.y(), min_vec.z()};
+        max = {max_vec.x(), max_vec.y(), max_vec.z()};
         this->tag_size = tag_size;
         std::copy_n(tags.begin(), N, this->tags.begin());
     }
@@ -70,13 +70,13 @@ class ChApiMultiDomain BVHBuilder {
     explicit BVHBuilder(const std::vector<AABB>& aabbs) : aabbs(aabbs) {}
 
     std::unique_ptr<Node> build_top_down();
-    std::unique_ptr<Node> update_incremental(std::unique_ptr<Node> root, float threshold = 0.3f);
+    std::unique_ptr<Node> update_incremental(std::unique_ptr<Node> root, double threshold = 0.3f);
     std::vector<AABB> get_subdomains_greedy(const Node* root, int num_groups);
     std::vector<const Node*> get_group_nodes(const Node* root, const std::vector<std::vector<int>>& groups);
 
-    static float aabb_volume(const AABB& aabb);
+    static double aabb_volume(const AABB& aabb);
     static AABB merge_aabbs(const AABB& a, const AABB& b);
-    static float calc_overlap(const AABB& a, const AABB& b);
+    static double calc_overlap(const AABB& a, const AABB& b);
 
   private:
     const std::vector<AABB>& aabbs;  // Pairs of (AABB, tag)

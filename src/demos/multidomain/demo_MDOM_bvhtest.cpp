@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     // Verify root AABB
     AABB root_aabb = root->aabb;
     PrintAABB(root_aabb, "Root");
-    if (root_aabb.min != std::array<float, 3>{0, 0, 0} || root_aabb.max != std::array<float, 3>{5, 5, 5} ||
+    if (root_aabb.min != std::array<double, 3>{0, 0, 0} || root_aabb.max != std::array<double, 3>{5, 5, 5} ||
         root_aabb.tags != std::vector<int>{4, 5, 6}) {
         std::cout << "Test 1 FAILED: Root AABB incorrect!\n";
         // print all tags

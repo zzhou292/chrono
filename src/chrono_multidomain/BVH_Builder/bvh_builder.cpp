@@ -37,13 +37,13 @@ std::unique_ptr<Node> BVHBuilder::build_top_down() {
             }
 
             auto [min_pt, max_pt, tags] = combined;
-            std::array<float, 3> axis_lengths = {max_pt[0] - min_pt[0], max_pt[1] - min_pt[1], max_pt[2] - min_pt[2]};
+            std::array<double, 3> axis_lengths = {max_pt[0] - min_pt[0], max_pt[1] - min_pt[1], max_pt[2] - min_pt[2]};
             int split_axis = static_cast<int>(
                 std::distance(axis_lengths.begin(), std::max_element(axis_lengths.begin(), axis_lengths.end())));
 
             std::sort(items.begin(), items.end(), [split_axis](const auto& a, const auto& b) {
-                float a_center = (a.first.min[split_axis] + a.first.max[split_axis]) / 2;
-                float b_center = (b.first.min[split_axis] + b.first.max[split_axis]) / 2;
+                double a_center = (a.first.min[split_axis] + a.first.max[split_axis]) / 2;
+                double b_center = (b.first.min[split_axis] + b.first.max[split_axis]) / 2;
                 return a_center < b_center;
             });
 
@@ -78,8 +78,8 @@ std::unique_ptr<Node> BVHBuilder::build_top_down() {
     return root;
 }
 
-float BVHBuilder::aabb_volume(const AABB& aabb) {
-    float volume = 1.0f;
+double BVHBuilder::aabb_volume(const AABB& aabb) {
+    double volume = 1.0f;
     for (int i = 0; i < 3; ++i) {
         volume *= (aabb.max[i] - aabb.min[i]);
     }
@@ -102,11 +102,11 @@ AABB BVHBuilder::merge_aabbs(const AABB& a, const AABB& b) {
     return merged;
 }
 
-float BVHBuilder::calc_overlap(const AABB& a, const AABB& b) {
-    float overlap = 1.0f;
+double BVHBuilder::calc_overlap(const AABB& a, const AABB& b) {
+    double overlap = 1.0f;
     for (int i = 0; i < 3; ++i) {
-        float min_max = std::min(a.max[i], b.max[i]);
-        float max_min = std::max(a.min[i], b.min[i]);
+        double min_max = std::min(a.max[i], b.max[i]);
+        double max_min = std::max(a.min[i], b.min[i]);
         if (min_max < max_min)
             return 0.0f;
         overlap *= (min_max - max_min);
@@ -186,7 +186,7 @@ void BVHBuilder::print_tree_structure(const Node* node, std::string prefix, bool
     print_tree_structure(node->right.get(), prefix + (isLeft ? "│   " : "    "), false);
 }
 
-std::unique_ptr<Node> BVHBuilder::update_incremental(std::unique_ptr<Node> root, float threshold) {
+std::unique_ptr<Node> BVHBuilder::update_incremental(std::unique_ptr<Node> root, double threshold) {
     if (!root)
         return build_top_down();
 
@@ -195,7 +195,7 @@ std::unique_ptr<Node> BVHBuilder::update_incremental(std::unique_ptr<Node> root,
 
     // If too many nodes were updated, rebuild the entire tree
     int update_count = std::count(updated.begin(), updated.end(), true);
-    if (static_cast<float>(update_count) / aabbs.size() > threshold) {
+    if (static_cast<double>(update_count) / aabbs.size() > threshold) {
         return build_top_down();
     }
 

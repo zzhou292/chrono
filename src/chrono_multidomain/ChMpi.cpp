@@ -12,10 +12,11 @@
 // Authors: Alessandro Tasora
 // =============================================================================
 
-#include "mpi.h"
 #include <iostream>
 #include <sstream>
 #include <math.h>
+#include <set>
+#include "mpi.h"
 
 #include "chrono_multidomain/ChMpi.h"
 
@@ -415,18 +416,36 @@ int ChMPI::ReduceAll(double send, double& received_result, eCh_mpiReduceOperatio
 
 template <typename T>
 void ChMPI::ChBroadcast(std::vector<T>& data, int root) {
-    // First broadcast the size
+    // First broadcast the size of the outer vector
     int size = data.size();
     MPI_Bcast(&size, 1, MPI_INT, root, MPI_COMM_WORLD);
 
-    std::cout << "chbroadcast size: " << size * sizeof(T) << std::endl;
     // Resize receiving buffers on non-root ranks
     if (GetRank() != root) {
         data.resize(size);
     }
 
-    // Broadcast the actual data
-    MPI_Bcast(data.data(), size * sizeof(T), MPI_BYTE, root, MPI_COMM_WORLD);
+    // For AABB type, we need special handling for the tags vector
+    if constexpr (std::is_same_v<T, AABB>) {
+        // Broadcast the fixed part of each AABB first
+        for (int i = 0; i < size; i++) {
+            MPI_Bcast(&data[i].min, 3, MPI_FLOAT, root, MPI_COMM_WORLD);
+            MPI_Bcast(&data[i].max, 3, MPI_FLOAT, root, MPI_COMM_WORLD);
+
+            // Broadcast size of tags vector for this AABB
+            int tags_size = data[i].tags.size();
+            MPI_Bcast(&tags_size, 1, MPI_INT, root, MPI_COMM_WORLD);
+
+            // Resize and broadcast tags
+            if (GetRank() != root) {
+                data[i].tags.resize(tags_size);
+            }
+            MPI_Bcast(data[i].tags.data(), tags_size, MPI_INT, root, MPI_COMM_WORLD);
+        }
+    } else {
+        // For other types, use the original byte-based broadcast
+        MPI_Bcast(data.data(), size * sizeof(T), MPI_BYTE, root, MPI_COMM_WORLD);
+    }
 }
 
 int ChMPI::GetRank() {
@@ -506,33 +525,75 @@ template void ChMPI::ChBroadcast<AABB>(std::vector<AABB>& data, int root);
 
 template <typename T>
 void ChMPI::ChAllreduce(const std::vector<T>& sendbuf, std::vector<T>& recvbuf, ChOperation op) {
-    MPI_Op mpi_op;
-    switch (op) {
-        case ChOperation::MAX:
-            mpi_op = MPI_MAX;
-            break;
-        case ChOperation::MIN:
-            mpi_op = MPI_MIN;
-            break;
-        case ChOperation::SUM:
-            mpi_op = MPI_SUM;
-            break;
-        case ChOperation::PROD:
-            mpi_op = MPI_PROD;
-            break;
-        default:
-            mpi_op = MPI_SUM;
-    }
-
-    // Ensure receive buffer has same size
     recvbuf.resize(sendbuf.size());
+    if constexpr (std::is_same_v<T, ChAABB>) {
+        int rank, num_ranks;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
 
-    // Perform the allreduce operation
-    MPI_Allreduce(sendbuf.data(), recvbuf.data(), sendbuf.size() * sizeof(T), MPI_BYTE, mpi_op, MPI_COMM_WORLD);
+        // First, copy the send buffer to receive buffer
+        recvbuf = sendbuf;
+
+        // For each AABB in the vector
+        for (size_t i = 0; i < sendbuf.size(); i++) {
+            // Create temporary arrays for min/max coordinates
+            double min_coords[3], max_coords[3];
+
+            // Each rank contributes its own data for position i
+            if (i == rank) {
+                min_coords[0] = sendbuf[i].min.x();
+                min_coords[1] = sendbuf[i].min.y();
+                min_coords[2] = sendbuf[i].min.z();
+                max_coords[0] = sendbuf[i].max.x();
+                max_coords[1] = sendbuf[i].max.y();
+                max_coords[2] = sendbuf[i].max.z();
+            } else {
+                // Initialize with neutral values for the operation
+                min_coords[0] = min_coords[1] = min_coords[2] = DBL_MAX;   // For MIN op
+                max_coords[0] = max_coords[1] = max_coords[2] = -DBL_MAX;  // For MAX op
+            }
+
+            // Temporary arrays to receive the reduced values
+            double min_result[3], max_result[3];
+
+            // Use MPI_Allreduce to combine values from all ranks
+            MPI_Allreduce(min_coords, min_result, 3, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+            MPI_Allreduce(max_coords, max_result, 3, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+            // Update the receive buffer with the reduced values
+            recvbuf[i].min = ChVector3d(min_result[0], min_result[1], min_result[2]);
+            recvbuf[i].max = ChVector3d(max_result[0], max_result[1], max_result[2]);
+        }
+    } else {
+        // Handle non-AABB types as before...
+        MPI_Op mpi_op;
+
+        switch (op) {
+            case ChOperation::MAX:
+                mpi_op = MPI_MAX;
+                break;
+            case ChOperation::MIN:
+                mpi_op = MPI_MIN;
+                break;
+            case ChOperation::SUM:
+                mpi_op = MPI_SUM;
+                break;
+            case ChOperation::PROD:
+                mpi_op = MPI_PROD;
+                break;
+            default:
+                mpi_op = MPI_SUM;
+                break;
+        }
+
+        MPI_Allreduce(sendbuf.data(), recvbuf.data(), sendbuf.size() * sizeof(T), MPI_BYTE, mpi_op, MPI_COMM_WORLD);
+    }
 }
 
-// Add template instantiation for AABB
-template void ChMPI::ChAllreduce<AABB>(const std::vector<AABB>&, std::vector<AABB>&, ChOperation);
+// Add explicit template instantiation for ChAABB
+template void ChMPI::ChAllreduce<ChAABB>(const std::vector<ChAABB>& sendbuf,
+                                         std::vector<ChAABB>& recvbuf,
+                                         ChOperation op);
 
 }  // end namespace multidomain
 }  // end namespace chrono

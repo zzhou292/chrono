@@ -263,7 +263,8 @@ int main(int argc, char* argv[]) {
             std::cout << "\n\n\n============= Time step (explicit) " << i << std::endl << std::endl;
 
         // Materdomain BVH update
-        // domain_builder->UpdateLocalDomainAABBs(&sys, domain_manager.GetMPIrank());
+        // Fail safe mechanism to update all domain AABBs without running BVH
+        domain_builder->UpdateLocalDomainAABBs(&sys, domain_manager.GetMPIrank());
 
         // MULTIDOMAIN AUTOMATIC ITEM MIGRATION!
         domain_manager.DoDomainPartitionUpdate(domain_manager.GetMPIrank());

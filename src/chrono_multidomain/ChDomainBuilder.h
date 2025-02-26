@@ -32,7 +32,7 @@ namespace multidomain {
 
 class ChApiMultiDomain ChDomainBuilder {
   public:
-    ChDomainBuilder(){};
+    ChDomainBuilder() {};
     virtual ~ChDomainBuilder() {}
 
     /// Get the number of ranks needed for this domain splitting
@@ -276,7 +276,8 @@ class ChApiMultiDomain ChDomainBuilderBVH : public ChDomainBuilder {
     void AddExcludedBody(std::shared_ptr<ChBody> body) { excluded_bodies_.push_back(body); }
 
   private:
-    std::vector<AABB> domain_aabbs_;
+    std::vector<AABB> domain_aabbs_;           // aabb with tags
+    std::vector<ChAABB> domain_aabbs_synced_;  // a aabb copy without any tags
     int num_domains_;
     bool build_master_;
     std::vector<std::shared_ptr<ChBody>> excluded_bodies_;
