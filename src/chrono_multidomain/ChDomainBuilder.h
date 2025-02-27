@@ -32,7 +32,7 @@ namespace multidomain {
 
 class ChApiMultiDomain ChDomainBuilder {
   public:
-    ChDomainBuilder() {};
+    ChDomainBuilder(){};
     virtual ~ChDomainBuilder() {}
 
     /// Get the number of ranks needed for this domain splitting
@@ -245,6 +245,10 @@ class ChApiMultiDomain ChDomainBox : public ChDomain {
     /// Set the axis-aligned bounding box of this domain
     void SetAABB(const ChAABB& domain_aabb) { aabb = domain_aabb; }
 
+    // TODO: optimize this, we need to keep tags for the BVH case, but not sure if this is absolutely necessary
+    std::vector<int> tags;
+    std::vector<int> excluded_body_tags;
+
   private:
     ChAABB aabb;
 };
@@ -275,6 +279,9 @@ class ChApiMultiDomain ChDomainBuilderBVH : public ChDomainBuilder {
 
     void AddExcludedBody(std::shared_ptr<ChBody> body) { excluded_bodies_.push_back(body); }
 
+    // Rebuild domains based on current object positions
+    void RebuildDomains(ChSystem* msys, int mpi_rank);
+
   private:
     std::vector<AABB> domain_aabbs_;           // aabb with tags
     std::vector<ChAABB> domain_aabbs_synced_;  // a aabb copy without any tags
@@ -282,6 +289,9 @@ class ChApiMultiDomain ChDomainBuilderBVH : public ChDomainBuilder {
     bool build_master_;
     std::vector<std::shared_ptr<ChBody>> excluded_bodies_;
     std::shared_ptr<ChDomainBox> current_domain_box_;
+
+    // domain tracker
+    DomainTracker domain_tracker_;
 };
 
 }  // end namespace multidomain

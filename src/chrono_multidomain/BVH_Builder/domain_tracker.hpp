@@ -11,22 +11,19 @@ namespace chrono {
 namespace multidomain {
 
 class ChApiMultiDomain DomainTracker {
-    std::vector<std::vector<int>> previous_groups;
+    std::vector<AABB> previous_domains;
     std::vector<int> assignment;
     std::vector<std::vector<double>> cost_matrix;
-    std::vector<const Node*> previous_nodes;
 
   public:
-    std::vector<std::vector<int>> match_domains(const std::vector<std::vector<int>>& new_groups,
-                                                const std::vector<const Node*>& new_nodes);
+    // New API that directly accepts vector of AABBs
+    std::vector<AABB> match_domains(const std::vector<AABB>& new_domains);
 
   private:
-    static constexpr double HUNGARIAN_INFINITY = 1e10;
+    static constexpr double HUNGARIAN_INFINITY = 1e15;
 
-    void update(const std::vector<std::vector<int>>& new_groups, const std::vector<const Node*>& new_nodes);
+    void update(const std::vector<AABB>& new_domains);
     void hungarian_solve();
-
-    AABB compute_domain_aabb(const std::vector<int>& domain_indices, const std::vector<AABB>& aabbs) const;
 };
 
 }  // namespace multidomain

@@ -41,9 +41,53 @@ std::unique_ptr<Node> BVHBuilder::build_top_down() {
             int split_axis = static_cast<int>(
                 std::distance(axis_lengths.begin(), std::max_element(axis_lengths.begin(), axis_lengths.end())));
 
-            std::sort(items.begin(), items.end(), [split_axis](const auto& a, const auto& b) {
+            const double epsilon = 5e-2;  // Adjust this value based on your precision needs
+
+            std::sort(items.begin(), items.end(), [split_axis, epsilon, &axis_lengths](const auto& a, const auto& b) {
+                // Primary axis comparison (already determined as the largest spread axis)
                 double a_center = (a.first.min[split_axis] + a.first.max[split_axis]) / 2;
                 double b_center = (b.first.min[split_axis] + b.first.max[split_axis]) / 2;
+
+                // If centers are within epsilon of each other, use secondary axis
+                if (std::abs(a_center - b_center) < epsilon) {
+                    // Find the ordering of axes by their lengths (largest to smallest)
+                    std::array<int, 3> axis_order = {0, 1, 2};
+                    std::sort(axis_order.begin(), axis_order.end(),
+                              [&axis_lengths](int a, int b) { return axis_lengths[a] > axis_lengths[b]; });
+
+                    // Skip the primary axis which we already compared
+                    int secondary_axis = -1;
+                    for (int axis : axis_order) {
+                        if (axis != split_axis) {
+                            secondary_axis = axis;
+                            break;
+                        }
+                    }
+
+                    a_center = (a.first.min[secondary_axis] + a.first.max[secondary_axis]) / 2;
+                    b_center = (b.first.min[secondary_axis] + b.first.max[secondary_axis]) / 2;
+
+                    // If still within epsilon, use tertiary axis
+                    if (std::abs(a_center - b_center) < epsilon) {
+                        // Find the remaining axis
+                        int tertiary_axis = -1;
+                        for (int axis : axis_order) {
+                            if (axis != split_axis && axis != secondary_axis) {
+                                tertiary_axis = axis;
+                                break;
+                            }
+                        }
+
+                        a_center = (a.first.min[tertiary_axis] + a.first.max[tertiary_axis]) / 2;
+                        b_center = (b.first.min[tertiary_axis] + b.first.max[tertiary_axis]) / 2;
+
+                        // we don't have any other fallback
+                        return a_center < b_center;
+                    }
+
+                    return a_center < b_center;
+                }
+
                 return a_center < b_center;
             });
 

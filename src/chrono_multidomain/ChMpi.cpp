@@ -429,8 +429,8 @@ void ChMPI::ChBroadcast(std::vector<T>& data, int root) {
     if constexpr (std::is_same_v<T, AABB>) {
         // Broadcast the fixed part of each AABB first
         for (int i = 0; i < size; i++) {
-            MPI_Bcast(&data[i].min, 3, MPI_FLOAT, root, MPI_COMM_WORLD);
-            MPI_Bcast(&data[i].max, 3, MPI_FLOAT, root, MPI_COMM_WORLD);
+            MPI_Bcast(&data[i].min, 3, MPI_DOUBLE, root, MPI_COMM_WORLD);
+            MPI_Bcast(&data[i].max, 3, MPI_DOUBLE, root, MPI_COMM_WORLD);
 
             // Broadcast size of tags vector for this AABB
             int tags_size = data[i].tags.size();
@@ -447,6 +447,15 @@ void ChMPI::ChBroadcast(std::vector<T>& data, int root) {
         MPI_Bcast(data.data(), size * sizeof(T), MPI_BYTE, root, MPI_COMM_WORLD);
     }
 }
+
+// Add a scalar broadcast function
+template <typename T>
+void ChMPI::ChBroadcast(T* value, int count, int root) {
+    MPI_Bcast(value, count * sizeof(T), MPI_BYTE, root, MPI_COMM_WORLD);
+}
+
+// Add explicit template instantiation for bool
+template void ChMPI::ChBroadcast<bool>(bool* value, int count, int root);
 
 int ChMPI::GetRank() {
     int rank;
@@ -594,6 +603,114 @@ void ChMPI::ChAllreduce(const std::vector<T>& sendbuf, std::vector<T>& recvbuf, 
 template void ChMPI::ChAllreduce<ChAABB>(const std::vector<ChAABB>& sendbuf,
                                          std::vector<ChAABB>& recvbuf,
                                          ChOperation op);
+
+template <typename T>
+void ChMPI::GatherToMaster(const std::vector<T>& sendbuf, std::vector<T>& recvbuf, int master_rank) {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int num_ranks;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
+
+    // First, broadcast the size of each rank's data
+    int local_size = sendbuf.size();
+    std::vector<int> sizes(num_ranks);
+
+    // Each rank broadcasts its size to all others
+    for (int i = 0; i < num_ranks; i++) {
+        int size_to_broadcast = (i == rank) ? local_size : 0;
+        MPI_Bcast(&size_to_broadcast, 1, MPI_INT, i, MPI_COMM_WORLD);
+        sizes[i] = size_to_broadcast;
+    }
+
+    // Master collects all data
+    if (rank == master_rank) {
+        // Pre-allocate space for all data
+        int total_size = 0;
+        for (int size : sizes) {
+            total_size += size;
+        }
+        recvbuf.resize(total_size);
+
+        // Master adds its own data first
+        int current_index = 0;
+        for (const auto& item : sendbuf) {
+            recvbuf[current_index++] = item;
+        }
+
+        // Receive data from other ranks
+        if constexpr (std::is_same_v<T, AABB>) {
+            // Special handling for AABB type
+            for (int i = 0; i < num_ranks; i++) {
+                if (i != master_rank && sizes[i] > 0) {
+                    // Receive AABBs from rank i
+                    for (int j = 0; j < sizes[i]; j++) {
+                        // For each AABB, receive min and max
+                        ChVector3d min, max;
+                        MPI_Recv(&min, 3, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        MPI_Recv(&max, 3, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                        // Receive tags
+                        int tags_size;
+                        MPI_Recv(&tags_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        std::vector<int> tags(tags_size);
+                        MPI_Recv(tags.data(), tags_size, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                        // Create AABB and add to recvbuf
+                        recvbuf[current_index++] = AABB(min, max, tags);
+                    }
+                }
+            }
+        } else {
+            // For other types, use a simpler approach
+            for (int i = 0; i < num_ranks; i++) {
+                if (i != master_rank && sizes[i] > 0) {
+                    std::vector<T> received_data(sizes[i]);
+
+                    // Receive data from rank i
+                    for (int j = 0; j < sizes[i]; j++) {
+                        MPI_Recv(&received_data[j], sizeof(T), MPI_BYTE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    }
+
+                    // Add received data to recvbuf
+                    for (const auto& item : received_data) {
+                        recvbuf[current_index++] = item;
+                    }
+                }
+            }
+        }
+    } else {
+        // Non-master ranks send their data to master
+        if constexpr (std::is_same_v<T, AABB>) {
+            // Special handling for AABB type
+            for (const auto& aabb : sendbuf) {
+                // Send min and max
+                ChVector3d min(aabb.min[0], aabb.min[1], aabb.min[2]);
+                ChVector3d max(aabb.max[0], aabb.max[1], aabb.max[2]);
+                MPI_Send(&min, 3, MPI_DOUBLE, master_rank, 0, MPI_COMM_WORLD);
+                MPI_Send(&max, 3, MPI_DOUBLE, master_rank, 0, MPI_COMM_WORLD);
+
+                // Send tags
+                int tags_size = aabb.tags.size();
+                MPI_Send(&tags_size, 1, MPI_INT, master_rank, 0, MPI_COMM_WORLD);
+                MPI_Send(aabb.tags.data(), tags_size, MPI_INT, master_rank, 0, MPI_COMM_WORLD);
+            }
+        } else {
+            // For other types, use a simpler approach
+            for (const auto& item : sendbuf) {
+                MPI_Send(&item, sizeof(T), MPI_BYTE, master_rank, 0, MPI_COMM_WORLD);
+            }
+        }
+    }
+
+    // barrier
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+// Explicit template instantiation for AABB
+template void ChMPI::GatherToMaster<AABB>(const std::vector<AABB>& sendbuf,
+                                          std::vector<AABB>& recvbuf,
+                                          int master_rank);
 
 }  // end namespace multidomain
 }  // end namespace chrono

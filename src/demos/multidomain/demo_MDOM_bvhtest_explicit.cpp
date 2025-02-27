@@ -256,14 +256,20 @@ int main(int argc, char* argv[]) {
     domain_manager.DoDomainInitialize(domain_manager.GetMPIrank());
 
     // The master domain does not need to communicate anymore with the domains so do:
-    domain_manager.master_domain_enabled = false;
+    domain_manager.master_domain_enabled = true;
 
     for (int i = 0; i < 4000; ++i) {
         if (domain_manager.GetMPIrank() == 0)
             std::cout << "\n\n\n============= Time step (explicit) " << i << std::endl << std::endl;
 
-        // Materdomain BVH update
-        // Fail safe mechanism to update all domain AABBs without running BVH
+        if (i % 100 == 0) {
+            // BVH update
+            domain_builder->RebuildDomains(&sys, domain_manager.GetMPIrank());
+            // MULTIDOMAIN AUTOMATIC ITEM MIGRATION!
+            domain_manager.DoDomainPartitionUpdate(domain_manager.GetMPIrank());
+        }
+
+        // // Fail safe mechanism to update all domain AABBs without running BVH
         domain_builder->UpdateLocalDomainAABBs(&sys, domain_manager.GetMPIrank());
 
         // MULTIDOMAIN AUTOMATIC ITEM MIGRATION!
