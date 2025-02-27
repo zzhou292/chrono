@@ -176,6 +176,12 @@ class ChApiMultiDomain ChMPI {
     /// Perform an Allreduce operation across all ranks
     template <typename T>
     static void ChAllreduce(const std::vector<T>& sendbuf, std::vector<T>& recvbuf, ChOperation op);
+
+    /// Gathers data from all ranks to the master rank
+    /// Each rank sends its local data to the master rank
+    /// Only the master rank will have the complete data after this call
+    template <typename T>
+    static void GatherToMaster(const std::vector<T>& sendbuf, std::vector<T>& recvbuf, int master_rank);
 };
 
 class Ch_test_mpi {

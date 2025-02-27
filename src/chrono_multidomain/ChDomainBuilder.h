@@ -275,6 +275,9 @@ class ChApiMultiDomain ChDomainBuilderBVH : public ChDomainBuilder {
 
     void AddExcludedBody(std::shared_ptr<ChBody> body) { excluded_bodies_.push_back(body); }
 
+    // Rebuild domains based on current object positions
+    void RebuildDomains(ChSystem* msys, int mpi_rank);
+
   private:
     std::vector<AABB> domain_aabbs_;           // aabb with tags
     std::vector<ChAABB> domain_aabbs_synced_;  // a aabb copy without any tags

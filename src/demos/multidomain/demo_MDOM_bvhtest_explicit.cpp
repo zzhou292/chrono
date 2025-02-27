@@ -262,6 +262,14 @@ int main(int argc, char* argv[]) {
         if (domain_manager.GetMPIrank() == 0)
             std::cout << "\n\n\n============= Time step (explicit) " << i << std::endl << std::endl;
 
+        if (i % 1 == 0) {
+            // Materdomain BVH update
+            // Fail safe mechanism to update all domain AABBs without running BVH
+            domain_builder->UpdateLocalDomainAABBs(&sys, domain_manager.GetMPIrank());
+            // BVH update
+            domain_builder->RebuildDomains(&sys, domain_manager.GetMPIrank());
+        }
+
         // Materdomain BVH update
         // Fail safe mechanism to update all domain AABBs without running BVH
         domain_builder->UpdateLocalDomainAABBs(&sys, domain_manager.GetMPIrank());

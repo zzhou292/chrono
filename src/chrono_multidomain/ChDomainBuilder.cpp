@@ -13,6 +13,7 @@
 // =============================================================================
 
 #include <array>
+#include <set>
 #include "chrono_multidomain/ChDomainBuilder.h"
 
 namespace chrono {
@@ -422,6 +423,84 @@ void ChDomainBuilderBVH::UpdateLocalDomainAABBs(ChSystem* msys, int mpi_rank) {
         domain_aabbs_[i].min[0] = domain_aabbs_synced_[i].min[0];
         domain_aabbs_[i].min[1] = domain_aabbs_synced_[i].min[1];
         domain_aabbs_[i].min[2] = domain_aabbs_synced_[i].min[2];
+    }
+
+    // update all interfaces
+    if (mpi_rank != GetMasterRank()) {
+        for (int i = 0; i < num_domains_; ++i) {
+            if (i == GetMasterRank() || i == mpi_rank)
+                continue;
+
+            auto& interf = current_domain_box_->GetInterfaces()[i];
+            auto domain = std::dynamic_pointer_cast<ChDomainBox>(interf.side_OUT);
+            domain->SetAABB(
+                ChAABB(ChVector3d(domain_aabbs_[i].min[0], domain_aabbs_[i].min[1], domain_aabbs_[i].min[2]),
+                       ChVector3d(domain_aabbs_[i].max[0], domain_aabbs_[i].max[1], domain_aabbs_[i].max[2])));
+        }
+    }
+}
+
+void ChDomainBuilderBVH::RebuildDomains(ChSystem* system, int mpi_rank) {
+    // Step 1: Each rank collects updated AABBs for ALL objects it owns
+    std::vector<AABB> updated_aabbs;
+
+    // First make sure collision system is up to date
+    system->GetCollisionSystem()->Initialize();
+    system->GetCollisionSystem()->Run();
+
+    if (mpi_rank != GetMasterRank()) {
+        std::cout << "number of bodies = " << system->GetBodies().size() << std::endl;
+
+        // Collect ALL bodies in this rank, not just those previously assigned
+        for (auto body : system->GetBodies()) {
+            // Skip excluded bodies
+            if (std::find(excluded_bodies_.begin(), excluded_bodies_.end(), body) != excluded_bodies_.end()) {
+                continue;
+            }
+
+            // Skip if the body's tag is not in the domain_aabbs_[mpi_rank].tags
+            if (std::find(domain_aabbs_[mpi_rank].tags.begin(), domain_aabbs_[mpi_rank].tags.end(), body->GetTag()) ==
+                domain_aabbs_[mpi_rank].tags.end()) {
+                continue;
+            }
+
+            body->GetCollisionModel()->SyncPosition();
+
+            // Get the updated AABB
+            ChAABB mabb = body->GetTotalAABB();
+            updated_aabbs.push_back(AABB(mabb.min, mabb.max, std::vector<int>{body->GetTag()}));
+        }
+    }
+
+    if (mpi_rank != GetMasterRank()) {
+        std::cout << "mpi_rank = " << mpi_rank << " updated_aabbs.size() = " << updated_aabbs.size() << std::endl;
+    }
+
+    // Gather all AABBs to the master rank
+    std::vector<AABB> all_updated_aabbs;
+    ChMPI::GatherToMaster(updated_aabbs, all_updated_aabbs, GetMasterRank());
+
+    // Only the master rank needs to process the gathered AABBs
+    if (mpi_rank == GetMasterRank()) {
+        std::cout << "master received total aabbs = " << all_updated_aabbs.size() << std::endl;
+
+        // Build BVH and compute domain assignments
+        BVHBuilder builder(all_updated_aabbs);
+        auto root = builder.build_top_down();
+        auto groups = builder.get_subdomains_greedy(root.get(), num_domains_);
+
+        domain_aabbs_ = groups;
+    }
+
+    // Broadcast AABBs to all ranks
+    ChMPI::ChBroadcast<AABB>(domain_aabbs_, GetMasterRank());
+
+    // Update the current domain box with the new AABB
+    if (mpi_rank != GetMasterRank()) {
+        current_domain_box_->SetAABB(ChAABB(
+            ChVector3d(domain_aabbs_[mpi_rank].min[0], domain_aabbs_[mpi_rank].min[1], domain_aabbs_[mpi_rank].min[2]),
+            ChVector3d(domain_aabbs_[mpi_rank].max[0], domain_aabbs_[mpi_rank].max[1],
+                       domain_aabbs_[mpi_rank].max[2])));
     }
 
     // update all interfaces
