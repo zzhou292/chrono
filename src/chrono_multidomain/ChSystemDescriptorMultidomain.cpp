@@ -12,7 +12,6 @@
 // Authors: Alessandro Tasora
 // =============================================================================
 
-
 #include "chrono/solver/ChConstraintTwoTuplesContactN.h"
 #include "chrono/solver/ChConstraintTwoTuplesFrictionT.h"
 #include "chrono/core/ChMatrix.h"
@@ -30,14 +29,13 @@ namespace multidomain {
 // dynamic creation and persistence
 CH_FACTORY_REGISTER(ChSystemDescriptorMultidomain)
 
-ChSystemDescriptorMultidomain::ChSystemDescriptorMultidomain(std::shared_ptr<ChDomain> mdomain, ChDomainManager* mdomain_manager) {
+ChSystemDescriptorMultidomain::ChSystemDescriptorMultidomain(std::shared_ptr<ChDomain> mdomain,
+                                                             ChDomainManager* mdomain_manager) {
     this->domain = mdomain;
     this->domain_manager = mdomain_manager;
 }
 
-
 void ChSystemDescriptorMultidomain::UpdateCountsAndOffsets() {
-
     // parent class update
     ChSystemDescriptor::UpdateCountsAndOffsets();
 
@@ -53,47 +51,48 @@ void ChSystemDescriptorMultidomain::UpdateCountsAndOffsets() {
     }
 }
 
-double ChSystemDescriptorMultidomain::globalVdot(const ChVectorDynamic<>& avector, const ChVectorDynamic<>& bvector, ChVectorDynamic<>* Wv_partition) {
+double ChSystemDescriptorMultidomain::globalVdot(const ChVectorDynamic<>& avector,
+                                                 const ChVectorDynamic<>& bvector,
+                                                 ChVectorDynamic<>* Wv_partition) {
     double domaindot = 0;
     if (Wv_partition)
-        domaindot= avector.dot(bvector.cwiseProduct(*Wv_partition));  // s_j = va_j' * (vb_j *. Wv_j) 
+        domaindot = avector.dot(bvector.cwiseProduct(*Wv_partition));  // s_j = va_j' * (vb_j *. Wv_j)
     else
-        domaindot = avector.dot(bvector);  // s_j = va_j' * (vb_j) 
+        domaindot = avector.dot(bvector);  // s_j = va_j' * (vb_j)
     double result = 0;
-    this->domain_manager->ReduceAll(this->domain->GetRank(), domaindot, result); // s = \sum s_j
+    this->domain_manager->ReduceAll(this->domain->GetRank(), domaindot, result);  // s = \sum s_j
     return result;
 }
 
 double ChSystemDescriptorMultidomain::globalVnorm(const ChVectorDynamic<>& avector, ChVectorDynamic<>* Wv_partition) {
     double domainsqnorm = 0;
     if (Wv_partition)
-        domainsqnorm = avector.dot(avector.cwiseProduct(*Wv_partition)); // s_j = v_j' * (v_j *. Wv_j) 
+        domainsqnorm = avector.dot(avector.cwiseProduct(*Wv_partition));  // s_j = v_j' * (v_j *. Wv_j)
     else
-        domainsqnorm = avector.dot(avector); // s_j = v_j' * (v_j) 
+        domainsqnorm = avector.dot(avector);  // s_j = v_j' * (v_j)
     double result = 0;
-    this->domain_manager->ReduceAll(this->domain->GetRank(), domainsqnorm, result); // s = \sum s_j
+    this->domain_manager->ReduceAll(this->domain->GetRank(), domainsqnorm, result);  // s = \sum s_j
     return sqrt(result);
 }
 
 double ChSystemDescriptorMultidomain::globalMax(const double val) {
     double global_maxviolation = 0;
     this->domain_manager->ReduceAll(this->domain->GetRank(), val, global_maxviolation,
-        chrono::multidomain::ChDomainManager::eCh_domainsReduceOperation::max);
+                                    chrono::multidomain::ChDomainManager::eCh_domainsReduceOperation::max);
     return global_maxviolation;
 }
 
-
-
 void ChSystemDescriptorMultidomain::globalSchurComplementProduct(ChVectorDynamic<>& result,
-    const ChVectorDynamic<>& lvector,
-    std::vector<bool>* enabled) {
+                                                                 const ChVectorDynamic<>& lvector,
+                                                                 std::vector<bool>* enabled) {
     // currently, the case with ChKRMBlock items is not supported (only diagonal M is supported, no K)
     assert(m_KRMblocks.size() == 0);
     assert(lvector.size() == CountActiveConstraints());
 
     // =====ENTER scaling of masses in ChVariables because of Wv weights
-    // ***NO!! THIS ALGO ASSUMES MASS IN CLIPPED FORMAT, CLIPPED M^1_j OK FOR SCHUR COMPLEMENT CAUSE BLOCK PATTERN (NO FEA)
-    //this->MassesScaledInPlace_EnterSection();
+    // ***NO!! THIS ALGO ASSUMES MASS IN CLIPPED FORMAT, CLIPPED M^1_j OK FOR SCHUR COMPLEMENT CAUSE BLOCK PATTERN (NO
+    // FEA)
+    // this->MassesScaledInPlace_EnterSection();
 
     result.setZero(lvector.size());
 
@@ -154,20 +153,19 @@ void ChSystemDescriptorMultidomain::globalSchurComplementProduct(ChVectorDynamic
     }
 
     // =====EXIT scaling of masses in ChVariables because of Wv weights, restore to original
-    // ***NO!! THIS ALGO ASSUMES MASS IN CLIPPED FORMAT, CLIPPED M^1_j OK FOR SCHUR COMPLEMENT CAUSE BLOCK PATTERN (NO FEA)
-    //this->MassesScaledInPlace_ExitSection();
+    // ***NO!! THIS ALGO ASSUMES MASS IN CLIPPED FORMAT, CLIPPED M^1_j OK FOR SCHUR COMPLEMENT CAUSE BLOCK PATTERN (NO
+    // FEA)
+    // this->MassesScaledInPlace_ExitSection();
 }
 
-
 void ChSystemDescriptorMultidomain::globalSystemProduct(ChVectorDynamic<>& result, const ChVectorDynamic<>& x) {
-
     assert(x.size() == CountActiveVariables() + CountActiveConstraints());
 
     // =====ENTER scaling of masses in ChVariables because of Wv weights
     this->MassesScaledInPlace_EnterSection();
 
     int mn_q = CountActiveVariables();
-    //n_c = CountActiveConstraints();
+    // n_c = CountActiveConstraints();
 
     result.setZero(x.size());
 
@@ -196,8 +194,8 @@ void ChSystemDescriptorMultidomain::globalSystemProduct(ChVectorDynamic<>& resul
     for (const auto& constr : m_constraints) {
         if (constr->IsActive()) {
             int s_c = constr->GetOffset() + mn_q;
-            constr->AddJacobianTimesVectorInto(result(s_c), x);  // result.l_i += [C_q_i]*x.q
-            result(s_c) += constr->GetComplianceTerm() * x(s_c);         // result.l_i += [E]*x.l_i
+            constr->AddJacobianTimesVectorInto(result(s_c), x);   // result.l_i += [C_q_i]*x.q
+            result(s_c) += constr->GetComplianceTerm() * x(s_c);  // result.l_i += [E]*x.l_i
         }
     }
 
@@ -207,8 +205,6 @@ void ChSystemDescriptorMultidomain::globalSystemProduct(ChVectorDynamic<>& resul
     // =====EXIT scaling of masses in ChVariables because of Wv weights, restore to original
     this->MassesScaledInPlace_ExitSection();
 }
-
-
 
 void ChSystemDescriptorMultidomain::SharedVectsToZero() {
     for (auto& interf : this->domain->GetInterfaces()) {
@@ -229,10 +225,9 @@ void ChSystemDescriptorMultidomain::SharedVectsFromCurrentDomainStates() {
         //***DEBUG**
         /*
         std::stringstream msg;
-        msg << std::string("\nVAR SYNC shared_vect domain ") << this->domain->GetRank() << " to interface " << interf.second.side_OUT->GetRank() << "\n";
-        for (int i = 0; i < shared_vects[nrank].size(); ++i)
-            msg << "    " << shared_vects[nrank][i] << "\n";
-        this->domain_manager->ConsoleOutSerialized(msg.str());
+        msg << std::string("\nVAR SYNC shared_vect domain ") << this->domain->GetRank() << " to interface " <<
+        interf.second.side_OUT->GetRank() << "\n"; for (int i = 0; i < shared_vects[nrank].size(); ++i) msg << "    " <<
+        shared_vects[nrank][i] << "\n"; this->domain_manager->ConsoleOutSerialized(msg.str());
         */
     }
 }
@@ -281,168 +276,174 @@ void ChSystemDescriptorMultidomain::SharedVectsAddToDomainVector(ChVectorDynamic
 }
 
 void ChSystemDescriptorMultidomain::SharedStatesDeltaAddToMultidomainAndSync(double omega) {
+    if (!(domain->IsMaster() && !domain_manager->master_domain_enabled))
+        for (auto& interf : this->domain->GetInterfaces()) {
+            if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
+                continue;
+            // prepare the serializer
+            interf.second.buffer_sending.str("");
+            interf.second.buffer_sending.clear();
+            interf.second.buffer_receiving.str("");
+            interf.second.buffer_receiving.clear();
+
+            int nrank = interf.second.side_OUT->GetRank();
+            ChVectorDynamic<> Dv_shared(shared_vects[nrank].size());
+            int offset = 0;
+            for (auto avar : interf.second.shared_vars) {
+                if (avar->IsActive()) {
+                    // compute delta as current variable state - last synced shared_state
+                    Dv_shared.segment(offset, avar->GetDOF()) =
+                        avar->State() - shared_vects[nrank].segment(offset, avar->GetDOF());
+                    offset += avar->GetDOF();
+                }
+            }
+
+            std::shared_ptr<ChArchiveOut> serializer;
+            switch (this->domain_manager->serializer_type) {
+                case DomainSerializerFormat::BINARY:
+                    serializer = chrono_types::make_shared<ChArchiveOutBinary>(interf.second.buffer_sending);
+                    break;
+                case DomainSerializerFormat::JSON:
+                    serializer = chrono_types::make_shared<ChArchiveOutJSON>(interf.second.buffer_sending);
+                    break;
+                case DomainSerializerFormat::XML:
+                    serializer = chrono_types::make_shared<ChArchiveOutXML>(interf.second.buffer_sending);
+                    break;
+                default:
+                    break;
+            }
+            serializer->SetUseVersions(false);
+
+            *serializer << CHNVP(Dv_shared);
+
+            //***DEBUG***
+            /*
+            std::stringstream msg;
+            msg << "\nVAR SERIALIZE from domain " << this->domain->GetRank() << " to interface " <<
+            interf.second.side_OUT->GetRank() << "\n"; //***DEBUG msg << interf.second.buffer_sending.str(); //***DEBUG
+            this->domain_manager->ConsoleOutSerialized(msg.str());
+            */
+        }
+
+    this->domain_manager->DoDomainSendReceive(this->domain->GetRank());  // *** COMM + MULTITHREAD BARRIER ***
 
     if (!(domain->IsMaster() && !domain_manager->master_domain_enabled))
-     for (auto& interf : this->domain->GetInterfaces()) {
-        if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
-            continue;
-        // prepare the serializer
-        interf.second.buffer_sending.str("");
-        interf.second.buffer_sending.clear();
-        interf.second.buffer_receiving.str("");
-        interf.second.buffer_receiving.clear();
+        for (auto& interf : this->domain->GetInterfaces()) {
+            if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
+                continue;
+            int nrank = interf.second.side_OUT->GetRank();
+            ChVectorDynamic<> Dv_shared(shared_vects[nrank].size());
+            //        std::cout << "\nVAR DESERIALIZE to domain " << this->domain->GetRank() << " from interface " <<
+            //        interf.second.side_OUT->GetRank() << "\n"; //***DEBUG std::cout <<
+            //        interf.second.buffer_receiving.str(); //***DEBUG
 
-        int nrank = interf.second.side_OUT->GetRank();
-        ChVectorDynamic<> Dv_shared(shared_vects[nrank].size());
-        int offset = 0;
-        for (auto avar : interf.second.shared_vars) {
-            if (avar->IsActive()) {
-                // compute delta as current variable state - last synced shared_state
-                Dv_shared.segment(offset, avar->GetDOF()) = avar->State() - shared_vects[nrank].segment(offset, avar->GetDOF());
-                offset += avar->GetDOF();
+            // prepare the deserializer
+            std::shared_ptr<ChArchiveIn> deserializer;
+            switch (this->domain_manager->serializer_type) {
+                case DomainSerializerFormat::BINARY:
+                    deserializer = chrono_types::make_shared<ChArchiveInBinary>(interf.second.buffer_receiving);
+                    break;
+                case DomainSerializerFormat::JSON:
+                    deserializer = chrono_types::make_shared<ChArchiveInJSON>(interf.second.buffer_receiving);
+                    break;
+                case DomainSerializerFormat::XML:
+                    deserializer = chrono_types::make_shared<ChArchiveInXML>(interf.second.buffer_receiving);
+                    break;
+                default:
+                    break;
+            }
+            deserializer->SetUseVersions(false);
+
+            *deserializer >> CHNVP(Dv_shared);
+
+            int offset = 0;
+            for (auto avar : interf.second.shared_vars) {
+                if (avar->IsActive()) {
+                    // increment state as state + delta received from neighbour
+                    avar->State() += omega * Dv_shared.segment(offset, avar->GetDOF());
+                    // last, sync the shared_states to updates var state
+                    shared_vects[nrank].segment(offset, avar->GetDOF()) = avar->State();
+                    offset += avar->GetDOF();
+                }
             }
         }
-        
-        std::shared_ptr<ChArchiveOut> serializer;
-        switch (this->domain_manager->serializer_type) {
-        case DomainSerializerFormat::BINARY:
-            serializer = chrono_types::make_shared<ChArchiveOutBinary>(interf.second.buffer_sending); break;
-        case DomainSerializerFormat::JSON:
-            serializer = chrono_types::make_shared<ChArchiveOutJSON>(interf.second.buffer_sending); break;
-        case DomainSerializerFormat::XML:
-            serializer = chrono_types::make_shared<ChArchiveOutXML>(interf.second.buffer_sending); break;
-        default: break;
-        }
-        serializer->SetUseVersions(false);
-
-        *serializer << CHNVP(Dv_shared);
-
-        //***DEBUG***
-        /*
-        std::stringstream msg;
-        msg << "\nVAR SERIALIZE from domain " << this->domain->GetRank() << " to interface " << interf.second.side_OUT->GetRank() << "\n"; //***DEBUG
-        msg << interf.second.buffer_sending.str(); //***DEBUG
-        this->domain_manager->ConsoleOutSerialized(msg.str());
-        */
-    }
-
-    this->domain_manager->DoDomainSendReceive(this->domain->GetRank());   // *** COMM + MULTITHREAD BARRIER ***
-
-    if (!(domain->IsMaster() && !domain_manager->master_domain_enabled))
-     for (auto& interf : this->domain->GetInterfaces()) {
-        if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
-            continue;
-        int nrank = interf.second.side_OUT->GetRank();
-        ChVectorDynamic<> Dv_shared(shared_vects[nrank].size());
-//        std::cout << "\nVAR DESERIALIZE to domain " << this->domain->GetRank() << " from interface " << interf.second.side_OUT->GetRank() << "\n"; //***DEBUG
-//        std::cout << interf.second.buffer_receiving.str(); //***DEBUG
-        
-        // prepare the deserializer
-        std::shared_ptr<ChArchiveIn> deserializer;
-        switch (this->domain_manager->serializer_type) {
-        case DomainSerializerFormat::BINARY:
-            deserializer = chrono_types::make_shared<ChArchiveInBinary>(interf.second.buffer_receiving); break;
-        case DomainSerializerFormat::JSON:
-            deserializer = chrono_types::make_shared<ChArchiveInJSON>(interf.second.buffer_receiving); break;
-        case DomainSerializerFormat::XML:
-            deserializer = chrono_types::make_shared<ChArchiveInXML>(interf.second.buffer_receiving); break;
-        default: break;
-        }
-        deserializer->SetUseVersions(false);
-
-        *deserializer >> CHNVP(Dv_shared);
-
-        int offset = 0;
-        for (auto avar : interf.second.shared_vars) {
-            if (avar->IsActive()) {
-                // increment state as state + delta received from neighbour
-                avar->State() += omega * Dv_shared.segment(offset, avar->GetDOF());
-                // last, sync the shared_states to updates var state
-                shared_vects[nrank].segment(offset, avar->GetDOF()) = avar->State();
-                offset += avar->GetDOF();
-            }
-        }
-    }
 }
 
-
-
-
-
-
-
 void ChSystemDescriptorMultidomain::SharedVectsSwap() {
-
     if (!(domain->IsMaster() && !domain_manager->master_domain_enabled))
-     for (auto& interf : this->domain->GetInterfaces()) {
+        for (auto& interf : this->domain->GetInterfaces()) {
+            if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
+                continue;
 
-        if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
-            continue;
+            // prepare the serializer
+            interf.second.buffer_sending.str("");
+            interf.second.buffer_sending.clear();
+            interf.second.buffer_receiving.str("");
+            interf.second.buffer_receiving.clear();
 
-        // prepare the serializer
-        interf.second.buffer_sending.str("");
-        interf.second.buffer_sending.clear();
-        interf.second.buffer_receiving.str("");
-        interf.second.buffer_receiving.clear();
+            std::shared_ptr<ChArchiveOut> serializer;
+            switch (this->domain_manager->serializer_type) {
+                case DomainSerializerFormat::BINARY:
+                    serializer = chrono_types::make_shared<ChArchiveOutBinary>(interf.second.buffer_sending);
+                    break;
+                case DomainSerializerFormat::JSON:
+                    serializer = chrono_types::make_shared<ChArchiveOutJSON>(interf.second.buffer_sending);
+                    break;
+                case DomainSerializerFormat::XML:
+                    serializer = chrono_types::make_shared<ChArchiveOutXML>(interf.second.buffer_sending);
+                    break;
+                default:
+                    break;
+            }
 
-        std::shared_ptr<ChArchiveOut> serializer;
-        switch (this->domain_manager->serializer_type) {
-        case DomainSerializerFormat::BINARY:
-            serializer = chrono_types::make_shared<ChArchiveOutBinary>(interf.second.buffer_sending); break;
-        case DomainSerializerFormat::JSON:
-            serializer = chrono_types::make_shared<ChArchiveOutJSON>(interf.second.buffer_sending); break;
-        case DomainSerializerFormat::XML:
-            serializer = chrono_types::make_shared<ChArchiveOutXML>(interf.second.buffer_sending); break;
-        default: break;
+            int nrank = interf.second.side_OUT->GetRank();
+            *serializer << CHNVP(this->shared_vects[nrank], "v");
         }
 
-        int nrank = interf.second.side_OUT->GetRank();
-        *serializer << CHNVP(this->shared_vects[nrank],"v");
-    }
-
-    this->domain_manager->DoDomainSendReceive(this->domain->GetRank());   // *** COMM + MULTITHREAD BARRIER ***
+    this->domain_manager->DoDomainSendReceive(this->domain->GetRank());  // *** COMM + MULTITHREAD BARRIER ***
 
     if (!(domain->IsMaster() && !domain_manager->master_domain_enabled))
-     for (auto& interf : this->domain->GetInterfaces()) {
+        for (auto& interf : this->domain->GetInterfaces()) {
+            if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
+                continue;
 
-        if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
-            continue;
+            int nrank = interf.second.side_OUT->GetRank();
+            ChVectorDynamic<> incoming_vect(shared_vects[nrank].size());
 
-        int nrank = interf.second.side_OUT->GetRank();
-        ChVectorDynamic<> incoming_vect(shared_vects[nrank].size());
+            // prepare the deserializer
+            std::shared_ptr<ChArchiveIn> deserializer;
+            switch (this->domain_manager->serializer_type) {
+                case DomainSerializerFormat::BINARY:
+                    deserializer = chrono_types::make_shared<ChArchiveInBinary>(interf.second.buffer_receiving);
+                    break;
+                case DomainSerializerFormat::JSON:
+                    deserializer = chrono_types::make_shared<ChArchiveInJSON>(interf.second.buffer_receiving);
+                    break;
+                case DomainSerializerFormat::XML:
+                    deserializer = chrono_types::make_shared<ChArchiveInXML>(interf.second.buffer_receiving);
+                    break;
+                default:
+                    break;
+            }
 
-        // prepare the deserializer
-        std::shared_ptr<ChArchiveIn> deserializer;
-        switch (this->domain_manager->serializer_type) {
-        case DomainSerializerFormat::BINARY:
-            deserializer = chrono_types::make_shared<ChArchiveInBinary>(interf.second.buffer_receiving); break;
-        case DomainSerializerFormat::JSON:
-            deserializer = chrono_types::make_shared<ChArchiveInJSON>(interf.second.buffer_receiving); break;
-        case DomainSerializerFormat::XML:
-            deserializer = chrono_types::make_shared<ChArchiveInXML>(interf.second.buffer_receiving); break;
-        default: break;
+            *deserializer >> CHNVP(incoming_vect, "v");
+
+            this->shared_vects[nrank] = incoming_vect;
         }
-
-        *deserializer >> CHNVP(incoming_vect,"v");
-
-        this->shared_vects[nrank] = incoming_vect;
-    }
 }
 
 void ChSystemDescriptorMultidomain::VectAdditiveToClipped(ChVectorDynamic<>& vect, double use_average) {
     this->SharedVectsFromDomainVector(vect);
-    this->SharedVectsSwap();                        // *** COMM + MULTITHREAD BARRIER ***
+    this->SharedVectsSwap();  // *** COMM + MULTITHREAD BARRIER ***
     this->SharedVectsAddToDomainVector(vect, use_average);
 }
 
-
 double ChSystemDescriptorMultidomain::SyncSharedStates(bool return_max_correction_error) {
-
     double maxerror = 0;
 
     this->SharedVectsFromCurrentDomainStates();
 
-    this->SharedVectsSwap(); // *** COMM + MULTITHREAD BARRIER ***
+    this->SharedVectsSwap();  // *** COMM + MULTITHREAD BARRIER ***
 
     for (auto& interf : this->domain->GetInterfaces()) {
         int nrank = interf.second.side_OUT->GetRank();
@@ -450,9 +451,11 @@ double ChSystemDescriptorMultidomain::SyncSharedStates(bool return_max_correctio
         for (auto avar : interf.second.shared_vars) {
             if (avar->IsActive()) {
                 if (return_max_correction_error) {
-                    maxerror = std::max(maxerror, (avar->State() - shared_vects[nrank].segment(offset, avar->GetDOF())).lpNorm<Eigen::Infinity>());
+                    maxerror = std::max(maxerror, (avar->State() - shared_vects[nrank].segment(offset, avar->GetDOF()))
+                                                      .lpNorm<Eigen::Infinity>());
                 }
-                avar->State().array() = avar->State().array().cwiseMin(shared_vects[nrank].segment(offset, avar->GetDOF()).array());
+                avar->State().array() =
+                    avar->State().array().cwiseMin(shared_vects[nrank].segment(offset, avar->GetDOF()).array());
                 offset += avar->GetDOF();
             }
         }
@@ -460,9 +463,7 @@ double ChSystemDescriptorMultidomain::SyncSharedStates(bool return_max_correctio
     return maxerror;
 }
 
-
 void ChSystemDescriptorMultidomain::MassesScaledInPlace_EnterSection() {
-
     this->section_scaledmass_count += 1;
 
     if (this->section_scaledmass_count == 1)
@@ -470,7 +471,6 @@ void ChSystemDescriptorMultidomain::MassesScaledInPlace_EnterSection() {
 }
 
 void ChSystemDescriptorMultidomain::MassesScaledInPlace_ExitSection() {
-    
     assert(this->section_scaledmass_count > 0);
 
     this->section_scaledmass_count -= 1;
@@ -479,37 +479,31 @@ void ChSystemDescriptorMultidomain::MassesScaledInPlace_ExitSection() {
         MassesUndoScaleInPlace();
 }
 
-
 void ChSystemDescriptorMultidomain::MassesDoScaleInPlace() {
-
     ChVectorDynamic<>& Wv = this->domain->GetSystem()->CoordWeightsWv();
 
     for (auto avar : this->m_variables) {
         if (avar->IsActive()) {
-            // optimization, ex if var has 6 dofs, use only 1st of the 6 corresponding 
+            // optimization, ex if var has 6 dofs, use only 1st of the 6 corresponding
             // values on Ws assuming other following 5 values in Ws are the same
             double weight = Wv(avar->GetOffset());
             avar->MultiplyMass(weight);
         }
     }
-
 }
 
 void ChSystemDescriptorMultidomain::MassesUndoScaleInPlace() {
-
     ChVectorDynamic<>& Wv = this->domain->GetSystem()->CoordWeightsWv();
 
     for (auto avar : this->m_variables) {
         if (avar->IsActive()) {
-            // optimization, ex if var has 6 dofs, use only 1st of the 6 corresponding 
+            // optimization, ex if var has 6 dofs, use only 1st of the 6 corresponding
             // values on Ws assuming other following 5 values in Ws are the same
             double inv_weight = 1.0 / Wv(avar->GetOffset());
             avar->MultiplyMass(inv_weight);
         }
     }
-
 }
-
 
 /*
 ChSystemDescriptor::ChSystemDescriptor() : n_q(0), n_c(0), c_a(1.0), freeze_count(false) {
@@ -1076,7 +1070,6 @@ void ChSystemDescriptor::WriteMatrixSpmv(const std::string& path, const std::str
 }
 
 */
-
 
 }  // end namespace multidomain
 }  // end namespace chrono

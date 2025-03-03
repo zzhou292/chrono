@@ -286,6 +286,8 @@ std::shared_ptr<ChDomain> ChDomainBuilderBVH::BuildDomain(ChSystem* msys, int th
         current_domain_box_->excluded_body_tags.push_back(body->GetTag());
     }
 
+    current_domain_box_->is_bvh_mode = true;
+
     return domain;
 }
 
@@ -327,6 +329,9 @@ void ChDomainBuilderBVH::ComputeAndBroadcastDomainAABBs(ChSystem* msys, int mpi_
     // TODO: we MUST NOT access the master domain aabb here.
     // Broadcast AABBs to all ranks
     ChMPI::ChBroadcast<AABB>(domain_aabbs_, GetMasterRank());
+
+    // Set master AABB to 0,0,0
+    // domain_aabbs_[GetMasterRank()] = AABB(ChVector3d(0, 0, 0), ChVector3d(0, 0, 0), std::vector<int>{});
 }
 
 std::shared_ptr<ChDomain> ChDomainBuilderBVH::BuildMasterDomain(ChSystem* msys) {
@@ -338,6 +343,9 @@ std::shared_ptr<ChDomain> ChDomainBuilderBVH::BuildMasterDomain(ChSystem* msys) 
 
     // Create interfaces from master to all domains
     for (int i = 0; i < num_domains_; ++i) {
+        if (i == this_rank)
+            continue;
+
         auto in_domain = chrono_types::make_shared<ChDomainBox>(
             nullptr, i,
             ChAABB(ChVector3d(domain_aabbs_[i].min[0], domain_aabbs_[i].min[1], domain_aabbs_[i].min[2]),

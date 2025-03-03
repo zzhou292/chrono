@@ -23,16 +23,16 @@ namespace multidomain {
 CH_FACTORY_REGISTER(ChSolverPSORmultidomain)
 CH_UPCASTING(ChSolverPSORmultidomain, ChIterativeSolverVI)
 
-ChSolverPSORmultidomain::ChSolverPSORmultidomain() 
-    : maxviolation(0), communication_each(1), omega_interface(1.0) 
-{
-    // Because inter-domain works as Jacobi, if there are shared objects with many contacts on both sizes 
+ChSolverPSORmultidomain::ChSolverPSORmultidomain() : maxviolation(0), communication_each(1), omega_interface(1.0) {
+    // Because inter-domain works as Jacobi, if there are shared objects with many contacts on both sizes
     // Jacobi-like iteration may lead to divergent iterations, so setting a low default omega relaxation
     // reduces this risk (at the cost of slower convergence).
     this->SetOmega(0.5);
 }
 
 double ChSolverPSORmultidomain::Solve(ChSystemDescriptor& sysd) {
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     std::vector<ChConstraint*>& mconstraints = sysd.GetConstraints();
     std::vector<ChVariables*>& mvariables = sysd.GetVariables();
 
@@ -46,18 +46,18 @@ double ChSolverPSORmultidomain::Solve(ChSystemDescriptor& sysd) {
 
     // =====ENTER scaling of masses in ChVariables because of Wv weights
     // ***NO!! THIS ALGO ASSUMES MASS IN CLIPPED FORMAT, CLIPPED M^1_j OK FOR SCHUR COMPLEMENT CAUSE BLOCK PATTERN
-    //descriptor.MassesScaledInPlace_EnterSection(); 
+    // descriptor.MassesScaledInPlace_EnterSection();
 
     // MULTIDOMAIN******************
     // aux data for multidomain
     descriptor.SharedVectsToZero();
     /*
-    // ALTERNATIVE: following stuff to setup an alternative to descriptor.Shared.. stuff. See also below. 
+    // ALTERNATIVE: following stuff to setup an alternative to descriptor.Shared.. stuff. See also below.
     // This alternative way for multidomain intercom is more verbose (see below) but more intuitive and
-    // because it is based on VectAdditiveToClipped() and other things that are less obscure than 
+    // because it is based on VectAdditiveToClipped() and other things that are less obscure than
     // SharedStatesDeltaAddToMultidomainAndSync() used here. Todo: see if this alternative way adds cpu overhead.
     int nv = descriptor.CountActiveVariables();
-    ChVectorDynamic<> state_old(nv); 
+    ChVectorDynamic<> state_old(nv);
     ChVectorDynamic<> state(nv);
     ChVectorDynamic<> Dstate(nv);
     */
@@ -90,7 +90,8 @@ double ChSolverPSORmultidomain::Solve(ChSystemDescriptor& sysd) {
 
     for (unsigned int iv = 0; iv < mvariables.size(); iv++) {
         if (mvariables[iv]->IsActive())
-            mvariables[iv]->ComputeMassInverseTimesVector(mvariables[iv]->State(), mvariables[iv]->Force());  // q = [M]'*fb  = Dv
+            mvariables[iv]->ComputeMassInverseTimesVector(mvariables[iv]->State(),
+                                                          mvariables[iv]->Force());  // q = [M]'*fb  = Dv
     }
 
     // 3)  For all items with variables, add the effect of initial (guessed)
@@ -107,9 +108,15 @@ double ChSolverPSORmultidomain::Solve(ChSystemDescriptor& sysd) {
 
     // MULTIDOMAIN******************
     // fetch and add the Dv = [M]'*fb  that was computed by neighbouring domains and add it to shared vars
+    auto start_time_shared_states = std::chrono::high_resolution_clock::now();
     descriptor.SharedStatesDeltaAddToMultidomainAndSync(this->omega_interface);
+    auto end_time_shared_states = std::chrono::high_resolution_clock::now();
+    auto duration_shared_states =
+        std::chrono::duration_cast<std::chrono::microseconds>(end_time_shared_states - start_time_shared_states);
+    std::cout << "Time taken by SharedStatesDeltaAddToMultidomainAndSync: " << duration_shared_states.count()
+              << " microseconds" << std::endl;
     /*
-    // ALTERNATIVE: following stuff is equivalent to descriptor.SharedStates.. line above. 
+    // ALTERNATIVE: following stuff is equivalent to descriptor.SharedStates.. line above.
     descriptor.FromVariablesToVector(state);
     descriptor.VectAdditiveToClipped(state);
     descriptor.FromVectorToVariables(state);
@@ -119,6 +126,7 @@ double ChSolverPSORmultidomain::Solve(ChSystemDescriptor& sysd) {
     // 4)  Perform the iteration loops
     //
 
+    auto start_time_iter = std::chrono::high_resolution_clock::now();
     for (int iter = 0; iter < m_max_iterations; iter++) {
         // The iteration on all constraints
         //
@@ -131,7 +139,8 @@ double ChSolverPSORmultidomain::Solve(ChSystemDescriptor& sysd) {
             // skip computations if constraint not active.
             if (mconstraints[ic]->IsActive()) {
                 // compute residual  c_i = [Cq_i]*q + b_i + cfm_i*l_i
-                double mresidual = mconstraints[ic]->ComputeJacobianTimesState() + mconstraints[ic]->GetRightHandSide() +
+                double mresidual = mconstraints[ic]->ComputeJacobianTimesState() +
+                                   mconstraints[ic]->GetRightHandSide() +
                                    mconstraints[ic]->GetComplianceTerm() * mconstraints[ic]->GetLagrangeMultiplier();
 
                 // true constraint violation may be different from 'mresidual' (ex:clamped if unilateral)
@@ -239,14 +248,14 @@ double ChSolverPSORmultidomain::Solve(ChSystemDescriptor& sysd) {
 
         m_iterations++;
 
-        // Terminate the loop if violation in constraints has been successfully limited. 
-        
+        // Terminate the loop if violation in constraints has been successfully limited.
+
         // MULTIDOMAIN******************
         // The violation must be the global violation, not per-domain violation. so it is the same for all domains
         // and they terminate all together. This requires a barrier for a reduction, though...
         double global_maxviolation = descriptor.globalMax(maxviolation);
         if (global_maxviolation < m_tolerance)
-          break;
+            break;
 
         // MULTIDOMAIN******************
         // fetch and add the Dv = [M]'*fb  that was computed by neighbouring domains and add it to shared vars
@@ -261,20 +270,25 @@ double ChSolverPSORmultidomain::Solve(ChSystemDescriptor& sysd) {
             descriptor.FromVectorToVariables(state);
             state_old = state;
             */
-            //descriptor.SyncSharedStates(true);
+            // descriptor.SyncSharedStates(true);
         }
 
     }  // end iteration loop
 
+    auto end_time_iter = std::chrono::high_resolution_clock::now();
+    auto duration_iter = std::chrono::duration_cast<std::chrono::microseconds>(end_time_iter - start_time_iter);
+    std::cout << "Time taken by iteration loop: " << duration_iter.count() << " microseconds" << std::endl;
+
     // =====EXIT scaling of masses in ChVariables because of Wv weights, restore to original
     // ***NO!! THIS ALGO ASSUMES MASS IN CLIPPED FORMAT, CLIPPED M^1_j OK FOR SCHUR COMPLEMENT CAUSE BLOCK PATTERN
-    //descriptor.MassesScaledInPlace_ExitSection();
+    // descriptor.MassesScaledInPlace_ExitSection();
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+    std::cout << "Time taken by Solve: " << duration.count() << " microseconds" << std::endl;
 
     return maxviolation;
 }
-
-
-
 
 }  // end namespace multidomain
 }  // end namespace chrono

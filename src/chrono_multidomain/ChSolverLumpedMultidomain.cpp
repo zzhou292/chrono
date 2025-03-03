@@ -26,6 +26,7 @@ CH_UPCASTING(ChSolverLumpedMultidomain, ChSolver)
 ChSolverLumpedMultidomain::ChSolverLumpedMultidomain() {}
 
 double ChSolverLumpedMultidomain::Solve(ChSystemDescriptor& sysd) {
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     ChSystemDescriptorMultidomain& sysdMD = dynamic_cast<ChSystemDescriptorMultidomain&>(sysd);
 
@@ -35,19 +36,22 @@ double ChSolverLumpedMultidomain::Solve(ChSystemDescriptor& sysd) {
     int nv = sysd.CountActiveVariables();
 
     if (verbose)
-        std::cout << "\n-----ChSolverLumpedMultidomain, nv=" << nv << " vars, nc=" << nc << " penalty constraints." << std::endl;
+        std::cout << "\n-----ChSolverLumpedMultidomain, nv=" << nv << " vars, nc=" << nc << " penalty constraints."
+                  << std::endl;
 
     ChVectorDynamic<> R(nv);
     ChVectorDynamic<> a(nv);
-    //ChVectorDynamic<> L(nc);
+    // ChVectorDynamic<> L(nc);
 
     // penalty terms from constraints
     R.setZero(nv);
-    //L.setZero(nc);
-    
-    sysdMD.BuildFbVector(R); // rhs, applied forces (plus the penalty terms of constraints if timestepper in penalty ON mode)
+    // L.setZero(nc);
 
-    // MULTIDOMAIN****************** this works only because node masses are split between shared domains with Wv weights. 
+    sysdMD.BuildFbVector(
+        R);  // rhs, applied forces (plus the penalty terms of constraints if timestepper in penalty ON mode)
+
+    // MULTIDOMAIN****************** this works only because node masses are split between shared domains with Wv
+    // weights.
     sysdMD.VectAdditiveToClipped(this->diagonal_M);
 
     // Compute acceleration using lumped diagonal mass. No need to invoke a linear solver.
@@ -57,30 +61,38 @@ double ChSolverLumpedMultidomain::Solve(ChSystemDescriptor& sysd) {
     for (int i = 0; i < R.size(); ++i) {
         a[i] = R[i] / this->diagonal_M[i];
 
-        // Hack to overcome a 0/0=NaN result for FEA like IGA where one node is a domain outlier (hence zero R) but with zero mass M because the element that gives the mass is in the other domain
+        // Hack to overcome a 0/0=NaN result for FEA like IGA where one node is a domain outlier (hence zero R) but with
+        // zero mass M because the element that gives the mass is in the other domain
         if (this->diagonal_M[i] == 0)
-            a[i] = 0; 
+            a[i] = 0;
     }
 
-
     // MULTIDOMAIN******************
-    // Sum the contribution to acceleration from other domains. Alternatively we could have summed R. 
+    // Sum the contribution to acceleration from other domains. Alternatively we could have summed R.
     // That's all. Lucky situation because we assume that the Md array is in clipped, not additive format.
-    sysdMD.VectAdditiveToClipped(a);  
+    sysdMD.VectAdditiveToClipped(a);
 
     // Resulting dual variables:
-    //sysd.FromVectorToConstraints(L);
+    // sysd.FromVectorToConstraints(L);
 
     // Resulting primal variables:
+    auto start_time_vect_to_vars = std::chrono::high_resolution_clock::now();
     sysd.FromVectorToVariables(a);
+    auto end_time_vect_to_vars = std::chrono::high_resolution_clock::now();
+    auto duration_vect_to_vars =
+        std::chrono::duration_cast<std::chrono::microseconds>(end_time_vect_to_vars - start_time_vect_to_vars);
+    std::cout << "Time taken by FromVectorToVariables: " << duration_vect_to_vars.count() << " microseconds"
+              << std::endl;
 
     if (verbose)
         std::cout << "-----" << std::endl;
 
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+    std::cout << "Time taken by Solve: " << duration.count() << " microseconds" << std::endl;
+
     return 0;
 }
-
-
 
 }  // end namespace multidomain
 }  // end namespace chrono
