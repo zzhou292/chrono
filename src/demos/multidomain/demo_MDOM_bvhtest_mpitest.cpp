@@ -43,7 +43,7 @@ void PrintAABB(const AABB& aabb, const std::string& prefix = "") {
 }
 
 // Test function for GatherToMaster
-void TestGatherToMaster(ChDomainManagerMPI& domain_manager, std::shared_ptr<ChDomainBuilderBVH> domain_builder) {
+void TestGatherToMaster(ChDomainManagerMPI& domain_manager, std::shared_ptr<ChDomainBuilderBVHMPI> domain_builder) {
     int mpi_rank = domain_manager.GetMPIrank();
     int master_rank = domain_builder->GetMasterRank();
     int num_ranks = domain_builder->GetTotRanks();
@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
 
     // Create the domain builder
     // Number of domains = total ranks - 1 (for master)
-    auto domain_builder = chrono_types::make_shared<ChDomainBuilderBVH>(domain_manager.GetMPItotranks() - 1, true);
+    auto domain_builder = chrono_types::make_shared<ChDomainBuilderBVHMPI>(domain_manager.GetMPItotranks() - 1, true);
 
     if (domain_manager.GetMPIrank() == 0) {
         std::cout << "\n=== Testing GatherToMaster function ===" << std::endl;

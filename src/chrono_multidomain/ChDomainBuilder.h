@@ -33,7 +33,7 @@ namespace multidomain {
 
 class ChApiMultiDomain ChDomainBuilder {
   public:
-    ChDomainBuilder(){};
+    ChDomainBuilder() {};
     virtual ~ChDomainBuilder() {}
 
     /// Get the number of ranks needed for this domain splitting
@@ -212,53 +212,11 @@ class ChApiMultiDomain ChDomainBuilderGrid : ChDomainBuilder {
     bool m_build_master = false;
 };
 
-/// Specialization of ChDomain for axis-aligned grid space decomposition.
-/// This is like a box.
-///
-class ChApiMultiDomain ChDomainBox : public ChDomain {
-  public:
-    ChDomainBox(ChSystem* msystem, int mrank, ChAABB domain_aabb) : ChDomain(msystem, mrank) { aabb = domain_aabb; }
-    virtual ~ChDomainBox() {}
-
-    /// Test if some item, with axis-aligned bounding box, must be included in this domain
-    virtual bool IsOverlap(const ChAABB& abox) const override {
-        if ((aabb.min.x() <= abox.max.x() && abox.min.x() < aabb.max.x()) &&
-            (aabb.min.y() <= abox.max.y() && abox.min.y() < aabb.max.y()) &&
-            (aabb.min.z() <= abox.max.z() && abox.min.z() < aabb.max.z()))
-            return true;
-        else
-            return false;
-    }
-
-    /// Test if some item, represented by a single point, must be included in this domain.
-    virtual bool IsInto(const ChVector3d& apoint) const override {
-        if ((aabb.min.x() <= apoint.x() && apoint.x() < aabb.max.x()) &&
-            (aabb.min.y() <= apoint.y() && apoint.y() < aabb.max.y()) &&
-            (aabb.min.z() <= apoint.z() && apoint.z() < aabb.max.z()))
-            return true;
-        else
-            return false;
-    }
-
-    /// Get the axis-aligned bounding box of this domain
-    const ChAABB& GetAABB() const { return aabb; }
-
-    /// Set the axis-aligned bounding box of this domain
-    void SetAABB(const ChAABB& domain_aabb) { aabb = domain_aabb; }
-
-    // TODO: optimize this, we need to keep tags for the BVH case, but not sure if this is absolutely necessary
-    std::vector<int> tags;
-    std::vector<int> excluded_body_tags;
-
-  private:
-    ChAABB aabb;
-};
-
 //  JZ - ADDED ============================================================
 
-class ChApiMultiDomain ChDomainBuilderBVH : public ChDomainBuilder {
+class ChApiMultiDomain ChDomainBuilderBVHMPI : public ChDomainBuilder {
   public:
-    ChDomainBuilderBVH(int num_domains, bool build_master = true) : ChDomainBuilder() {
+    ChDomainBuilderBVHMPI(int num_domains, bool build_master = true) : ChDomainBuilder() {
         build_master_ = build_master;
         num_domains_ = num_domains;
     }
@@ -283,15 +241,64 @@ class ChApiMultiDomain ChDomainBuilderBVH : public ChDomainBuilder {
     // Rebuild domains based on current object positions
     void RebuildDomains(ChSystem* msys, int mpi_rank);
 
-    void SetDecompositionInterval(int step_interval);
-
-    void RebuildDomainsAsync(ChSystem* system, int mpi_rank, int current_step);
-
-    bool GetPartitionUpdateNeeded() { return partition_update_needed_; }
-
-    void ResetPartitionUpdateNeeded() { partition_update_needed_ = false; }
-
     void ApplyNewDecomposition(int mpi_rank);
+
+  private:
+    std::vector<AABB> domain_aabbs_;           // aabb with tags
+    std::vector<ChAABB> domain_aabbs_synced_;  // a aabb copy without any tags
+    int num_domains_;                          // this excludes the master domain
+    bool build_master_;
+    std::vector<std::shared_ptr<ChBody>> excluded_bodies_;
+    std::shared_ptr<ChDomainBox> current_domain_box_;
+
+    // domain tracker
+    DomainTracker domain_tracker_;
+};
+
+/// Helper class that setup domains using Bounding Volume Hierarchy (BVH) for OpenMP parallelization.
+/// This class creates domains based on a BVH decomposition of the simulation space.
+/// It supports dynamic domain rebuilding based on object positions.
+class ChApiMultiDomain ChDomainBuilderBVHOMP : public ChDomainBuilder {
+  public:
+    ChDomainBuilderBVHOMP(int num_domains, bool build_master = true) : ChDomainBuilder() {
+        build_master_ = build_master;
+        num_domains_ = num_domains;
+        domain_aabbs_.resize(num_domains);
+        domain_aabbs_synced_.resize(num_domains);
+        domains_.resize(num_domains);
+    }
+
+    virtual int GetTotRanks() override { return num_domains_ + (int)build_master_; }
+    virtual int GetMasterRank() override {
+        assert(build_master_);
+        return GetTotRanks() - 1;
+    }
+
+    void ComputeAndBroadcastDomainAABBs(ChSystem* msys);
+
+    virtual std::shared_ptr<ChDomain> BuildDomain(ChSystem* msys, int this_rank);
+
+    /// Build the master domain that encloses everything, and that can be populated
+    /// with all elements, nodes, bodies etc. at the beginning. It will migrate all items into
+    /// the domains at the first update. You need to create ChDomainBuilderBVHOMP with build_master as true.
+    /// The master domain, if used, corresponds to the last rank, ie. GetTotRanks()-1.
+    std::shared_ptr<ChDomain> BuildMasterDomain(ChSystem* msys);
+
+    void UpdateLocalDomainAABBs();
+
+    void AddExcludedBody(std::shared_ptr<ChBody> body) { excluded_bodies_.push_back(body); }
+
+    // Rebuild domains based on current object positions
+    void RebuildDomains();
+
+    void ApplyNewDecomposition();
+
+    // Get a specific domain
+    std::shared_ptr<ChDomainBox> GetDomain(int rank) {
+        if (rank >= 0 && rank < domains_.size())
+            return domains_[rank];
+        return nullptr;
+    }
 
   private:
     std::vector<AABB> domain_aabbs_;           // aabb with tags
@@ -299,17 +306,13 @@ class ChApiMultiDomain ChDomainBuilderBVH : public ChDomainBuilder {
     int num_domains_;
     bool build_master_;
     std::vector<std::shared_ptr<ChBody>> excluded_bodies_;
-    std::shared_ptr<ChDomainBox> current_domain_box_;
+    // Store all domains for OpenMP version
+    // Note that we declare and initialize the master domain here at index len-1
+    // so if we have 4 domains(excluding the master), we have 5 ChDomainBox
+    std::vector<std::shared_ptr<ChDomainBox>> domains_;
 
     // domain tracker
     DomainTracker domain_tracker_;
-
-    bool decomposition_in_progress_ = false;
-    std::future<std::vector<AABB>> async_decomposition_future_;
-    int decomposition_step_interval_ = 10;
-    int last_decomposition_step_ = -1;
-
-    bool partition_update_needed_ = false;
 };
 
 }  // end namespace multidomain

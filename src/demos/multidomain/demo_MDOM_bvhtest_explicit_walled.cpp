@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
         // Create some bricks placed as walls, for benchmark purposes
         int n_walls = 1;
         int n_vertical = 20;
-        int n_horizontal = 40;
+        int n_horizontal = 20;
         double size_x = 4;
         double size_y = 2;
         double size_z = 4;
@@ -149,12 +149,12 @@ int main(int argc, char* argv[]) {
                 for (int ui = 0; ui < n_horizontal; ui++) {  // loop of hor. bricks
 
                     auto mrigidBody = chrono_types::make_shared<ChBodyEasyBox>(size_x * 0.9, size_y, size_z,
-                                                                               100,   // density
+                                                                               2000,  // density
                                                                                true,  // visualization?
                                                                                true,  // collision?
                                                                                mat);  // contact material
                     mrigidBody->SetPos(ChVector3d(wall_corner_x + size_x * (ui + 0.5 * (1 + bi % 2)),
-                                                  size_y * (0.5 + bi), ai * walls_space));
+                                                  size_y * (0.5 + bi), ai * walls_space + 2.0 * ui));
                     mrigidBody->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/cubetexture_borders.png"));
                     sys.Add(mrigidBody);
                     std::cout << "Added body with index: " << mrigidBody->GetIndex() << std::endl;
@@ -163,15 +163,35 @@ int main(int argc, char* argv[]) {
         }
 
         // Create a ball that will collide with wall
-        auto mrigidBall = chrono_types::make_shared<ChBodyEasySphere>(3.5,   // radius
-                                                                      8000,  // density
-                                                                      true,  // visualization?
-                                                                      true,  // collision?
-                                                                      mat);  // contact material
-        mrigidBall->SetPos(ChVector3d(0, 3.5, -8));
-        mrigidBall->SetPosDt(ChVector3d(0, 0, 16));  // set initial speed
-        mrigidBall->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/bluewhite.png"));
-        sys.Add(mrigidBall);
+        auto mrigidBall1 = chrono_types::make_shared<ChBodyEasySphere>(5.0,   // radius
+                                                                       8000,  // density
+                                                                       true,  // visualization?
+                                                                       true,  // collision?
+                                                                       mat);  // contact material
+        mrigidBall1->SetPos(ChVector3d(0, 5.0, -8));
+        mrigidBall1->SetPosDt(ChVector3d(0, 0, 16));  // set initial speed
+        mrigidBall1->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/bluewhite.png"));
+        sys.Add(mrigidBall1);
+
+        auto mrigidBall2 = chrono_types::make_shared<ChBodyEasySphere>(5.0,   // radius
+                                                                       8000,  // density
+                                                                       true,  // visualization?
+                                                                       true,  // collision?
+                                                                       mat);  // contact material
+        mrigidBall2->SetPos(ChVector3d(15, 5.0, -10));
+        mrigidBall2->SetPosDt(ChVector3d(2, 0, 16));  // set initial speed
+        mrigidBall2->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/bluewhite.png"));
+        sys.Add(mrigidBall2);
+
+        auto mrigidBall3 = chrono_types::make_shared<ChBodyEasySphere>(5.0,   // radius
+                                                                       8000,  // density
+                                                                       true,  // visualization?
+                                                                       true,  // collision?
+                                                                       mat);  // contact material
+        mrigidBall3->SetPos(ChVector3d(-15, 5.0, -10));
+        mrigidBall3->SetPosDt(ChVector3d(-2, 0, 16));  // set initial speed
+        mrigidBall3->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/bluewhite.png"));
+        sys.Add(mrigidBall3);
 
         // 6- Set the tag IDs for all nodes, bodies, etc.
         //    To do this, use the helper ChArchiveSetUniqueTags, that traverses all the
@@ -189,8 +209,8 @@ int main(int argc, char* argv[]) {
     mat->SetYoungModulus(2e8);
 
     // Create the floor using fixed rigid body of 'box' type:
-    auto mrigidFloor = chrono_types::make_shared<ChBodyEasyBox>(250, 4, 250,  // x,y,z size
-                                                                1000,         // density
+    auto mrigidFloor = chrono_types::make_shared<ChBodyEasyBox>(130, 4, 130,  // x,y,z size
+                                                                5000,         // density
                                                                 true,         // visulization?
                                                                 true,         // collision?
                                                                 mat);         // contact material
@@ -199,6 +219,39 @@ int main(int argc, char* argv[]) {
     domain_builder->AddExcludedBody(mrigidFloor);
 
     sys.Add(mrigidFloor);
+
+    std::array<ChVector3d, 4> wall_positions = {ChVector3d(0, 20, 65), ChVector3d(0, 20, -65), ChVector3d(65, 20, 0),
+                                                ChVector3d(-65, 20, 0)};
+
+    std::array<ChQuaternion<>, 4> wall_rotations = {QuatFromAngleY(CH_PI_2), QuatFromAngleY(CH_PI_2),
+                                                    ChQuaternion<>(1, 0, 0, 0), ChQuaternion<>(1, 0, 0, 0)};
+
+    for (int i = 0; i < 4; i++) {
+        auto mrigidWall = chrono_types::make_shared<ChBodyEasyBox>(4, 60, 130,  // x,y,z size
+                                                                   5000,        // density
+                                                                   true,        // visulization?
+                                                                   true,        // collision?
+                                                                   mat);        // contact material
+        mrigidWall->SetPos(wall_positions[i]);
+        mrigidWall->SetRot(wall_rotations[i]);
+        mrigidWall->SetFixed(true);
+        domain_builder->AddExcludedBody(mrigidWall);
+
+        sys.Add(mrigidWall);
+    }
+
+    // add a moving wall
+    auto mrigidMovingWall = chrono_types::make_shared<ChBodyEasyBox>(4, 60, 130,  // x,y,z size
+                                                                     5000,        // density
+                                                                     true,        // visulization?
+                                                                     true,        // collision?
+                                                                     mat);        // contact material
+
+    mrigidMovingWall->SetRot(ChQuaternion<>(1, 0, 0, 0));
+    mrigidMovingWall->SetFixed(true);
+    mrigidMovingWall->SetPosDt(ChVector3d(-5, 0, 2));
+    sys.Add(mrigidMovingWall);
+    domain_builder->AddExcludedBody(mrigidMovingWall);
 
     // Materdomain BVH update
     domain_builder->ComputeAndBroadcastDomainAABBs(&sys, domain_manager.GetMPIrank());
@@ -281,11 +334,14 @@ int main(int argc, char* argv[]) {
     // In your simulation loop
     std::cout << "Current solver type: " << typeid(*sys.GetSolver()).name() << std::endl;
 
-    for (int i = 0; i < 4000; ++i) {
+    double step_size = 0.001;
+    for (int i = 0; i < 14000; ++i) {
+        mrigidMovingWall->SetPos(ChVector3d(60 - 6.0 * i * step_size, 20, 0 + 0.0 * i * step_size));
+
         if (domain_manager.GetMPIrank() == 0)
             std::cout << "\n\n\n============= Time step (explicit) " << i << std::endl << std::endl;
 
-        if (i % 200 == 0) {
+        if (i % 100 == 0) {
             // Time the partition update
             auto bvh_start = std::chrono::high_resolution_clock::now();
             // BVH update
@@ -319,7 +375,7 @@ int main(int argc, char* argv[]) {
         total_partition_time += std::chrono::duration<double>(partition_end - partition_start).count();
 
         // MULTIDOMAIN TIME INTEGRATION
-        double step_size = 0.001;
+
         auto dynamics_start = std::chrono::high_resolution_clock::now();
         sys.DoStepDynamics(step_size);
         auto dynamics_end = std::chrono::high_resolution_clock::now();
@@ -357,11 +413,11 @@ int main(int argc, char* argv[]) {
         // Before ExportData(), we must do a remove-add trick as an easy way to handle the fact
         // that objects are constantly added and removed from the i-th domain when crossing boundaries.
         // Since timestep is small for explicit integration, save only every n-th time steps.
-        // if ((i % 10) == 0) {
-        //     blender_exporter.RemoveAll();
-        //     blender_exporter.AddAll();
-        //     blender_exporter.ExportData();
-        // }
+        if ((i % 100) == 0) {
+            blender_exporter.RemoveAll();
+            blender_exporter.AddAll();
+            blender_exporter.ExportData();
+        }
     }
 
     // Calculate overall RTF at the end

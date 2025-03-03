@@ -9,7 +9,6 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Alessandro Tasora
 // =============================================================================
 //
 //  Demo code about splitting a system into domains using the MULTIDOMAIN module
@@ -45,8 +44,6 @@
 #include "chrono_multidomain/ChSolverPSORmultidomain.h"
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 
-#include <chrono>  // Add this at the top of your file if not already included
-
 using namespace chrono;
 using namespace multidomain;
 using namespace chrono::irrlicht;
@@ -69,11 +66,11 @@ int main(int argc, char* argv[]) {
     ChDomainManagerSharedmemory domain_manager;
 
     // For debugging/logging:
-    domain_manager.verbose_partition = true;          // will print partitioning in std::cout ?
-    domain_manager.verbose_serialization = true;      // will print serialization buffers in std::cout ?
+    domain_manager.verbose_partition = false;         // will print partitioning in std::cout ?
+    domain_manager.verbose_serialization = false;     // will print serialization buffers in std::cout ?
     domain_manager.verbose_variable_updates = false;  // will print all messages in std::cout ?
     domain_manager.serializer_type =
-        DomainSerializerFormat::JSON;  // default BINARY, use JSON or XML for readable verbose
+        DomainSerializerFormat::BINARY;  // default BINARY, use JSON or XML for readable verbose
 
     // 2- Now you need a domain builder.
     //    You must define how the 3D space is divided in domains.
@@ -128,53 +125,53 @@ int main(int argc, char* argv[]) {
 
     auto mat = chrono_types::make_shared<ChContactMaterialNSC>();
     mat->SetFriction(0.1);
+    int n_walls = 1;
+    int n_vertical = 20;
+    int n_horizontal = 40;
+    double size_x = 4;
+    double size_y = 2;
+    double size_z = 4;
+    double walls_space = 9;
+    double wall_corner_x = -0.5 * (size_x * n_horizontal) - 0.1;
+    for (int ai = 0; ai < n_walls; ai++) {               // loop of walls
+        for (int bi = 0; bi < n_vertical; bi++) {        // loop of vert. bricks
+            for (int ui = 0; ui < n_horizontal; ui++) {  // loop of hor. bricks
 
-    auto mrigidBody = chrono_types::make_shared<ChBodyEasyBox>(2, 2, 2,  // x,y,z size
-                                                               100,      // density
-                                                               true,     // visualization?
-                                                               true,     // collision?
-                                                               mat);     // contact material
-    sys_master.AddBody(mrigidBody);
-    mrigidBody->SetPos(ChVector3d(-1.5, 0, 0));
-    mrigidBody->SetPosDt(ChVector3d(20, 0, 0));
+                auto mrigidBody = chrono_types::make_shared<ChBodyEasyBox>(size_x * 0.9, size_y, size_z,
+                                                                           100,   // density
+                                                                           true,  // visualization?
+                                                                           true,  // collision?
+                                                                           mat);  // contact material
+                mrigidBody->SetPos(ChVector3d(wall_corner_x + size_x * (ui + 0.5 * (1 + bi % 2)), size_y * (0.5 + bi),
+                                              ai * walls_space));
+                mrigidBody->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/cubetexture_borders.png"));
+                sys_master.Add(mrigidBody);
+                std::cout << "Added body with index: " << mrigidBody->GetIndex() << std::endl;
+            }
+        }
+    }
 
-    // A very important thing: for multidomain, each item (body, mesh, link, node, FEA element)
-    // must have an unique tag! This SetTag() is needed because items might be shared between neighbouring domains.
-    // One way to do this: for each created item, do
-    //    mrigidBody->SetTag(unique_ID); unique_ID++;
-    // However an easier alternative to using SetTag() one by one is that at the end you use the helper
-    // ChArchiveSetUniqueTags (see snippet later)
+    // Create a ball that will collide with wall
+    auto mrigidBall = chrono_types::make_shared<ChBodyEasySphere>(3.5,   // radius
+                                                                  8000,  // density
+                                                                  true,  // visualization?
+                                                                  true,  // collision?
+                                                                  mat);  // contact material
+    mrigidBall->SetPos(ChVector3d(0, 3.5, -8));
+    mrigidBall->SetPosDt(ChVector3d(0, 0, 16));  // set initial speed
+    mrigidBall->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/bluewhite.png"));
+    sys_master.Add(mrigidBall);
 
-    auto mrigidBodyb = chrono_types::make_shared<ChBodyEasyBox>(0.7, 0.7, 0.7,  // x,y,z size
-                                                                400,            // density
-                                                                true,           // visualization?
-                                                                true,           // collision?
-                                                                mat);           // contact material
-    sys_master.AddBody(mrigidBodyb);
-    mrigidBodyb->SetPos(ChVector3d(1.5, 0, 0));
-    mrigidBodyb->SetFixed(true);
+    // Create the floor using fixed rigid body of 'box' type:
+    auto mrigidFloor = chrono_types::make_shared<ChBodyEasyBox>(250, 4, 250,  // x,y,z size
+                                                                1000,         // density
+                                                                true,         // visulization?
+                                                                true,         // collision?
+                                                                mat);         // contact material
+    mrigidFloor->SetPos(ChVector3d(0, -2, 0));
+    mrigidFloor->SetFixed(true);
 
-    auto mrigidBodyc = chrono_types::make_shared<ChBodyEasyBox>(5, 0.5, 5,  // x,y,z size
-                                                                400,        // density
-                                                                true,       // visualization?
-                                                                true,       // collision?
-                                                                mat);       // contact material
-    sys_master.AddBody(mrigidBodyc);
-    mrigidBodyc->SetPos(ChVector3d(0, -1.15, 0));
-    mrigidBodyc->SetFixed(true);
-
-    auto mrigidBodyd = chrono_types::make_shared<ChBodyEasySphere>(0.6,   // rad
-                                                                   400,   // density
-                                                                   true,  // visualization?
-                                                                   true,  // collision?
-                                                                   mat);  // contact material
-    sys_master.AddBody(mrigidBodyd);
-    mrigidBodyd->SetPos(ChVector3d(-1.5, 2, 0));
-    mrigidBodyd->SetPosDt(ChVector3d(20, 0, 0));
-
-    auto linkdistance = chrono_types::make_shared<ChLinkDistance>();
-    sys_master.Add(linkdistance);
-    linkdistance->Initialize(mrigidBody, mrigidBodyd, true, ChVector3d(0, 1, 0), ChVector3d(0, 0, 0));
+    sys_master.Add(mrigidFloor);
 
     // 5- Set the tag IDs for all nodes, bodies, etc.
     //    To do this, use the helper ChArchiveSetUniqueTags, that traverses all the
@@ -193,17 +190,17 @@ int main(int argc, char* argv[]) {
     vis_irr_0->SetWindowTitle("Domain 0");
     vis_irr_0->Initialize();
     vis_irr_0->AddSkyBox();
-    vis_irr_0->AddCamera(ChVector3d(1, 2, 6), ChVector3d(0, 2, 0));
+    vis_irr_0->AddCamera(ChVector3d(8, 16, 48), ChVector3d(0, 2, 0));
     vis_irr_0->AddTypicalLights();
-    // vis_irr_0->BindAll();
+    vis_irr_0->BindAll();
     auto vis_irr_1 = chrono_types::make_shared<ChVisualSystemIrrlicht>();
     vis_irr_1->AttachSystem(sys_slices[1]);
     vis_irr_1->SetWindowTitle("Domain 1");
     vis_irr_1->Initialize();
     vis_irr_1->AddSkyBox();
-    vis_irr_1->AddCamera(ChVector3d(1, 2, 6), ChVector3d(0, 2, 0));
+    vis_irr_1->AddCamera(ChVector3d(8, 16, 48), ChVector3d(0, 2, 0));
     vis_irr_1->AddTypicalLights();
-    // vis_irr_1->BindAll();
+    vis_irr_1->BindAll();
 
     // 6 - INITIAL SETUP AND OBJECT INITIAL MIGRATION!
     //     Moves all the objects in master domain to all domains, slicing the system.
@@ -239,8 +236,14 @@ int main(int argc, char* argv[]) {
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
         std::cout << "Domain partition update took " << duration.count() << " milliseconds" << std::endl;
 
-        // MULTIDOMAIN TIME INTEGRATION
+        // Time the MULTIDOMAIN TIME INTEGRATION
+        auto start_time_step = std::chrono::high_resolution_clock::now();
         domain_manager.DoAllStepDynamics(0.01);
+        auto end_time_step = std::chrono::high_resolution_clock::now();
+
+        // Calculate duration in microseconds
+        auto duration_step = std::chrono::duration_cast<std::chrono::microseconds>(end_time_step - start_time_step);
+        std::cout << "ZZHDoAllStepDynamics took " << duration_step.count() << " microseconds" << std::endl;
     }
 
     for (auto sys_i : sys_slices) {

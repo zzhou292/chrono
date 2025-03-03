@@ -43,7 +43,7 @@ namespace multidomain {
 
 class ChApiMultiDomain ChDomainInterface {
   public:
-    ChDomainInterface(){};
+    ChDomainInterface() {};
     ~ChDomainInterface() {}
 
     ChDomainInterface(const ChDomainInterface& other) {
@@ -163,6 +163,50 @@ class ChApiMultiDomain ChDomainMaster : public ChDomain {
     virtual bool IsMaster() const override { return true; }
 
   private:
+};
+
+/// Specialization of ChDomain for axis-aligned grid space decomposition.
+/// This is like a box.
+///
+class ChApiMultiDomain ChDomainBox : public ChDomain {
+  public:
+    ChDomainBox(ChSystem* msystem, int mrank, ChAABB domain_aabb) : ChDomain(msystem, mrank) { aabb = domain_aabb; }
+    virtual ~ChDomainBox() {}
+
+    /// Test if some item, with axis-aligned bounding box, must be included in this domain
+    virtual bool IsOverlap(const ChAABB& abox) const override {
+        if ((aabb.min.x() <= abox.max.x() && abox.min.x() < aabb.max.x()) &&
+            (aabb.min.y() <= abox.max.y() && abox.min.y() < aabb.max.y()) &&
+            (aabb.min.z() <= abox.max.z() && abox.min.z() < aabb.max.z()))
+            return true;
+        else
+            return false;
+    }
+
+    /// Test if some item, represented by a single point, must be included in this domain.
+    virtual bool IsInto(const ChVector3d& apoint) const override {
+        if ((aabb.min.x() <= apoint.x() && apoint.x() < aabb.max.x()) &&
+            (aabb.min.y() <= apoint.y() && apoint.y() < aabb.max.y()) &&
+            (aabb.min.z() <= apoint.z() && apoint.z() < aabb.max.z()))
+            return true;
+        else
+            return false;
+    }
+
+    /// Get the axis-aligned bounding box of this domain
+    const ChAABB& GetAABB() const { return aabb; }
+
+    /// Set the axis-aligned bounding box of this domain
+    void SetAABB(const ChAABB& domain_aabb) { aabb = domain_aabb; }
+
+    // TODO: optimize this, we need to keep tags for the BVH case, but not sure if this is absolutely necessary
+    std::vector<int> tags;
+    std::vector<int> excluded_body_tags;
+
+    bool is_bvh_mode = false;
+
+  private:
+    ChAABB aabb;
 };
 
 }  // end namespace multidomain

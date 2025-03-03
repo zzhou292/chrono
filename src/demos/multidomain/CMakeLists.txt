@@ -9,9 +9,9 @@ set(MULTIDOMAIN_DEMOS
     demo_MDOM_MPI_grid
     demo_MDOM_bvhtest
     demo_MDOM_bvhtest_explicit
-    demo_MDOM_bvhtest_fea
     demo_MDOM_bvhtest_mpitest
     demo_MDOM_MPI_bvhtest_bench_explicit
+    demo_MDOM_bvhtest_explicit_walled
 	)
 
 # List of demos requiring the Chrono::Irrlicht module
@@ -19,7 +19,12 @@ set(MULTIDOMAIN_DEMOS_IRR
     demo_MDOM_OMP_intro_master
     demo_MDOM_OMP_intro_lowlevel
     demo_MDOM_OMP_fea
-	)
+    demo_MDOM_OMP_intro_master_wallbreak
+    demo_MDOM_OMP_intro_master_wallbreak_1sys
+	demo_MDOM_bvhomp_intro_master_wallbreak
+    demo_MDOM_bvhomp_intro_master_wbbb
+)
+
 
 #--------------------------------------------------------------
 
@@ -69,5 +74,4 @@ if(ENABLE_MODULE_IRRLICHT)
     endforeach()
 
 endif()
-
 

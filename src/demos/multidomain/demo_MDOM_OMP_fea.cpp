@@ -82,11 +82,11 @@ int main(int argc, char* argv[]) {
     ChDomainManagerSharedmemory domain_manager;
 
     // For debugging/logging:
-    domain_manager.verbose_partition = true;          // will print partitioning in std::cout ?
-    domain_manager.verbose_serialization = true;      // will print serialization buffers in std::cout ?
+    domain_manager.verbose_partition = false;         // will print partitioning in std::cout ?
+    domain_manager.verbose_serialization = false;     // will print serialization buffers in std::cout ?
     domain_manager.verbose_variable_updates = false;  // will print all messages in std::cout ?
     domain_manager.serializer_type =
-        DomainSerializerFormat::JSON;  // default BINARY, use JSON or XML for readable verbose
+        DomainSerializerFormat::BINARY;  // default BINARY, use JSON or XML for readable verbose
 
     // 2- the domain builder.
     // You must define how the 3D space is divided in domains.
@@ -97,6 +97,8 @@ int main(int argc, char* argv[]) {
         std::vector<double>{0},  // positions of cuts along axis to slice, ex {-1,0,2} generates 5 domains
         ChAxis::X,               // axis about whom one needs the space slicing
         false);                  // false: we do not create a master domain for initial injection
+
+    std::cout << "domain_builder.GetTotRanks(): " << domain_builder.GetTotRanks() << std::endl;
 
     // 3- create the ChDomain objects and their distinct ChSystem physical systems.
     // Now one can know how many domains are expected to build, using domain_builder.GetTotRanks();
@@ -283,18 +285,26 @@ int main(int argc, char* argv[]) {
     vis_irr_1->AddTypicalLights();
     // vis_irr_1->BindAll();
 
-    system("pause");
+    std::cout << "main thread : tp0" << std::endl;
+
+    // system("pause");
 
     // INITIAL SETUP AND OBJECT INITIAL MIGRATION!
     // Moves all the objects in master domain to all domains, slicing the system.
     // Also does some initializations, like collision detection AABBs.
     domain_manager.DoAllDomainInitialize();
 
+    std::cout << "main thread : tp0.4" << std::endl;
+
     // The master domain does not need to communicate anymore with the domains so do:
     domain_manager.master_domain_enabled = false;
 
+    std::cout << "main thread : tp1" << std::endl;
+
     for (int i = 0; i < 200; ++i) {
         std::cout << "\n\n\n============= Time step " << i << std::endl << std::endl;
+
+        std::cout << "main thread : tp2" << std::endl;
 
         // For debugging: open two 3D realtime view windows, each per domain:
         vis_irr_0->RemoveAllIrrNodes();
@@ -310,13 +320,19 @@ int main(int argc, char* argv[]) {
         vis_irr_1->Render();
         vis_irr_1->EndScene();
 
+        std::cout << "main thread : tp3" << std::endl;
+
         // MULTIDOMAIN AUTOMATIC ITEM MIGRATION!
-        // domain_manager.DoAllDomainPartitionUpdate();
+        domain_manager.DoAllDomainPartitionUpdate();
+
+        std::cout << "main thread : tp4" << std::endl;
 
         // MULTIDOMAIN TIME INTEGRATION
         domain_manager.DoAllStepDynamics(0.002);
 
-        system("pause");
+        std::cout << "main thread : tp5" << std::endl;
+
+        // system("pause");
     }
 
     return 0;

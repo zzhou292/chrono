@@ -99,6 +99,7 @@ bool ChDomainManagerMPI::DoDomainSendReceive(int mrank) {
     std::vector<std::string> send_strings(ninterfaces);  // need to persist until all nonblocking sends are done
 
     int i_int = 0;
+
     if (!(domain->IsMaster() && !this->master_domain_enabled)) {
         for (auto& minterface : domain->GetInterfaces()) {
             int other_rank = minterface.second.side_OUT->GetRank();
@@ -200,7 +201,10 @@ bool ChDomainManagerMPI::DoDomainPartitionUpdate(int mrank, bool delete_outsider
     assert(mrank == domain->GetRank());
 
     // 1 serialize outgoing items, update shared items
+    auto start_serialize = std::chrono::high_resolution_clock::now();
     domain->DoUpdateSharedLeaving();
+    auto end_serialize = std::chrono::high_resolution_clock::now();
+    double serialize_time = std::chrono::duration<double>(end_serialize - start_serialize).count();
 
     if (this->verbose_serialization)
         for (int i = 0; i < GetMPItotranks(); i++) {
@@ -225,10 +229,22 @@ bool ChDomainManagerMPI::DoDomainPartitionUpdate(int mrank, bool delete_outsider
         }
 
     // 2 send/receive buffers
+    auto start_comm = std::chrono::high_resolution_clock::now();
     this->DoDomainSendReceive(mrank);  //***COMM+BARRIER***
+    auto end_comm = std::chrono::high_resolution_clock::now();
+    double comm_time = std::chrono::duration<double>(end_comm - start_comm).count();
 
     // 3 deserialize incoming items, update shared items
+    auto start_deserialize = std::chrono::high_resolution_clock::now();
     domain->DoUpdateSharedReceived(delete_outsiders);
+    auto end_deserialize = std::chrono::high_resolution_clock::now();
+    double deserialize_time = std::chrono::duration<double>(end_deserialize - start_deserialize).count();
+
+    // std::cout << "Domain " << domain->GetRank() << " partition timing: "
+    //           << "Serialize: " << serialize_time << "s, "
+    //           << "Communication: " << comm_time << "s, "
+    //           << "Deserialize: " << deserialize_time << "s, "
+    //           << "Total: " << (serialize_time + comm_time + deserialize_time) << "s" << std::endl;
 
     if (this->verbose_partition)
         for (int i = 0; i < GetMPItotranks(); i++) {

@@ -13,6 +13,8 @@
 // =============================================================================
 
 #include <array>
+#include <chrono>
+#include <iostream>
 #include "chrono_multidomain/ChDomain.h"
 #include "chrono_multidomain/ChSystemDescriptorMultidomain.h"
 #include "chrono_multidomain/ChSolverPSORmultidomain.h"
@@ -82,13 +84,26 @@ void InterfaceManageNodeSharedLeaving(std::shared_ptr<T_node_serial> obj,
 }
 
 void ChDomain::DoUpdateSharedLeaving() {
-    if (this->IsMaster() && !this->domain_manager->master_domain_enabled)
+    if (this->IsMaster() && !this->domain_manager->master_domain_enabled) {
         return;
+    }
 
     // Select objects to sent to surrounding domains
     for (auto& interf : this->interfaces) {
-        if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
+        if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled) {
             continue;
+        }
+
+        bool skip_interface = false;
+        // Check if this is a ChDomainBox and if it's in BVH mode
+        if (auto* domain_box = dynamic_cast<ChDomainBox*>(this)) {
+            if (domain_box->is_bvh_mode) {
+                auto* other_domain_box = dynamic_cast<ChDomainBox*>(interf.second.side_OUT.get());
+                if (other_domain_box && !domain_box->IsOverlap(other_domain_box->GetAABB())) {
+                    skip_interface = true;
+                }
+            }
+        }
 
         std::unordered_set<int> shared_ids;
         std::unordered_set<int> sent_ids;
@@ -161,7 +176,8 @@ void ChDomain::DoUpdateSharedLeaving() {
         std::vector<ChIncrementalObj<ChNodeBase>> nodes_migrating;
         std::vector<ChIncrementalObj<ChElementBase>> elements_migrating;
 
-        // 1-BODIES overlapping because of collision shapes, or just their center of mass
+        // if (!skip_interface) {
+        //  1-BODIES overlapping because of collision shapes, or just their center of mass
 
         for (auto body : system->GetBodies()) {
             ChAABB mabb = body->GetTotalAABB();
@@ -300,6 +316,7 @@ void ChDomain::DoUpdateSharedLeaving() {
 
             }  // end fea elements
         }
+        // }
 
         // - Purge the shared object sets from those that are not shared anymore.
         //   This is not very efficient. Can be optimized.
@@ -356,8 +373,9 @@ void ChDomain::DoUpdateSharedLeaving() {
 }
 
 void ChDomain::DoUpdateSharedReceived(bool delete_outsiders) {
-    if (this->IsMaster() && !this->domain_manager->master_domain_enabled)
+    if (this->IsMaster() && !this->domain_manager->master_domain_enabled) {
         return;
+    }
 
     // This will be populated by all interfaces with all neighbours
     std::unordered_set<int> set_of_domainshared;
@@ -366,6 +384,18 @@ void ChDomain::DoUpdateSharedReceived(bool delete_outsiders) {
         if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled) {
             continue;
         }
+
+        bool skip_interface = false;
+        // // Check if this is a ChDomainBox and if it's in BVH mode
+        if (auto* domain_box = dynamic_cast<ChDomainBox*>(this)) {
+            if (domain_box->is_bvh_mode) {
+                auto* other_domain_box = dynamic_cast<ChDomainBox*>(interf.second.side_OUT.get());
+                if (other_domain_box && !domain_box->IsOverlap(other_domain_box->GetAABB())) {
+                    skip_interface = true;
+                }
+            }
+        }
+
         std::vector<ChIncrementalObj<ChBody>> bodies_migrating;
         std::vector<ChIncrementalObj<ChPhysicsItem>> items_migrating;
         std::vector<ChIncrementalObj<ChMesh>> meshes_migrating;
@@ -375,6 +405,7 @@ void ChDomain::DoUpdateSharedReceived(bool delete_outsiders) {
 
         // - DESERIALIZE
 
+        auto start_time = std::chrono::high_resolution_clock::now();
         // prepare the deserializer
         std::shared_ptr<ChArchiveIn> deserializer;
         switch (this->serializer_type) {
@@ -391,10 +422,40 @@ void ChDomain::DoUpdateSharedReceived(bool delete_outsiders) {
                 break;
         }
 
-        // Prepare a map of pointers to already existing items that, if referenced by serializer as external IDs, just
-        // need to be rebind.
-        // In this case for simplicity and safety we collect all the pointers in this->system, but future implemetation
-        // could just collect the pointers of the shared items.
+        auto end_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed_time = end_time - start_time;
+
+        std::cout << "Deserialization time: " << elapsed_time.count() << " seconds" << std::endl;
+
+        // Prepare a map of pointers to already existing items that, if referenced by serializer as external IDs,
+        // just need to be rebind. In this case for simplicity and safety we collect all the pointers in
+        // this->system, but future implemetation could just collect the pointers of the shared items.
+
+        start_time = std::chrono::high_resolution_clock::now();
+
+        // JZ TODO: This part is known to be a bottleneck.
+        // Super Super Slow
+        // ChArchivePointerMap rebinding_pointers;
+        // rebinding_pointers.SetEmptyShallowContainers(true);  // Only process explicitly added items
+
+        // // Add shared items from all interfaces
+        // for (auto& interf : this->interfaces) {
+        //     // Add shared physics items
+        //     for (const auto& item_pair : interf.second.shared_items) {
+        //         rebinding_pointers << CHNVP(item_pair.second);
+        //     }
+
+        //     // Add shared nodes
+        //     for (const auto& node_pair : interf.second.shared_nodes) {
+        //         rebinding_pointers << CHNVP(node_pair.second);
+        //     }
+        // }
+
+        // // Add the system itself as it's always shared across domains
+        // rebinding_pointers.UnbindExternalPointer(this->system, this->system->GetTag());
+
+        // // Set the maps in the deserializer
+        // deserializer->ExternalPointersMap() = rebinding_pointers.pointer_map_id_ptr;
 
         ChArchivePointerMap rebinding_pointers;
         rebinding_pointers << CHNVP(this->system);
@@ -405,6 +466,11 @@ void ChDomain::DoUpdateSharedReceived(bool delete_outsiders) {
         // ChSystem with same tag
         deserializer->SetUseVersions(false);
 
+        end_time = std::chrono::high_resolution_clock::now();
+        elapsed_time = end_time - start_time;
+
+        std::cout << "Rebinding time: " << elapsed_time.count() << " seconds" << std::endl;
+
         //***TEST
         /*
         std::cout << "           deserializer ExternalPointersMap size: " <<
@@ -412,7 +478,8 @@ void ChDomain::DoUpdateSharedReceived(bool delete_outsiders) {
             std::cout << "             tag: " << m.first << "   ptr: " << (int)m.second << "\n";
         */
 
-        // Deserialize inbound bodies
+        // if (!skip_interface) {
+        //  Deserialize inbound bodies
         *deserializer >> CHNVP(bodies_migrating);
         // Deserialize outbound links
         *deserializer >> CHNVP(links_migrating);
@@ -437,7 +504,6 @@ void ChDomain::DoUpdateSharedReceived(bool delete_outsiders) {
             system->AddBody(body);
             system->GetCollisionSystem()->BindItem(body);
         }
-
         // 2-LINKS
 
         for (const auto& ilink : links_migrating) {
@@ -503,6 +569,7 @@ void ChDomain::DoUpdateSharedReceived(bool delete_outsiders) {
                 }
             }
         }
+        //}
 
         // HANDSHAKE IDS
 
@@ -510,7 +577,7 @@ void ChDomain::DoUpdateSharedReceived(bool delete_outsiders) {
         // receiving domain. So here we will know that some nodes must be kept in 'shared' mode even if
         // their bounding box is not overlapping the interface (this is the case of nodes or bodies connected by a
         // ChLink or a ChElement, where the link or element is in the other domain).
-
+        // Create a timer for measuring shared IDs deserialization
         std::unordered_set<int> shared_ids_incoming;
         *deserializer >> CHNVP(shared_ids_incoming, "shared_ids");
 
@@ -563,7 +630,6 @@ void ChDomain::DoUpdateSharedReceived(bool delete_outsiders) {
     //
     // Removal of objects that are not anymore overlapping this domain
     //
-
     if (delete_outsiders) {
         std::vector<std::shared_ptr<chrono::fea::ChMesh>> meshes_to_remove;
         for (const auto& mmesh : system->GetMeshes()) {
