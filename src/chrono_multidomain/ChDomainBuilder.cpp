@@ -375,8 +375,8 @@ void ChDomainBuilderBVH::UpdateLocalDomainAABBs(ChSystem* msys, int mpi_rank) {
         // Get current domain
         auto domain = std::dynamic_pointer_cast<ChDomainBox>(current_domain_box_);
 
-        std::cout << "update local domain aabbs: " << mpi_rank
-                  << " number of tag size = " << current_domain_box_->tags.size() << std::endl;
+        // std::cout << "update local domain aabbs: " << mpi_rank
+        //           << " number of tag size = " << current_domain_box_->tags.size() << std::endl;
 
         // Process bodies that are either in domain or marked as overlapping
         for (auto body : msys->GetBodies()) {
@@ -415,12 +415,12 @@ void ChDomainBuilderBVH::UpdateLocalDomainAABBs(ChSystem* msys, int mpi_rank) {
         send_aabbs_synced_[mpi_rank] = total_aabb;
     }
 
-    if (mpi_rank != GetMasterRank()) {
-        std::cout << "rank " << mpi_rank << " aabb bounds: " << domain_aabbs_[mpi_rank].min[0] << " "
-                  << domain_aabbs_[mpi_rank].min[1] << " " << domain_aabbs_[mpi_rank].min[2] << " "
-                  << domain_aabbs_[mpi_rank].max[0] << " " << domain_aabbs_[mpi_rank].max[1] << " "
-                  << domain_aabbs_[mpi_rank].max[2] << std::endl;
-    }
+    // if (mpi_rank != GetMasterRank()) {
+    //     std::cout << "rank " << mpi_rank << " aabb bounds: " << domain_aabbs_[mpi_rank].min[0] << " "
+    //               << domain_aabbs_[mpi_rank].min[1] << " " << domain_aabbs_[mpi_rank].min[2] << " "
+    //               << domain_aabbs_[mpi_rank].max[0] << " " << domain_aabbs_[mpi_rank].max[1] << " "
+    //               << domain_aabbs_[mpi_rank].max[2] << std::endl;
+    // }
 
     // Synchronize all AABBs across ranks using Allreduce
     ChMPI::ChAllreduce(send_aabbs_synced_, domain_aabbs_synced_, ChMPI::ChOperation::MAX);
@@ -468,11 +468,6 @@ void ChDomainBuilderBVH::RebuildDomains(ChSystem* system, int mpi_rank) {
     system->GetCollisionSystem()->Run();
 
     if (mpi_rank != GetMasterRank()) {
-        std::cout << "rebuild domains: " << mpi_rank << " number of bodies = " << system->GetBodies().size()
-                  << std::endl;
-        std::cout << "rebuild domains: " << mpi_rank << "number of tag size = " << current_domain_box_->tags.size()
-                  << std::endl;
-
         for (auto body : system->GetBodies()) {
             // Skip excluded bodies
             if (std::find(excluded_bodies_.begin(), excluded_bodies_.end(), body) != excluded_bodies_.end()) {
@@ -493,9 +488,9 @@ void ChDomainBuilderBVH::RebuildDomains(ChSystem* system, int mpi_rank) {
         }
     }
 
-    if (mpi_rank != GetMasterRank()) {
-        std::cout << "mpi_rank = " << mpi_rank << " updated_aabbs.size() = " << updated_aabbs.size() << std::endl;
-    }
+    // if (mpi_rank != GetMasterRank()) {
+    //     std::cout << "mpi_rank = " << mpi_rank << " updated_aabbs.size() = " << updated_aabbs.size() << std::endl;
+    // }
 
     // Gather all AABBs to the master rank
     std::vector<AABB> all_updated_aabbs;
@@ -534,25 +529,18 @@ void ChDomainBuilderBVH::RebuildDomains(ChSystem* system, int mpi_rank) {
         auto root = builder.build_top_down();
         auto groups = builder.get_subdomains_greedy(root.get(), num_domains_);
 
-        // print first 3 aabbs in the groups
-        std::cout << "master received first 3 aabbs: " << std::endl;
-        for (int i = 0; i < 3; ++i) {
-            std::cout << "aabb " << i << ": " << groups[i].min[0] << " " << groups[i].min[1] << " " << groups[i].min[2]
-                      << " " << groups[i].max[0] << " " << groups[i].max[1] << " " << groups[i].max[2] << std::endl;
-        }
-
         domain_aabbs_ = groups;
     }
 
     // Broadcast AABBs to all ranks
     ChMPI::ChBroadcast<AABB>(domain_aabbs_, GetMasterRank());
 
-    if (mpi_rank != GetMasterRank()) {
-        std::cout << "rank " << mpi_rank << " aabb bounds: " << domain_aabbs_[mpi_rank].min[0] << " "
-                  << domain_aabbs_[mpi_rank].min[1] << " " << domain_aabbs_[mpi_rank].min[2] << " "
-                  << domain_aabbs_[mpi_rank].max[0] << " " << domain_aabbs_[mpi_rank].max[1] << " "
-                  << domain_aabbs_[mpi_rank].max[2] << std::endl;
-    }
+    // if (mpi_rank != GetMasterRank()) {
+    //     std::cout << "rank " << mpi_rank << " aabb bounds: " << domain_aabbs_[mpi_rank].min[0] << " "
+    //               << domain_aabbs_[mpi_rank].min[1] << " " << domain_aabbs_[mpi_rank].min[2] << " "
+    //               << domain_aabbs_[mpi_rank].max[0] << " " << domain_aabbs_[mpi_rank].max[1] << " "
+    //               << domain_aabbs_[mpi_rank].max[2] << std::endl;
+    // }
 
     // Update the current domain box with the new AABB
     if (mpi_rank != GetMasterRank()) {
@@ -563,11 +551,11 @@ void ChDomainBuilderBVH::RebuildDomains(ChSystem* system, int mpi_rank) {
 
         current_domain_box_->tags = domain_aabbs_[mpi_rank].tags;
 
-        std::cout << "rank: " << mpi_rank << " reset tags size: " << current_domain_box_->tags.size() << std::endl;
-        std::cout << "rank: " << mpi_rank << " box size: " << domain_aabbs_[mpi_rank].min[0] << " "
-                  << domain_aabbs_[mpi_rank].min[1] << " " << domain_aabbs_[mpi_rank].min[2] << " "
-                  << domain_aabbs_[mpi_rank].max[0] << " " << domain_aabbs_[mpi_rank].max[1] << " "
-                  << domain_aabbs_[mpi_rank].max[2] << std::endl;
+        // std::cout << "rank: " << mpi_rank << " reset tags size: " << current_domain_box_->tags.size() << std::endl;
+        // std::cout << "rank: " << mpi_rank << " box size: " << domain_aabbs_[mpi_rank].min[0] << " "
+        //           << domain_aabbs_[mpi_rank].min[1] << " " << domain_aabbs_[mpi_rank].min[2] << " "
+        //           << domain_aabbs_[mpi_rank].max[0] << " " << domain_aabbs_[mpi_rank].max[1] << " "
+        //           << domain_aabbs_[mpi_rank].max[2] << std::endl;
     }
 
     // update all interfaces
@@ -582,12 +570,174 @@ void ChDomainBuilderBVH::RebuildDomains(ChSystem* system, int mpi_rank) {
                 ChAABB(ChVector3d(domain_aabbs_[i].min[0], domain_aabbs_[i].min[1], domain_aabbs_[i].min[2]),
                        ChVector3d(domain_aabbs_[i].max[0], domain_aabbs_[i].max[1], domain_aabbs_[i].max[2])));
 
-            std::cout << "rank: " << mpi_rank << " interface " << i << " box size: " << domain_aabbs_[i].min[0] << " "
-                      << domain_aabbs_[i].min[1] << " " << domain_aabbs_[i].min[2] << " " << domain_aabbs_[i].max[0]
-                      << " " << domain_aabbs_[i].max[1] << " " << domain_aabbs_[i].max[2] << std::endl;
+            // std::cout << "rank: " << mpi_rank << " interface " << i << " box size: " << domain_aabbs_[i].min[0] << "
+            // "
+            //           << domain_aabbs_[i].min[1] << " " << domain_aabbs_[i].min[2] << " " << domain_aabbs_[i].max[0]
+            //           << " " << domain_aabbs_[i].max[1] << " " << domain_aabbs_[i].max[2] << std::endl;
         }
     }
 }
+
+// JZ Async Testing Code
+
+void ChDomainBuilderBVH::RebuildDomainsAsync(ChSystem* system, int mpi_rank, int current_step) {
+    // Calculate whether to start a new decomposition on all ranks
+    bool should_start_decomposition = false;
+
+    // Only the master rank decides whether to start a decomposition
+    if (mpi_rank == GetMasterRank()) {
+        should_start_decomposition = (current_step % decomposition_step_interval_ == 0) &&
+                                     (current_step != last_decomposition_step_) && !decomposition_in_progress_;
+    }
+
+    // Broadcast the decision to all ranks
+    ChMPI::ChBroadcast(&should_start_decomposition, 1, GetMasterRank());
+
+    // If we should start a decomposition, all ranks participate in gathering AABBs
+    if (should_start_decomposition) {
+        std::vector<AABB> updated_aabbs;
+        std::vector<AABB> all_updated_aabbs;
+
+        // First make sure collision system is up to date
+        system->GetCollisionSystem()->Initialize();
+        system->GetCollisionSystem()->Run();
+
+        // Non-master ranks collect their AABBs
+        if (mpi_rank != GetMasterRank()) {
+            // Collect AABBs for bodies owned by this rank
+            for (auto body : system->GetBodies()) {
+                // Skip excluded bodies
+                if (std::find(excluded_bodies_.begin(), excluded_bodies_.end(), body) != excluded_bodies_.end()) {
+                    continue;
+                }
+
+                // Skip if the body's tag is not in this domain's tags
+                if (std::find(current_domain_box_->tags.begin(), current_domain_box_->tags.end(), body->GetTag()) ==
+                    current_domain_box_->tags.end()) {
+                    continue;
+                }
+
+                body->GetCollisionModel()->SyncPosition();
+
+                // Get the updated AABB
+                ChAABB mabb = body->GetTotalAABB();
+                updated_aabbs.push_back(AABB(mabb.min, mabb.max, std::vector<int>{body->GetTag()}));
+            }
+        }
+
+        // Gather all AABBs to the master rank
+        ChMPI::GatherToMaster(updated_aabbs, all_updated_aabbs, GetMasterRank());
+
+        // Master rank starts the async decomposition
+        if (mpi_rank == GetMasterRank()) {
+            // Mark that decomposition is in progress
+            decomposition_in_progress_ = true;
+            last_decomposition_step_ = current_step;
+
+            // Launch the decomposition asynchronously
+            async_decomposition_future_ =
+                std::async(std::launch::async, [this, all_updated_aabbs]() -> std::vector<AABB> {
+                    // Process the gathered AABBs
+                    std::vector<AABB> unique_aabbs;
+                    std::unordered_set<int> processed_tags;
+
+                    for (const auto& aabb : all_updated_aabbs) {
+                        // Skip if we've already processed this tag
+                        if (aabb.tags.empty() || processed_tags.find(aabb.tags[0]) != processed_tags.end()) {
+                            continue;
+                        }
+
+                        // Add this tag to the set of processed tags
+                        processed_tags.insert(aabb.tags[0]);
+
+                        // Add this AABB to the unique list
+                        unique_aabbs.push_back(aabb);
+                    }
+
+                    // Build BVH and compute domain assignments
+                    BVHBuilder builder(unique_aabbs);
+                    auto root = builder.build_top_down();
+                    auto groups = builder.get_subdomains_greedy(root.get(), num_domains_);
+
+                    std::cout << "Master completed async decomposition" << std::endl;
+                    return groups;
+                });
+        }
+    }
+
+    // Check if a decomposition has completed
+    if (decomposition_in_progress_ && mpi_rank == GetMasterRank()) {
+        // Check if the future is ready without blocking
+        if (async_decomposition_future_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            // Get the results
+            std::vector<AABB> new_domain_aabbs = async_decomposition_future_.get();
+
+            // Update the domain AABBs
+            domain_aabbs_ = new_domain_aabbs;
+
+            // Mark decomposition as complete
+            decomposition_in_progress_ = false;
+
+            std::cout << "Master ready to broadcast new domain decomposition" << std::endl;
+        }
+    }
+
+    // Broadcast and apply new decomposition if available
+    bool has_new_decomposition = !decomposition_in_progress_ && (last_decomposition_step_ >= 0);
+
+    // Use MPI to broadcast whether there's a new decomposition
+    // We need to use a pointer for the broadcast
+    bool broadcast_flag = has_new_decomposition;
+    ChMPI::ChBroadcast(&broadcast_flag, 1, GetMasterRank());
+
+    if (broadcast_flag) {
+        // Broadcast the new domain AABBs to all ranks
+        ChMPI::ChBroadcast<AABB>(domain_aabbs_, GetMasterRank());
+
+        // Apply the new decomposition to all ranks
+        ApplyNewDecomposition(mpi_rank);
+
+        // Set the partition update needed flag
+        partition_update_needed_ = true;
+
+        // Reset the last decomposition step to prevent reapplying
+        if (mpi_rank == GetMasterRank()) {
+            last_decomposition_step_ = -1;
+        }
+    }
+}
+
+void ChDomainBuilderBVH::ApplyNewDecomposition(int mpi_rank) {
+    if (mpi_rank != GetMasterRank()) {
+        // Update the current domain box with the new AABB
+        current_domain_box_->SetAABB(ChAABB(
+            ChVector3d(domain_aabbs_[mpi_rank].min[0], domain_aabbs_[mpi_rank].min[1], domain_aabbs_[mpi_rank].min[2]),
+            ChVector3d(domain_aabbs_[mpi_rank].max[0], domain_aabbs_[mpi_rank].max[1],
+                       domain_aabbs_[mpi_rank].max[2])));
+
+        // Update tags
+        current_domain_box_->tags = domain_aabbs_[mpi_rank].tags;
+
+        std::cout << "Rank " << mpi_rank << " applied new domain decomposition" << std::endl;
+
+        // Update all interfaces
+        for (int i = 0; i < num_domains_; ++i) {
+            if (i == GetMasterRank() || i == mpi_rank)
+                continue;
+
+            auto& interf = current_domain_box_->GetInterfaces()[i];
+            auto domain = std::dynamic_pointer_cast<ChDomainBox>(interf.side_OUT);
+            domain->SetAABB(
+                ChAABB(ChVector3d(domain_aabbs_[i].min[0], domain_aabbs_[i].min[1], domain_aabbs_[i].min[2]),
+                       ChVector3d(domain_aabbs_[i].max[0], domain_aabbs_[i].max[1], domain_aabbs_[i].max[2])));
+        }
+    }
+}
+
+void ChDomainBuilderBVH::SetDecompositionInterval(int step_interval) {
+    decomposition_step_interval_ = step_interval;
+}
+
 }  // end namespace multidomain
 }  // end namespace chrono
    //

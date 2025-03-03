@@ -70,7 +70,7 @@
 #include "chrono_multidomain/ChSolverLumpedMultidomain.h"
 #include "chrono_multidomain/ChDomainManagerMPI.h"
 #include "chrono_multidomain/ChDomainBuilder.h"
-#include "chrono_multidomain/BVH_Builder/bvh_builder.hpp"
+
 #include "chrono_postprocess/ChBlender.h"
 
 #include <chrono>
@@ -112,7 +112,12 @@ int main(int argc, char* argv[]) {
     //    Here we split it using parallel planes like in sliced bread:
     //    Since we use a helper master domain, [n.of MPI ranks] = [n.of slices] + 1
 
-    auto domain_builder = std::make_shared<ChDomainBuilderBVH>(domain_manager.GetMPItotranks() - 1, true);
+    ChDomainBuilderSlices domain_builder(
+        domain_manager.GetMPItotranks() - 1,  // number of slices
+        //-2e307, 2e307,      // min and max along axis to split in slices
+        -30, 30,
+        ChAxis::X,  // axis about whom one needs the space slicing
+        true);      // build also master domain, interfacing to all slices, for initial injection of objects
 
     // 3- Create the ChDomain object and its ChSystem physical system.
     //    Only a single system is created, because this is already one of n
@@ -120,6 +125,16 @@ int main(int argc, char* argv[]) {
 
     ChSystemSMC sys;
     sys.SetCollisionSystemType(ChCollisionSystem::Type::BULLET);
+
+    if (domain_manager.GetMPIrank() == domain_builder.GetMasterRank()) {
+        domain_manager.SetDomain(domain_builder.BuildMasterDomain(&sys  // physical system of this domain
+                                                                  ));
+    } else {
+        domain_manager.SetDomain(domain_builder.BuildDomain(
+            &sys,                        // physical system of this domain
+            domain_manager.GetMPIrank()  // rank of this domain, must be unique and starting from 0
+            ));
+    }
 
     // 4- Set solver, timestepper, etc. that can work in multidomain mode. Do this after SetDomain().
     //    Set the time stepper: as we demonstrate smooth contacts via ChSystemSMC, we can use an explicit time stepper.
@@ -138,15 +153,15 @@ int main(int argc, char* argv[]) {
     //    to bypass the use of the master domain, in case of extremely large systems
     //    where you might want to create objects directly split in the n-th computing node.)
 
-    if (domain_manager.GetMPIrank() == domain_builder->GetMasterRank()) {
+    if (domain_manager.GetMPIrank() == domain_builder.GetMasterRank()) {
         auto mat = chrono_types::make_shared<ChContactMaterialSMC>();
         mat->SetFriction(0.1f);
         mat->SetYoungModulus(2e8);
 
         // Create some bricks placed as walls, for benchmark purposes
         int n_walls = 1;
-        int n_vertical = 10;
-        int n_horizontal = 20;
+        int n_vertical = 20;
+        int n_horizontal = 40;
         double size_x = 4;
         double size_y = 2;
         double size_z = 4;
@@ -165,10 +180,20 @@ int main(int argc, char* argv[]) {
                                                   size_y * (0.5 + bi), ai * walls_space));
                     mrigidBody->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/cubetexture_borders.png"));
                     sys.Add(mrigidBody);
-                    std::cout << "Added body with index: " << mrigidBody->GetIndex() << std::endl;
                 }
             }
         }
+
+        // Create the floor using fixed rigid body of 'box' type:
+        auto mrigidFloor = chrono_types::make_shared<ChBodyEasyBox>(250, 4, 250,  // x,y,z size
+                                                                    1000,         // density
+                                                                    true,         // visulization?
+                                                                    true,         // collision?
+                                                                    mat);         // contact material
+        mrigidFloor->SetPos(ChVector3d(0, -2, 0));
+        mrigidFloor->SetFixed(true);
+
+        sys.Add(mrigidFloor);
 
         // Create a ball that will collide with wall
         auto mrigidBall = chrono_types::make_shared<ChBodyEasySphere>(3.5,   // radius
@@ -191,38 +216,6 @@ int main(int argc, char* argv[]) {
         tagger.skip_already_tagged = false;
         tagger << CHNVP(sys);
     }
-
-    auto mat = chrono_types::make_shared<ChContactMaterialSMC>();
-    mat->SetFriction(0.1f);
-    mat->SetYoungModulus(2e8);
-
-    // Create the floor using fixed rigid body of 'box' type:
-    auto mrigidFloor = chrono_types::make_shared<ChBodyEasyBox>(250, 4, 250,  // x,y,z size
-                                                                1000,         // density
-                                                                true,         // visulization?
-                                                                true,         // collision?
-                                                                mat);         // contact material
-    mrigidFloor->SetPos(ChVector3d(0, -2, 0));
-    mrigidFloor->SetFixed(true);
-    domain_builder->AddExcludedBody(mrigidFloor);
-
-    sys.Add(mrigidFloor);
-
-    // Materdomain BVH update
-    domain_builder->ComputeAndBroadcastDomainAABBs(&sys, domain_manager.GetMPIrank());
-
-    if (domain_manager.GetMPIrank() == domain_builder->GetMasterRank()) {
-        domain_manager.SetDomain(domain_builder->BuildMasterDomain(&sys  // physical system of this domain
-                                                                   ));
-
-    } else {
-        domain_manager.SetDomain(domain_builder->BuildDomain(
-            &sys,                        // physical system of this domain
-            domain_manager.GetMPIrank()  // rank of this domain, must be unique and starting from 0
-            ));
-    }
-
-    std::cout << "RANK:" << domain_manager.GetMPIrank() << " tp2" << std::endl;
 
     // OPTIONAL: POSTPROCESSING VIA BLENDER3D
 
@@ -252,20 +245,19 @@ int main(int argc, char* argv[]) {
     // Initial script, save once at the beginning
     blender_exporter.ExportScript();
 
-    std::cout << "RANK:" << domain_manager.GetMPIrank() << " tp3" << std::endl;
     // 7 - INITIAL SETUP AND OBJECT INITIAL MIGRATION!
     //     Moves all the objects in master domain to all domains, slicing the system.
     //     Also does some initializations, like collision detection AABBs.
     domain_manager.DoDomainInitialize(domain_manager.GetMPIrank());
 
     // The master domain does not need to communicate anymore with the domains so do:
-    domain_manager.master_domain_enabled = true;
+    domain_manager.master_domain_enabled = false;
 
     // Variables for timing
     double total_sim_time = 0.0;
     auto start_time = std::chrono::high_resolution_clock::now();
     auto last_report_time = start_time;
-    int report_interval = 1000;  // Report RTF every 1000 steps
+    int report_interval = 100;  // Report RTF every 100 steps
 
     // Add variables for partition timing
     double total_partition_time = 0.0;
@@ -273,23 +265,6 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < 4000; ++i) {
         if (domain_manager.GetMPIrank() == 0)
             std::cout << "\n\n\n============= Time step (explicit) " << i << std::endl << std::endl;
-
-        if (i % 100 == 0) {
-            // BVH update
-            domain_builder->RebuildDomains(&sys, domain_manager.GetMPIrank());
-            // MULTIDOMAIN AUTOMATIC ITEM MIGRATION!
-            domain_manager.DoDomainPartitionUpdate(domain_manager.GetMPIrank());
-        }
-
-        // JZ Async Testing Code
-        // domain_builder->RebuildDomainsAsync(&sys, domain_manager.GetMPIrank(), i);
-
-        // if (domain_builder->GetPartitionUpdateNeeded()) {
-        //     domain_manager.DoDomainPartitionUpdate(domain_manager.GetMPIrank());
-        // }
-
-        // // Fail safe mechanism to update all domain AABBs without running BVH
-        domain_builder->UpdateLocalDomainAABBs(&sys, domain_manager.GetMPIrank());
 
         // Time the partition update
         auto partition_start = std::chrono::high_resolution_clock::now();
@@ -320,7 +295,6 @@ int main(int argc, char* argv[]) {
 
             last_report_time = current_time;
         }
-
         // OPTIONAL POSTPROCESSING FOR 3D RENDERING
         // Before ExportData(), we must do a remove-add trick as an easy way to handle the fact
         // that objects are constantly added and removed from the i-th domain when crossing boundaries.
@@ -336,7 +310,6 @@ int main(int argc, char* argv[]) {
     auto end_time = std::chrono::high_resolution_clock::now();
     double total_elapsed_seconds = std::chrono::duration<double>(end_time - start_time).count();
     double overall_rtf = total_elapsed_seconds / total_sim_time;
-
     // Calculate partition time percentage
     double partition_percentage = (total_partition_time / total_elapsed_seconds) * 100.0;
 

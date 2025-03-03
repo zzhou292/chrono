@@ -157,8 +157,8 @@ int main(int argc, char* argv[]) {
 
         // Create some bricks placed as walls, for benchmark purposes
         int n_walls = 1;
-        int n_vertical = 10;
-        int n_horizontal = 20;
+        int n_vertical = 20;
+        int n_horizontal = 40;
         double size_x = 4;
         double size_y = 2;
         double size_z = 4;

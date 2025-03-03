@@ -21,6 +21,7 @@
 #include "chrono_multidomain/ChDomain.h"
 #include "chrono_multidomain/BVH_Builder/bvh_builder.hpp"
 #include "chrono_multidomain/BVH_Builder/domain_tracker.hpp"
+#include <future>
 
 namespace chrono {
 namespace multidomain {
@@ -282,6 +283,16 @@ class ChApiMultiDomain ChDomainBuilderBVH : public ChDomainBuilder {
     // Rebuild domains based on current object positions
     void RebuildDomains(ChSystem* msys, int mpi_rank);
 
+    void SetDecompositionInterval(int step_interval);
+
+    void RebuildDomainsAsync(ChSystem* system, int mpi_rank, int current_step);
+
+    bool GetPartitionUpdateNeeded() { return partition_update_needed_; }
+
+    void ResetPartitionUpdateNeeded() { partition_update_needed_ = false; }
+
+    void ApplyNewDecomposition(int mpi_rank);
+
   private:
     std::vector<AABB> domain_aabbs_;           // aabb with tags
     std::vector<ChAABB> domain_aabbs_synced_;  // a aabb copy without any tags
@@ -292,6 +303,13 @@ class ChApiMultiDomain ChDomainBuilderBVH : public ChDomainBuilder {
 
     // domain tracker
     DomainTracker domain_tracker_;
+
+    bool decomposition_in_progress_ = false;
+    std::future<std::vector<AABB>> async_decomposition_future_;
+    int decomposition_step_interval_ = 10;
+    int last_decomposition_step_ = -1;
+
+    bool partition_update_needed_ = false;
 };
 
 }  // end namespace multidomain

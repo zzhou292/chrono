@@ -451,10 +451,29 @@ void ChMPI::ChBroadcast(std::vector<T>& data, int root) {
 // Add a scalar broadcast function
 template <typename T>
 void ChMPI::ChBroadcast(T* value, int count, int root) {
-    MPI_Bcast(value, count * sizeof(T), MPI_BYTE, root, MPI_COMM_WORLD);
+    // For basic types, use MPI_Bcast with appropriate MPI datatype
+    if constexpr (std::is_same_v<T, int>) {
+        MPI_Bcast(value, count, MPI_INT, root, MPI_COMM_WORLD);
+    } else if constexpr (std::is_same_v<T, double>) {
+        MPI_Bcast(value, count, MPI_DOUBLE, root, MPI_COMM_WORLD);
+    } else if constexpr (std::is_same_v<T, float>) {
+        MPI_Bcast(value, count, MPI_FLOAT, root, MPI_COMM_WORLD);
+    } else if constexpr (std::is_same_v<T, char>) {
+        MPI_Bcast(value, count, MPI_CHAR, root, MPI_COMM_WORLD);
+    } else if constexpr (std::is_same_v<T, bool>) {
+        // MPI doesn't have a direct boolean type, so use MPI_BYTE
+        MPI_Bcast(value, count, MPI_BYTE, root, MPI_COMM_WORLD);
+    } else {
+        // For other types, use byte-based broadcast
+        MPI_Bcast(value, count * sizeof(T), MPI_BYTE, root, MPI_COMM_WORLD);
+    }
 }
 
-// Add explicit template instantiation for bool
+// Explicit template instantiations for common types
+template void ChMPI::ChBroadcast<int>(int* value, int count, int root);
+template void ChMPI::ChBroadcast<double>(double* value, int count, int root);
+template void ChMPI::ChBroadcast<float>(float* value, int count, int root);
+template void ChMPI::ChBroadcast<char>(char* value, int count, int root);
 template void ChMPI::ChBroadcast<bool>(bool* value, int count, int root);
 
 int ChMPI::GetRank() {
