@@ -20,6 +20,8 @@
 #ifndef CH_FSI_DATA_MANAGER_H
 #define CH_FSI_DATA_MANAGER_H
 
+#include <vector>
+
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <thrust/iterator/detail/normal_iterator.h>
@@ -27,21 +29,16 @@
 #include <thrust/iterator/zip_iterator.h>
 #include <thrust/tuple.h>
 
-#include "chrono_fsi/ChConfigFsi.h"
+#include "chrono_fsi/sph/ChFsiParamsSPH.h"
 
-#include "chrono_fsi/sph/physics/ChParams.h"
-#include "chrono_fsi/sph/physics/ChMarkerType.cuh"
-#include "chrono_fsi/sph/math/CustomMath.h"
-#include "chrono_fsi/sph/utils/ChUtilsDevice.cuh"
+#include "chrono_fsi/sph/physics/MarkerType.cuh"
+#include "chrono_fsi/sph/utils/UtilsDevice.cuh"
 
 namespace chrono {
 namespace fsi {
-
-class ChFluidSystemSPH;
-
 namespace sph {
 
-/// @addtogroup fsi_physics
+/// @addtogroup fsisph_physics
 /// @{
 
 /// typedef device iterators for shorthand SPH operation of thrust vectors of Real3
@@ -132,20 +129,20 @@ struct FsiBodyStateD {
 
 /// FEA mesh states on host.
 struct FsiMeshStateH {
-    thrust::host_vector<Real3> pos_fsi_fea_H;  ///< mesh node positions
-    thrust::host_vector<Real3> vel_fsi_fea_H;  ///< mesh node velocities
-    thrust::host_vector<Real3> acc_fsi_fea_H;  ///< mesh node accelerations
+    thrust::host_vector<Real3> pos;  ///< mesh node positions
+    thrust::host_vector<Real3> vel;  ///< mesh node velocities
+    thrust::host_vector<Real3> acc;  ///< mesh node accelerations
 
     // zipIterFlexH iterator();
     void resize(size_t s);
-    size_t size() { return pos_fsi_fea_H.size(); };
+    size_t size() { return pos.size(); };
 };
 
 /// FEA mesh state on device.
 struct FsiMeshStateD {
-    thrust::device_vector<Real3> pos_fsi_fea_D;  ///< mesh node positions
-    thrust::device_vector<Real3> vel_fsi_fea_D;  ///< mesh node velocities
-    thrust::device_vector<Real3> acc_fsi_fea_D;  ///< mesh node accelerations
+    thrust::device_vector<Real3> pos;  ///< mesh node positions
+    thrust::device_vector<Real3> vel;  ///< mesh node velocities
+    thrust::device_vector<Real3> acc;  ///< mesh node accelerations
 
     // zipIterFlexD iterator();
     void CopyFromH(const FsiMeshStateH& meshStateH);
@@ -197,17 +194,18 @@ struct Counters {
     size_t numBceMarkers;       ///< total number of BCE markers
     size_t numAllMarkers;       ///< total number of particles in the simulation
 
-    size_t startRigidMarkers;   ///< index of first BCE marker on first rigid body
-    size_t startFlexMarkers1D;  ///< index of first BCE marker on first flex segment
-    size_t startFlexMarkers2D;  ///< index of first BCE marker on first flex face
+    size_t startRigidMarkers;     ///< index of first BCE marker on first rigid body
+    size_t startFlexMarkers1D;    ///< index of first BCE marker on first flex segment
+    size_t startFlexMarkers2D;    ///< index of first BCE marker on first flex face
+    size_t numActiveParticles;    ///< number of active particles
+    size_t numExtendedParticles;  ///< number of extended particles
 };
 
 // -----------------------------------------------------------------------------
 
 /// Data manager for the SPH-based FSI system.
-class FsiDataManager {
-  public:
-    FsiDataManager(std::shared_ptr<SimParams> params);
+struct FsiDataManager {
+    FsiDataManager(std::shared_ptr<ChFsiParamsSPH> params);
     virtual ~FsiDataManager();
 
     /// Add an SPH particle given its position, physical properties, velocity, and stress.
@@ -231,49 +229,53 @@ class FsiDataManager {
                     unsigned int num_fsi_elements2D);
 
     /// Find indices of all SPH particles inside the specified OBB.
-    thrust::device_vector<int> FindParticlesInBox(const Real3& hsize,
-                                                  const Real3& pos,
-                                                  const Real3& ax,
-                                                  const Real3& ay,
-                                                  const Real3& az);
+    std::vector<int> FindParticlesInBox(const Real3& hsize,
+                                        const Real3& pos,
+                                        const Real3& ax,
+                                        const Real3& ay,
+                                        const Real3& az);
 
     /// Extract positions of all markers (SPH and BCE).
-    /// The return value is a device thrust vector.
-    thrust::device_vector<Real3> GetPositions();
+    std::vector<Real3> GetPositions();
 
     /// Extract velocities of all markers (SPH and BCE).
-    /// The return value is a device thrust vector.
-    thrust::device_vector<Real3> GetVelocities();
+    std::vector<Real3> GetVelocities();
 
     /// Extract accelerations of all markers (SPH and BCE).
-    /// The return value is a device thrust vector.
-    thrust::device_vector<Real3> GetAccelerations();
+    std::vector<Real3> GetAccelerations();
 
     /// Extract forces applied to all markers (SPH and BCE).
-    /// The return value is a device thrust vector.
-    thrust::device_vector<Real3> GetForces();
+    std::vector<Real3> GetForces();
 
     /// Extract fluid properties of all markers (SPH and BCE).
     /// For each SPH particle, the 3-dimensional vector contains density, pressure, and viscosity.
-    thrust::device_vector<Real3> GetProperties();
+    std::vector<Real3> GetProperties();
 
     /// Extract positions of all markers (SPH and BCE) with indices in the provided array.
-    /// The return value is a device thrust vector.
-    thrust::device_vector<Real3> GetPositions(const thrust::device_vector<int>& indices);
+    std::vector<Real3> GetPositions(const std::vector<int>& indices);
 
     /// Extract velocities of all markers (SPH and BCE) with indices in the provided array.
-    /// The return value is a device thrust vector.
-    thrust::device_vector<Real3> GetVelocities(const thrust::device_vector<int>& indices);
+    std::vector<Real3> GetVelocities(const std::vector<int>& indices);
 
     /// Extract accelerations of all markers (SPH and BCE) with indices in the provided array.
-    /// The return value is a device thrust vector.
-    thrust::device_vector<Real3> GetAccelerations(const thrust::device_vector<int>& indices);
+    std::vector<Real3> GetAccelerations(const std::vector<int>& indices);
 
     /// Extract forces applied to all markers (SPH and BCE) with indices in the provided array.
-    /// The return value is a device thrust vector.
-    thrust::device_vector<Real3> GetForces(const thrust::device_vector<int>& indices);
+    std::vector<Real3> GetForces(const std::vector<int>& indices);
 
-    std::shared_ptr<SimParams> paramsH;   ///< simulation parameters (host)
+    /// Extract FSI forces on rigid bodies.
+    std::vector<Real3> GetRigidForces();
+
+    /// Extract FSI torques on rigid bodies.
+    std::vector<Real3> GetRigidTorques();
+
+    /// Extract FSI forces on flex1D nodes.
+    std::vector<Real3> GetFlex1dForces();
+
+    /// Extract FSI forces on flex2D nodes.
+    std::vector<Real3> GetFlex2dForces();
+
+    std::shared_ptr<ChFsiParamsSPH> paramsH;   ///< simulation parameters (host)
     std::shared_ptr<Counters> countersH;  ///< problem counters (host)
 
     std::shared_ptr<SphMarkerDataD> sphMarkers_D;         ///< Information of SPH particles at state 1 on device
@@ -311,8 +313,14 @@ class FsiDataManager {
         sr_tau_I_mu_i_Original;  ///< I2SPH strain-rate, stress, inertia number, friction - unsorted for writing
     thrust::device_vector<Real3> bceAcc;  ///< Acceleration for boundary/rigid/flex body particles
 
-    thrust::device_vector<uint> activityIdentifierD;  ///< Identifies if a particle is an active particle or not
-    thrust::device_vector<uint> extendedActivityIdD;  ///< Identifies if a particle is in an extended active domain
+    thrust::device_vector<int32_t>
+        activityIdentifierOriginalD;  ///< Identifies if a particle is an active particle or not - unsorted
+    thrust::device_vector<int32_t>
+        activityIdentifierSortedD;  ///< Identifies if a particle is an active particle or not - sorted
+    thrust::device_vector<int32_t>
+        extendedActivityIdentifierOriginalD;  ///< Identifies if a particle is an active particle or not - unsorted
+    thrust::device_vector<uint> prefixSumExtendedActivityIdD;  ///< Prefix sum of extended particles
+    thrust::device_vector<uint> activeListD;                   ///< Active list of particles
     thrust::device_vector<uint>
         numNeighborsPerPart;                   ///< Stores the number of neighbors the particle, given by the index, has
     thrust::device_vector<uint> neighborList;  ///< Stores the neighbor list - all neighbors are just stored one by one
@@ -346,7 +354,6 @@ class FsiDataManager {
     thrust::host_vector<int3> flex2D_Nodes_H;    ///< node indices for each 2-D flex face (host)
     thrust::device_vector<int3> flex2D_Nodes_D;  ///< node indices for each 2-D flex face (device)
 
-  private:
     void ConstructReferenceArray();
     void SetCounters(unsigned int num_fsi_bodies,
                      unsigned int num_fsi_nodes1D,
@@ -360,11 +367,9 @@ class FsiDataManager {
     /// Reset device data at beginning of a step.
     /// Initializes device vectors to zero.
     void ResetData();
-
-    friend class chrono::fsi::ChFluidSystemSPH;
 };
 
-/// @} fsi_physics
+/// @} fsisph_physics
 
 }  // namespace sph
 }  // end namespace fsi

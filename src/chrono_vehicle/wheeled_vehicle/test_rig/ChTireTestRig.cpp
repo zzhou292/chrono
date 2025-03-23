@@ -31,6 +31,7 @@
 #ifdef CHRONO_FSI
     #include "chrono_vehicle/terrain/CRMTerrain.h"
 using namespace chrono::fsi;
+using namespace chrono::fsi::sph;
 #endif
 
 #include "chrono_vehicle/wheeled_vehicle/tire/ChDeformableTire.h"
@@ -331,7 +332,7 @@ void ChTireTestRig::CreateMechanism(Mode mode) {
     m_ground_body->SetName("rig_ground");
     m_ground_body->SetFixed(true);
     {
-        auto box = chrono_types::make_shared<ChVisualShapeBox>(100, dim / 3, dim / 3);
+        auto box = chrono_types::make_shared<ChVisualShapeBox>(100, dim * CH_1_3, dim * CH_1_3);
         m_ground_body->AddVisualShape(box);
     }
 
@@ -351,7 +352,7 @@ void ChTireTestRig::CreateMechanism(Mode mode) {
                                                         dim / 2,                     //
                                                         mat);
 
-        auto box = chrono_types::make_shared<ChVisualShapeBox>(dim / 3, dim / 3, 10 * dim);
+        auto box = chrono_types::make_shared<ChVisualShapeBox>(dim * CH_1_3, dim * CH_1_3, 10 * dim);
         box->AddMaterial(mat);
         m_carrier_body->AddVisualShape(box, ChFrame<>(ChVector3d(0, 0, -5 * dim)));
     }
@@ -583,14 +584,13 @@ void ChTireTestRig::CreateTerrainCRM() {
 
     std::shared_ptr<CRMTerrain> terrain = chrono_types::make_shared<CRMTerrain>(*m_system, initSpace0);
 
-    // m_terrain->DisableMBD();
     terrain->SetOutputLevel(OutputLevel::STATE);
     terrain->SetGravitationalAcceleration(ChVector3d(0, 0, -m_grav));
 
     terrain->SetStepSizeCFD(m_tire_step);
 
     terrain->SetStepsizeMBD(m_tire_step);
-    ChFluidSystemSPH::ElasticMaterialProperties mat_props;
+    ChFsiFluidSystemSPH::ElasticMaterialProperties mat_props;
     mat_props.density = m_params_crm.density;
     mat_props.Young_modulus = 2e6;
     mat_props.Poisson_ratio = 0.3;
@@ -600,13 +600,15 @@ void ChTireTestRig::CreateTerrainCRM() {
     mat_props.average_diam = 0.0614;
     mat_props.cohesion_coeff = m_params_crm.cohesion;
 
-    ChFluidSystemSPH::SPHParameters sph_params;
+    ChFsiFluidSystemSPH::SPHParameters sph_params;
     sph_params.sph_method = SPHMethod::WCSPH;
     sph_params.initial_spacing = initSpace0;
     sph_params.d0_multiplier = 1.2;
     sph_params.artificial_viscosity = 0.5;
-    sph_params.xsph_coefficient = 0.25;
-    sph_params.shifting_coefficient = 1.0;
+    sph_params.shifting_method = ShiftingMethod::PPST_XSPH;  // Apply both PPST and XSPH shifting
+    sph_params.shifting_xsph_eps = 0.25;
+    sph_params.shifting_ppst_pull = 1.0;
+    sph_params.shifting_ppst_push = 3.0;
     sph_params.kernel_threshold = 0.8;
     sph_params.num_proximity_search_steps = 1;
     sph_params.consistent_gradient_discretization = false;

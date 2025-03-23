@@ -20,7 +20,7 @@
 
 using namespace chrono;
 
-ChSystemMulticoreNSC::ChSystemMulticoreNSC() : ChSystemMulticore() {
+ChSystemMulticoreNSC::ChSystemMulticoreNSC(const std::string& name) : ChSystemMulticore(name) {
     contact_container = chrono_types::make_shared<ChContactContainerMulticoreNSC>(data_manager);
     contact_container->SetSystem(this);
 
@@ -157,7 +157,7 @@ void ChSystemMulticoreNSC::AssembleSystem() {
 
     collision_system->Run();
     collision_system->ReportContacts(contact_container.get());
-    ChSystem::Update();
+    ChSystem::Update(false);
     contact_container->BeginAddContact();
     chrono::ChCollisionInfo icontact;
     for (int i = 0; i < (signed)data_manager->cd_data->num_rigid_contacts; i++) {

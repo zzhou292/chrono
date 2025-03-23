@@ -1,16 +1,3 @@
-ATTENTION
-=========
-Although Chrono is released under BSD 3 license, any new code under this repo, except the 'main' fork which is pegged to 'main' in Project Chrono, is release under GPL v3.0 license.
-
-This Fork of Chrono contains untested/unmerged features of Chrono authored by Json Zhou (zzhou292@wisc.edu).
-
-These features are not in the main repo for a reason. They might be undocumented, untested, unstable, and there is no guarantee anything will work, even the orginal chrono structure. ORDINARY USERS ARE STRONGLY ENCOURAGED TO USE THE OFFICIAL CHRONO RELEASE, NOT THIS FORK!!!!
-
-This fork is structured as follows:
-1. 'main' branch matches the official 'main' branch of Project Chrono
-2. 'jz-main' branch contains all features merged and developed in this fork
-3. 'feature' branches contain various fix/feature development INP
-
 Project CHRONO
 ==============
 
@@ -51,3 +38,10 @@ Implemented almost entirely in C++, Chrono also provides Python and C# APIs. The
 ### Support
 
 - [Google Groups user forum](https://groups.google.com/g/projectchrono)
+
+### Note on Chrono repository structure
+
+The structure of the Chrono git repository was changed as follows:
+- The main development branch is now called `main` (previously `develop`)
+- The `master` branch, now obsolete, was deleted
+- Releases are located in branches named `release/*.*` and have tags of the form `*.*.*`

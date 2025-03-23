@@ -87,7 +87,7 @@ std::shared_ptr<ChContactMaterial> CustomWheelMaterial(ChContactMethod contact_m
 
 int main(int argc, char* argv[]) {
     std::cout << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << std::endl;
-    // Create a ChronoENGINE physical system
+    // Create a Chrono physical system
     ChSystemNSC sys;
 
     // set gravity
@@ -157,7 +157,7 @@ int main(int argc, char* argv[]) {
             vis_vsg->SetWindowTitle("Turtlebot Robot on Rigid Terrain");
             vis_vsg->AddCamera(ChVector3d(0, 2.5, 0.5));
             vis_vsg->SetLightDirection(1.5 * CH_PI_2, CH_PI_4);
-            vis_vsg->SetShadows(true);
+            vis_vsg->EnableShadows();
             vis_vsg->Initialize();
 
             vis = vis_vsg;
