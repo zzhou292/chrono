@@ -12,6 +12,7 @@ set(MULTIDOMAIN_DEMOS
     demo_MDOM_bvhtest_mpitest
     demo_MDOM_MPI_bvhtest_bench_explicit
     demo_MDOM_bvhtest_explicit_walled
+    demo_MDOM_descriptortest
 	)
 
 # List of demos requiring the Chrono::Irrlicht module
@@ -23,6 +24,7 @@ set(MULTIDOMAIN_DEMOS_IRR
     demo_MDOM_OMP_intro_master_wallbreak_1sys
 	demo_MDOM_bvhomp_intro_master_wallbreak
     demo_MDOM_bvhomp_intro_master_wbbb
+    demo_MDOM_bvhomp_intro_master_wbbb_single
 )
 
 

@@ -60,6 +60,7 @@ double ChSystemDescriptorMultidomain::globalVdot(const ChVectorDynamic<>& avecto
     else
         domaindot = avector.dot(bvector);  // s_j = va_j' * (vb_j)
     double result = 0;
+
     this->domain_manager->ReduceAll(this->domain->GetRank(), domaindot, result);  // s = \sum s_j
     return result;
 }
@@ -70,6 +71,7 @@ double ChSystemDescriptorMultidomain::globalVnorm(const ChVectorDynamic<>& avect
         domainsqnorm = avector.dot(avector.cwiseProduct(*Wv_partition));  // s_j = v_j' * (v_j *. Wv_j)
     else
         domainsqnorm = avector.dot(avector);  // s_j = v_j' * (v_j)
+
     double result = 0;
     this->domain_manager->ReduceAll(this->domain->GetRank(), domainsqnorm, result);  // s = \sum s_j
     return sqrt(result);
@@ -115,6 +117,7 @@ void ChSystemDescriptorMultidomain::globalSchurComplementProduct(ChVectorDynamic
     //     Also, begin to add the cfm term ( -[E]*l ) to the result.
 
     // ATTENTION:  this loop cannot be parallelized! Concurrent write to some q may happen
+
     for (const auto& constr : m_constraints) {
         if (constr->IsActive()) {
             int s_c = constr->GetOffset();
@@ -126,6 +129,7 @@ void ChSystemDescriptorMultidomain::globalSchurComplementProduct(ChVectorDynamic
 
                 // Compute qb += [M^(-1)][Cq']*l_i
                 //  NOTE! concurrent update to same q data, risk of collision if parallel.
+
                 constr->IncrementState(li);  // computationally intensive
 
                 // Add constraint force mixing term  result = cfm * l_i = [E]*l_i
@@ -136,7 +140,7 @@ void ChSystemDescriptorMultidomain::globalSchurComplementProduct(ChVectorDynamic
 
     // MULTIDOMAIN******************
     // fetch and add the Dv that was computed by neighbouring domains and add it to shared vars
-    this->SharedStatesDeltaAddToMultidomainAndSync(1.0);
+    this->SharedStatesDeltaAddToMultidomainAndSyncSchur(1.0);
 
     // 3 - performs    result=[Cq']*qb    by
     //     iterating over all constraints
@@ -273,6 +277,100 @@ void ChSystemDescriptorMultidomain::SharedVectsAddToDomainVector(ChVectorDynamic
                 vect.segment(gvar->GetOffset(), gvar->GetDOF()) *= (use_average / (double)sharing_count[gvar]);
             }
     }
+}
+
+void ChSystemDescriptorMultidomain::SharedStatesDeltaAddToMultidomainAndSyncSchur(double omega) {
+    if (!(domain->IsMaster() && !domain_manager->master_domain_enabled))
+        for (auto& interf : this->domain->GetInterfaces()) {
+            if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
+                continue;
+            // prepare the serializer
+            interf.second.buffer_sending.str("");
+            interf.second.buffer_sending.clear();
+            interf.second.buffer_receiving.str("");
+            interf.second.buffer_receiving.clear();
+
+            int nrank = interf.second.side_OUT->GetRank();
+            ChVectorDynamic<> Dv_shared(shared_vects[nrank].size());
+            int offset = 0;
+            for (auto avar : interf.second.shared_vars) {
+                if (avar->IsActive()) {
+                    // compute delta as current variable state - last synced shared_state
+                    Dv_shared.segment(offset, avar->GetDOF()) =
+                        avar->State() - shared_vects[nrank].segment(offset, avar->GetDOF());
+                    offset += avar->GetDOF();
+                }
+            }
+
+            std::shared_ptr<ChArchiveOut> serializer;
+            switch (this->domain_manager->serializer_type) {
+                case DomainSerializerFormat::BINARY:
+                    serializer = chrono_types::make_shared<ChArchiveOutBinary>(interf.second.buffer_sending);
+                    break;
+                case DomainSerializerFormat::JSON:
+                    serializer = chrono_types::make_shared<ChArchiveOutJSON>(interf.second.buffer_sending);
+                    break;
+                case DomainSerializerFormat::XML:
+                    serializer = chrono_types::make_shared<ChArchiveOutXML>(interf.second.buffer_sending);
+                    break;
+                default:
+                    break;
+            }
+            serializer->SetUseVersions(false);
+
+            *serializer << CHNVP(Dv_shared);
+
+            //***DEBUG***
+            /*
+            std::stringstream msg;
+            msg << "\nVAR SERIALIZE from domain " << this->domain->GetRank() << " to interface " <<
+            interf.second.side_OUT->GetRank() << "\n"; //***DEBUG msg << interf.second.buffer_sending.str(); //***DEBUG
+            this->domain_manager->ConsoleOutSerialized(msg.str());
+            */
+        }
+
+    this->domain_manager->DoDomainSendReceive(this->domain->GetRank());  // *** COMM + MULTITHREAD BARRIER ***
+
+    if (!(domain->IsMaster() && !domain_manager->master_domain_enabled))
+        for (auto& interf : this->domain->GetInterfaces()) {
+            if (interf.second.side_OUT->IsMaster() && !this->domain_manager->master_domain_enabled)
+                continue;
+            int nrank = interf.second.side_OUT->GetRank();
+            ChVectorDynamic<> Dv_shared(shared_vects[nrank].size());
+            //        std::cout << "\nVAR DESERIALIZE to domain " << this->domain->GetRank() << " from interface " <<
+            //        interf.second.side_OUT->GetRank() << "\n"; //***DEBUG std::cout <<
+            //        interf.second.buffer_receiving.str(); //***DEBUG
+
+            // prepare the deserializer
+            std::shared_ptr<ChArchiveIn> deserializer;
+            switch (this->domain_manager->serializer_type) {
+                case DomainSerializerFormat::BINARY:
+                    deserializer = chrono_types::make_shared<ChArchiveInBinary>(interf.second.buffer_receiving);
+                    break;
+                case DomainSerializerFormat::JSON:
+                    deserializer = chrono_types::make_shared<ChArchiveInJSON>(interf.second.buffer_receiving);
+                    break;
+                case DomainSerializerFormat::XML:
+                    deserializer = chrono_types::make_shared<ChArchiveInXML>(interf.second.buffer_receiving);
+                    break;
+                default:
+                    break;
+            }
+            deserializer->SetUseVersions(false);
+
+            *deserializer >> CHNVP(Dv_shared);
+
+            int offset = 0;
+            for (auto avar : interf.second.shared_vars) {
+                if (avar->IsActive()) {
+                    // increment state as state + delta received from neighbour
+                    avar->State() += omega * Dv_shared.segment(offset, avar->GetDOF());
+                    // last, sync the shared_states to updates var state
+                    shared_vects[nrank].segment(offset, avar->GetDOF()) = avar->State();
+                    offset += avar->GetDOF();
+                }
+            }
+        }
 }
 
 void ChSystemDescriptorMultidomain::SharedStatesDeltaAddToMultidomainAndSync(double omega) {

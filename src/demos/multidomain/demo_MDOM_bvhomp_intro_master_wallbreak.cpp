@@ -270,7 +270,7 @@ int main(int argc, char* argv[]) {
 
         // // Fail safe mechanism to update all domain AABBs without running BVH
 
-        // domain_builder.UpdateLocalDomainAABBs();
+        domain_builder.UpdateLocalDomainAABBs();
 
         // std::cout << "test point 3 " << std::endl;
 

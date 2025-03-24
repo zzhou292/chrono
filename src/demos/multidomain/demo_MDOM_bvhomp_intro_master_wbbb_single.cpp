@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
     //    Since we use a helper master domain, [n.of threads] = [n.of slices] + 1
 
     ChDomainBuilderBVHOMP domain_builder(
-        2,      // number of domains
+        3,      // number of domains
         true);  // build also master domain, interfacing to all slices, for initial injection of objects
 
     // 4- Create and populate the MASTER domain with bodies, links, meshes, nodes, etc.
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
     // ChCollisionModel::SetDefaultSuggestedMargin(0.00001);
     auto bb_solver0 = chrono_types::make_shared<ChSolverBBmultidomain>();
     sys_master.SetSolver(bb_solver0);
-    sys_master.GetSolver()->AsIterative()->SetMaxIterations(20);
+    sys_master.GetSolver()->AsIterative()->SetMaxIterations(200);
     // sys_master.GetSolver()->AsIterative()->SetMaxIterations(20);
     // sys_master.GetSolver()->AsIterative()->SetTolerance(1e-6);
 
@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
 
     auto mat = chrono_types::make_shared<ChContactMaterialNSC>();
     mat->SetFriction(0.1);
-    int n_walls = 2;
+    int n_walls = 1;
     int n_vertical = 10;
     int n_horizontal = 20;
     double size_x = 4;
@@ -142,6 +142,18 @@ int main(int argc, char* argv[]) {
     mrigidBall->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/bluewhite.png"));
     sys_master.Add(mrigidBall);
 
+    // Create the floor using fixed rigid body of 'box' type:
+    auto mrigidFloor = chrono_types::make_shared<ChBodyEasyBox>(250, 4, 250,  // x,y,z size
+                                                                1000,         // density
+                                                                true,         // visulization?
+                                                                true,         // collision?
+                                                                mat);         // contact material
+    mrigidFloor->SetPos(ChVector3d(0, -2, 0));
+    mrigidFloor->SetFixed(true);
+    domain_builder.AddExcludedBody(mrigidFloor);
+
+    sys_master.Add(mrigidFloor);
+
     // 5- Set the tag IDs for all nodes, bodies, etc.
     //    To do this, use the helper ChArchiveSetUniqueTags, that traverses all the
     //    hierarchies, sees if there is a SetTag() function in sub objects, and sets
@@ -172,21 +184,9 @@ int main(int argc, char* argv[]) {
         // (The solver has been defaulted to ChSolverPSORmultidomain when we did domain_manager.AddDomain().)
         auto bb_solver = chrono_types::make_shared<ChSolverBBmultidomain>();
         sys_slices[i]->SetSolver(bb_solver);
-        sys_slices[i]->GetSolver()->AsIterative()->SetMaxIterations(20);
+        sys_slices[i]->GetSolver()->AsIterative()->SetMaxIterations(200);
         // sys_slices[i]->GetSolver()->AsIterative()->EnableDiagonalPreconditioner(true);
         //  sys_slices[i]->GetSolver()->AsIterative()->SetTolerance(1e-6);
-
-        // Create the floor using fixed rigid body of 'box' type:
-        auto mrigidFloor = chrono_types::make_shared<ChBodyEasyBox>(250, 4, 250,  // x,y,z size
-                                                                    1000,         // density
-                                                                    true,         // visulization?
-                                                                    true,         // collision?
-                                                                    mat);         // contact material
-        mrigidFloor->SetPos(ChVector3d(0, -2, 0));
-        mrigidFloor->SetFixed(true);
-        mrigidFloor->SetTag(9101 + i);
-        domain_builder.AddExcludedBody(mrigidFloor);
-        sys_slices[i]->Add(mrigidFloor);
     }
 
     for (int i = 0; i < domain_builder.GetTotRanks() - 1; i++) {
@@ -263,12 +263,12 @@ int main(int argc, char* argv[]) {
 
         // NOTE!!!!! The rebuild process will trigger severe impluse when domain starts switch for the multidomain PSOR
         // solver
-        // if (i % 10 == 0) {
-        //     // BVH update
-        //     domain_builder.RebuildDomains();
-        // } else {
-        domain_builder.UpdateLocalDomainAABBs();
-        //}
+        if (i % 10 == 0) {
+            // BVH update
+            domain_builder.RebuildDomains();
+        } else {
+            domain_builder.UpdateLocalDomainAABBs();
+        }
 
         // MULTIDOMAIN AUTOMATIC ITEM MIGRATION!
         domain_manager.DoAllDomainPartitionUpdate();

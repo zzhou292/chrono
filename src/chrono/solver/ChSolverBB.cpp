@@ -306,7 +306,7 @@ double ChSolverBB::Solve(ChSystemDescriptor& sysd) {
         // METRICS - convergence, plots, etc
 
         double maxdeltalambda = ms.lpNorm<Eigen::Infinity>();
-        double maxd = lastgoodres/mg_p_init_norm;
+        double maxd = lastgoodres / mg_p_init_norm;
 
         // For recording into correction/residuals/violation history, if debugging
         if (this->record_violation_history)

@@ -28,8 +28,9 @@ namespace multidomain {
 
 class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor {
   public:
-      ChSystemDescriptorMultidomain(std::shared_ptr<ChDomain> mdomain = nullptr, ChDomainManager* mdomain_manager = nullptr);
-      virtual ~ChSystemDescriptorMultidomain() {};
+    ChSystemDescriptorMultidomain(std::shared_ptr<ChDomain> mdomain = nullptr,
+                                  ChDomainManager* mdomain_manager = nullptr);
+    virtual ~ChSystemDescriptorMultidomain(){};
     /*
     /// Access the vector of constraints.
     std::vector<ChConstraint*>& GetConstraints() { return m_constraints; }
@@ -77,7 +78,7 @@ class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor
     */
     /// Update counts of scalar variables and scalar constraints.
     virtual void UpdateCountsAndOffsets() override;
-    
+
     /*
     /// Set the c_a coefficient (default=1) used for scaling the M masses of the m_variables.
     /// Used when performing SchurComplementProduct(), SystemProduct(), BuildSystemMatrix().
@@ -241,7 +242,9 @@ class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor
     /// Here we assume that avector and bvector are both in 'clipped' format.
     /// If the clipped vectors overlap at some elements, then a Wv_partition vector with same length
     /// must be passed, where across domains all the Wv_partition define partition of unity for shared elements.
-    virtual double globalVdot(const ChVectorDynamic<>& avector, const ChVectorDynamic<>& bvector, ChVectorDynamic<>* Wv_partition = nullptr);
+    virtual double globalVdot(const ChVectorDynamic<>& avector,
+                              const ChVectorDynamic<>& bvector,
+                              ChVectorDynamic<>* Wv_partition = nullptr);
 
     /// Compute the GLOBAL norm of a vector (in multidomain mode, using MPI_AllReduce)
     /// Here we assume that avector is in 'clipped' format.
@@ -252,11 +255,11 @@ class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor
     /// Compute the GLOBAL max among values (in multidomain mode, using MPI_AllReduce)
     virtual double globalMax(const double val);
 
-    /// Performs the product of N, the Schur complement of the KKT matrix, 
-    /// at the global level considering all the domains. The M,N,Cq,E from 
+    /// Performs the product of N, the Schur complement of the KKT matrix,
+    /// at the global level considering all the domains. The M,N,Cq,E from
     /// this domain are considered sub-matrices of the global problem.
     /// -Matrices M,N,Cq,E are assumed in 'additive' format.
-    /// -Vector l and vector result: for them there is no meaning of 'clipped' 
+    /// -Vector l and vector result: for them there is no meaning of 'clipped'
     ///  or 'additive' as they do not share elements with other domains.
     /// <pre>
     ///    result = [N]*l = [ [Cq][M^(-1)][Cq'] - [E] ] * l
@@ -271,17 +274,17 @@ class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor
     );
 
     /// Performs the product of the entire system matrix (KKT matrix), by a vector x ={q,l}
-    /// at the global level. The M,N,Cq,E from this domain are considered sub-matrices of 
+    /// at the global level. The M,N,Cq,E from this domain are considered sub-matrices of
     /// the global problem.
     /// -Matrices M,N,Cq,E are assumed in 'additive' format.
     /// -Vector x is assumed in 'clipped' format.
     /// -Vector result is assumed in 'clipped' format.
     /// Note that the 'q' data in the ChVariables of the system descriptor is changed by this
     /// operation, so they may need to be backed up via FromVariablesToVector().
-    virtual void globalSystemProduct(ChVectorDynamic<>& result,  ///< result vector (multiplication of system matrix by x)
+    virtual void globalSystemProduct(
+        ChVectorDynamic<>& result,  ///< result vector (multiplication of system matrix by x)
         const ChVectorDynamic<>& x  ///< vector to be multiplied
     );
-
 
     /*
 
@@ -385,14 +388,12 @@ class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor
     bool freeze_count;         ///< cache the number of active variables and constraints
     */
 
-
     // MULTIDOMAIN-SPECIFIC FUNCTIONS
-    
 
-    /// Set vectors of shared_vects to zero. Each interface of domain has a vector. 
+    /// Set vectors of shared_vects to zero. Each interface of domain has a vector.
     virtual void SharedVectsToZero();
 
-    /// Set vectors of shared_vects to the current variables State() value. 
+    /// Set vectors of shared_vects to the current variables State() value.
     virtual void SharedVectsFromCurrentDomainStates();
 
     /// Takes a vector vect and spreads it the vectors of this->shared_vects, depending on the
@@ -402,30 +403,32 @@ class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor
 
     /// Add vectors of this->shared_vects into corresponding slots of vector vect, depending on the
     /// offsets of shared variables of this domain.
-    /// If use_average = 0, simply sum all contributions, if =1, shared contributions 
+    /// If use_average = 0, simply sum all contributions, if =1, shared contributions
     /// are averaged, if >0 multiply the average.
     /// Note, vect has size and indexing as domain's coordinates.
     virtual void SharedVectsAddToDomainVector(ChVectorDynamic<>& vect, double use_average = 0);
 
-    /// Send the delta ((current variables State) - (last shared_vects)) to the neighbouring domains, 
+    /// Send the delta ((current variables State) - (last shared_vects)) to the neighbouring domains,
     /// and finally all deltas are ADDED to the corresponding variables State() as State()+=deltas;
-    /// The omega parameter can be =1 for default sum, or lower for relaxation State()+=omega*deltas. 
+    /// The omega parameter can be =1 for default sum, or lower for relaxation State()+=omega*deltas.
     /// Finally, set vectors of shared_vects to the current variables State() value.
     /// Note: use only in solvers that guarantee no changes of shared_vects between calls to this.
     /// This operation requires a network-expensive SEND and RECEIVE operation!
     /// It is expected that all domains will execute this operation, otherwise deadlock.
     virtual void SharedStatesDeltaAddToMultidomainAndSync(double omega);
 
-    /// The current shared vectors in shared_vects are swapped across all domains, 
+    void SharedStatesDeltaAddToMultidomainAndSyncSchur(double omega);
+
+    /// The current shared vectors in shared_vects are swapped across all domains,
     /// with contributions from all the interfaces. Results overwritten in shared_vects.
     /// This operation requires a network-expensive SEND and RECEIVE operation!
     /// It is expected that all domains will execute this operation, otherwise deadlock.
     virtual void SharedVectsSwap();
 
-    /// Takes vectors "vect" in 'additive' form and merge into 'clipped' form. 
+    /// Takes vectors "vect" in 'additive' form and merge into 'clipped' form.
     /// Overwrites "vect". Note, vect has size and indexing as domain's coordinates.
     /// Shared coordinates in additive form are different among domains, whereas
-    /// in clipped form are the same, ex. in j-th domain with neighbours k and  
+    /// in clipped form are the same, ex. in j-th domain with neighbours k and
     ///    v_distr_j = v_additive_j + \sum R_j R_k' v_additive_k
     /// where we used restriction matrices R as  v_distr_j =  R_j v_global.
     /// This operation requires a network-expensive SEND and RECEIVE operation!
@@ -435,8 +438,8 @@ class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor
     /// Sync the State() of ChVariables across the domains. Depending on numerical
     /// roundoff issues, solvers might not guarantee that the values in distributed clipped
     /// state vectors are exactly the same (although they should be in theory). This
-    /// function can be called once in a while to fix the small glitches. In case of 
-    /// conflict from different state values, it keeps the element-wise min values. 
+    /// function can be called once in a while to fix the small glitches. In case of
+    /// conflict from different state values, it keeps the element-wise min values.
     /// This operation requires a network-expensive SEND and RECEIVE operation!
     /// It is expected that all domains will execute this operation, otherwise deadlock.
     virtual double SyncSharedStates(bool return_max_correction_error);
@@ -448,7 +451,7 @@ class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor
 
     // To avoid data duplication and for not being intrusive to other part of the code,
     // the masses of ChVariable objs are scaled *in place* according to  Wv weight vector in ChSystem,
-    // with multiplication, and after computations are done, these are restored to original 
+    // with multiplication, and after computations are done, these are restored to original
     // values with a division. The scheme is
     //   MassesScaledInPlace_EnterSection()
     //      do computation involving masses
@@ -458,7 +461,6 @@ class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor
     void MassesScaledInPlace_ExitSection();
 
   private:
-
     void MassesDoScaleInPlace();
     void MassesUndoScaleInPlace();
 
@@ -468,10 +470,7 @@ class ChApiMultiDomain ChSystemDescriptorMultidomain : public ChSystemDescriptor
     std::unordered_map<int, ChVectorDynamic<>> shared_vects;
 
     int section_scaledmass_count = 0;
-
 };
-
-
 
 }  // end namespace multidomain
 

@@ -98,7 +98,6 @@ void ChSystemDescriptor::UpdateCountsAndOffsets() {
 void ChSystemDescriptor::PasteMassKRMMatrixInto(ChSparseMatrix& Z,
                                                 unsigned int start_row,
                                                 unsigned int start_col) const {
-
     //// Contribution of mass or rigid bodies and node-concentrated masses
     for (const auto& var : m_variables) {
         if (var->IsActive()) {
@@ -408,8 +407,8 @@ void ChSystemDescriptor::SchurComplementProduct(ChVectorDynamic<>& result,
                 constr->IncrementState(li);  // computationally intensive
 
                 // Compute result += -[E]*l  part, ie. add constraint force mixing term. That is
-                //  result_i = cfm_i * l_i;   hence   result = -[E]*l  because we define E diag 
-                // as cfm compliance but with negative sign. 
+                //  result_i = cfm_i * l_i;   hence   result = -[E]*l  because we define E diag
+                // as cfm compliance but with negative sign.
                 result(s_c) = constr->GetComplianceTerm() * li;
             }
         }
@@ -436,7 +435,7 @@ void ChSystemDescriptor::SystemProduct(ChVectorDynamic<>& result, const ChVector
 
     result.setZero(n_q + n_c);
 
-    // 1) First row: result.q part =  [H]*x.q + [Cq']*x.l  
+    // 1) First row: result.q part =  [H]*x.q + [Cq']*x.l
     //                             =  [a*M_vars+ a*M + b*D + c*K]*x.q + [Cq']*x.l
     //                             =  (a*[M_vars]+[H_blocks])*x.q + [Cq']*x.l
 
@@ -447,8 +446,8 @@ void ChSystemDescriptor::SystemProduct(ChVectorDynamic<>& result, const ChVector
         }
     }
 
-    // 1.2)  add also [H_blocks]*x.q     
-    // By the way here we assume  [H_blocks]=[a*M + b*D + c*K]   where M 
+    // 1.2)  add also [H_blocks]*x.q
+    // By the way here we assume  [H_blocks]=[a*M + b*D + c*K]   where M
     // does not contain M_vars, already dealt above in 1.1)
     // (NON straight parallelizable - risk of concurrency in writing)
     for (const auto& krm_block : m_KRMblocks) {
@@ -466,8 +465,8 @@ void ChSystemDescriptor::SystemProduct(ChVectorDynamic<>& result, const ChVector
     for (const auto& constr : m_constraints) {
         if (constr->IsActive()) {
             int s_c = constr->GetOffset() + n_q;
-            constr->AddJacobianTimesVectorInto(result(s_c), x);  // result.l_i += [C_q_i]*x.q
-            result(s_c) += constr->GetComplianceTerm() * x(s_c);         // result.l_i += [E]*x.l_i
+            constr->AddJacobianTimesVectorInto(result(s_c), x);   // result.l_i += [C_q_i]*x.q
+            result(s_c) += constr->GetComplianceTerm() * x(s_c);  // result.l_i += [E]*x.l_i
         }
     }
 }

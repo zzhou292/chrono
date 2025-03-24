@@ -129,7 +129,7 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
 
     // MULTIDOMAIN******************
     descriptor.SharedVectsToZero();
-    descriptor.SharedStatesDeltaAddToMultidomainAndSync(1.);
+    descriptor.SharedStatesDeltaAddToMultidomainAndSync(1.0);
     /*
     // ALTERNATIVE: following stuff is equivalent to descriptor.SharedStates.. line above.
     descriptor.FromVariablesToVector(state);
@@ -176,10 +176,13 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
 
     // g = gradient of 0.5*l'*N*l-l'*b
     // g = N*l-b
-    descriptor.globalSchurComplementProduct(mg, ml);  // 1)  g = N * l   // MULTIDOMAIN******************
-    mg -= mb;                                         // 2)  g = N * l - b_schur
+    // descriptor.globalSchurComplementProduct(mg, ml);  // 1)  g = N * l   // MULTIDOMAIN******************
+    descriptor.SchurComplementProduct(mg, ml);  // SINGLE TEST
+    mg -= mb;                                   // 2)  g = N * l - b_schur
 
     mg_p = mg;
+
+    double mg_p_init_norm = std::max(1e-10, mg_p.norm());  // SINGLE TEST
 
     //
     // THE LOOP
@@ -188,6 +191,8 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
     double mf_p = 0;
     double mf = 1e29;
     std::vector<double> f_hist;
+
+    int actual_iter = 0;
 
     for (int iter = 0; iter < m_max_iterations; iter++) {
         // Dg = Di*g;
@@ -201,7 +206,8 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
         mdir -= ml;                     // dir = P(l - alpha*Dg) - l
 
         // dTg = dir'*g;
-        double dTg = descriptor.globalVdot(mdir, mg);  // MULTIDOMAIN******
+        // double dTg = descriptor.globalVdot(mdir, mg);  // MULTIDOMAIN******
+        double dTg = mdir.dot(mg);  // SINGLE TEST
 
         // BB dir backward!? fallback to nonpreconditioned dir
         if (dTg > 1e-8) {
@@ -209,8 +215,9 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
             mdir = ml - alpha * mg;         // dir = l - alpha*g
             sysd.ConstraintsProject(mdir);  // dir = P(l - alpha*g) ...
             mdir -= ml;                     // dir = P(l - alpha*g) - l
-            // dTg = d'*g;
-            dTg = descriptor.globalVdot(mdir, mg);  // MULTIDOMAIN******
+                                            // dTg = d'*g;
+            // dTg = descriptor.globalVdot(mdir, mg);  // MULTIDOMAIN******
+            dTg = mdir.dot(mg);  // SINGLE TEST
         }
 
         double lambda = 1;
@@ -223,13 +230,15 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
             ml_p = ml + lambda * mdir;
 
             // m_tmp = Nl_p = N*l_p;
-            descriptor.globalSchurComplementProduct(mb_tmp, ml_p);  // MULTIDOMAIN*****
+            // descriptor.globalSchurComplementProduct(mb_tmp, ml_p);  // MULTIDOMAIN*****
+            descriptor.SchurComplementProduct(mb_tmp, ml_p);  // SINGLE TEST
 
             // g_p = N * l_p - b  = Nl_p - b
             mg_p = mb_tmp - mb;
 
             // f_p = 0.5*l_p'*N*l_p - l_p'*b  = l_p'*(0.5*Nl_p - b);
-            mf_p = descriptor.globalVdot(ml_p, 0.5 * mb_tmp - mb);  // MULTIDOMAIN*****
+            // mf_p = descriptor.globalVdot(ml_p, 0.5 * mb_tmp - mb);  // MULTIDOMAIN*****
+            mf_p = ml_p.dot(0.5 * mb_tmp - mb);  // SINGLE TEST
 
             f_hist.push_back(mf_p);
 
@@ -253,8 +262,12 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
             }
 
             n_backtracks = n_backtracks + 1;
-            if (n_backtracks > this->max_armijo_backtrace)
+            if (n_backtracks > this->max_armijo_backtrace) {
+                if (descriptor.GetDomain()->GetRank() == 0) {
+                    std::cout << "Armijo backtrack limit reached, terminating" << std::endl;
+                }
                 armijo_repeat = false;
+            }
         }
 
         ms = ml_p - ml;  // s = l_p - l;
@@ -267,8 +280,11 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
                 mb_tmp = ms.array() * mD.array();
             else
                 mb_tmp = ms;
-            double sDs = descriptor.globalVdot(ms, mb_tmp);  // MULTIDOMAIN****
-            double sy = descriptor.globalVdot(ms, my);       // MULTIDOMAIN****
+            // double sDs = descriptor.globalVdot(ms, mb_tmp);  // MULTIDOMAIN****
+            // double sy = descriptor.globalVdot(ms, my);       // MULTIDOMAIN****
+            double sDs = ms.dot(mb_tmp);  // SINGLE TEST
+            double sy = ms.dot(my);       // SINGLE TEST
+
             if (sy <= 0) {
                 alpha = neg_BB1_fallback;
             } else {
@@ -278,12 +294,15 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
         }
 
         if (((do_BB1e2) && (iter % 2 != 0)) || do_BB2) {
-            double sy = descriptor.globalVdot(ms, my);  // MULTIDOMAIN****
+            // double sy = descriptor.globalVdot(ms, my);  // MULTIDOMAIN****
+            double sy = ms.dot(my);  // SINGLE TEST
             if (m_use_precond)
                 mb_tmp = my.array() / mD.array();
             else
                 mb_tmp = my;
-            double yDy = descriptor.globalVdot(my, mb_tmp);  // MULTIDOMAIN****
+
+            // double yDy = descriptor.globalVdot(my, mb_tmp);  // MULTIDOMAIN****
+            double yDy = my.dot(mb_tmp);  // SINGLE TEST
             if (sy <= 0) {
                 alpha = neg_BB2_fallback;
             } else {
@@ -298,7 +317,8 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
         sysd.ConstraintsProject(mb_tmp);  // mb_tmp = ProjectionOperator(l - gdiff * g)
         mb_tmp = (ml - mb_tmp) / gdiff;   // mb_tmp = [l - ProjectionOperator(l - gdiff * g)] / gdiff
 
-        double g_proj_norm = descriptor.globalVnorm(mb_tmp);  // MULTIDOMAIN ****
+        // double g_proj_norm = descriptor.globalVnorm(mb_tmp);  // MULTIDOMAIN ****
+        double g_proj_norm = mb_tmp.norm();  // SINGLE TEST
 
         // Rollback solution: the last best candidate ('l' with lowest projected gradient)
         // in fact the method is not monotone and it is quite 'noisy', if we do not
@@ -310,8 +330,10 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
 
         // METRICS - convergence, plots, etc
 
-        double maxdeltalambda = descriptor.globalVnorm(ms);  // MULTIDOMAIN ****   as ms.lpNorm<Eigen::Infinity>();
-        double maxd = lastgoodres;
+        // double maxdeltalambda = descriptor.globalVnorm(ms);  // MULTIDOMAIN ****   as ms.lpNorm<Eigen::Infinity>();
+        // double maxd = lastgoodres;
+        double maxdeltalambda = ms.lpNorm<Eigen::Infinity>();  // SINGLE TEST
+        double maxd = lastgoodres / mg_p_init_norm;            // SINGLE TEST
 
         // For recording into correction/residuals/violation history, if debugging
         if (this->record_violation_history)
@@ -330,6 +352,16 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
             std::cout << "BB premature proj.gradient break at i=" << iter << std::endl;
             break;
         }
+
+        if (descriptor.GetDomain()->GetRank() == 0) {
+            std::cout << "iter: " << iter << " maxd: " << maxd << std::endl;
+        }
+
+        actual_iter = iter;
+    }
+
+    if (descriptor.GetDomain()->GetRank() == 0) {
+        std::cout << "actual_iter: " << actual_iter << std::endl;
     }
 
     // Fallback to best found solution (might be useful because of nonmonotonicity)
@@ -345,18 +377,51 @@ double ChSolverBBmultidomain::Solve(ChSystemDescriptor& sysd) {
     // v = (M^-1)*k  ...    (by rewinding to the backup vector computed ad the beginning)
     sysd.FromVectorToVariables(mq);
 
+    if (descriptor.GetDomain()->GetRank() == 0) {
+        // Print a debug sample (first few variables)
+        for (int i = 0; i < std::min(10, (int)mvariables.size()); i++) {
+            std::cout << "Before increment - State " << i << ": " << mvariables[i]->State()[0] << std::endl;
+        }
+    }
+
     // ... + (M^-1)*D*l     (this increment and also stores 'qb' in the ChVariable items)
     for (unsigned int ic = 0; ic < mconstraints.size(); ic++) {
         if (mconstraints[ic]->IsActive())
             mconstraints[ic]->IncrementState(mconstraints[ic]->GetLagrangeMultiplier());
     }
 
+    if (descriptor.GetDomain()->GetRank() == 0) {
+        // Print a debug sample (first few variables)
+        for (int i = 0; i < std::min(10, (int)mvariables.size()); i++) {
+            std::cout << "Before sync - State " << i << ": " << mvariables[i]->State()[0] << std::endl;
+        }
+    }
+
     // MULTIDOMAIN******************
-    descriptor.SharedStatesDeltaAddToMultidomainAndSync(1.);
+    descriptor.SharedStatesDeltaAddToMultidomainAndSync(0.5);
+
+    // With the alternative implementation:
+    // ChVectorDynamic<> state;
+    // descriptor.FromVariablesToVector(state);
+    // descriptor.VectAdditiveToClipped(state);
+    // descriptor.FromVectorToVariables(state);
+    // state_old = state;  // Not needed if we're not tracking deltas
+
+    if (descriptor.GetDomain()->GetRank() == 0) {
+        // Print again after
+        for (int i = 0; i < std::min(10, (int)mvariables.size()); i++) {
+            std::cout << "After sync - State " << i << ": " << mvariables[i]->State()[0] << std::endl;
+        }
+    }
 
     if (verbose)
         std::cout << "-----" << std::endl;
 
+    if (descriptor.GetDomain()->GetRank() == 0) {
+        std::cout << "terminated lastgoodres: " << lastgoodres << std::endl;
+    }
+
+    // print ml for each rank
     return lastgoodres;
 }
 
