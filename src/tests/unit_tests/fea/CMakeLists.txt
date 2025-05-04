@@ -23,6 +23,7 @@ set(TESTS
 	utest_FEA_ANCFshell_3833_Formulation
 	utest_FEA_ANCFhexa_3843_Formulation
     utest_FEA_ANCFhexa_3813_9
+    utest_FEA_3245_check
 )
 
 # Tests that REQUIRE Chrono::MKL
