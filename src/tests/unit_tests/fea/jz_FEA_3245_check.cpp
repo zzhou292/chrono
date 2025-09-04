@@ -201,7 +201,7 @@ ANCFBeamTest::ANCFBeamTest(bool useContInt) {
 
 bool ANCFBeamTest::RunElementChecks(int msglvl) {
     bool tests_passed = true;
-    // tests_passed = (tests_passed && MassMatrixCheck(msglvl));
+    tests_passed = (tests_passed && MassMatrixCheck(msglvl));
     //  tests_passed = (tests_passed && GeneralizedGravityForceCheck(msglvl));
 
     // tests_passed = (tests_passed && GeneralizedInternalForceNoDispNoVelCheck(msglvl));
