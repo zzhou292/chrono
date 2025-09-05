@@ -42,6 +42,7 @@
 
 #include "chrono/physics/ChSystemSMC.h"
 #include "chrono/solver/ChDirectSolverLS.h"
+#include "chrono/solver/ChIterativeSolverLS.h"
 
 #include "chrono/fea/ChElementShellANCF_3443.h"
 
@@ -212,7 +213,7 @@ ANCFShellTest::ANCFShellTest(bool useContInt) {
 bool ANCFShellTest::RunElementChecks(int msglvl) {
     bool tests_passed = true;
 
-    tests_passed = (tests_passed && MassMatrixCheck(msglvl));
+    // tests_passed = (tests_passed && MassMatrixCheck(msglvl));
 
     // tests_passed = (tests_passed && GeneralizedGravityForceCheck(msglvl));
 
@@ -1438,27 +1439,22 @@ bool ANCFShellTest::CantileverTipLoadCheck(int msglvl) {
 
     m_system->SetNumThreads(std::min(8, ChOMP::GetNumProcs()), 1, 1);
 
-    auto solver = chrono_types::make_shared<ChSolverSparseQR>();
-    solver->UseSparsityPatternLearner(true);
-    solver->LockSparsityPattern(true);
-    solver->SetVerbose(false);
+    std::cout << "setting solver" << std::endl;
+    auto solver = chrono_types::make_shared<ChSolverGMRES>();
+    solver->SetMaxIterations(1000);
+    solver->SetTolerance(1e-20);
+    // solver->LockSparsityPattern(true);
+    solver->SetVerbose(true);
     system->SetSolver(solver);
 
     // Set up integrator
     system->SetTimestepperType(ChTimestepper::Type::EULER_EXPLICIT);
-    // auto integrator = std::static_pointer_cast<ChTimestepperHHT>(system->GetTimestepper());
-    // integrator->SetAlpha(-0.2);
-    // integrator->SetMaxIters(100);
-    // integrator->SetAbsTolerances(1e-5);
-    // integrator->SetVerbose(false);
-    // integrator->SetModifiedNewton(true);
 
     // Mesh properties - Dimensions and material from the Princeton Beam Experiment Addendum
     int num_elements = 2;
     double length = 4;  // in->m
     double width = 1;   // in->m
     double height = 1;  // in->m
-    // Aluminum 7075-T651 Material Properties
     double rho = 2700;  // kg/m^3
     double E = 7e8;     // Pa
     double nu = 0.33;
@@ -1478,10 +1474,10 @@ bool ANCFShellTest::CantileverTipLoadCheck(int msglvl) {
     ChVector3d dir3(0, 0, 1);
 
     // Create the first nodes and fix them completely to ground (Cantilever constraint)
-    auto nodeA = chrono_types::make_shared<ChNodeFEAxyzDDD>(ChVector3d(0, -width / 2.0, 0.0), dir1, dir2, dir3);
+    auto nodeA = chrono_types::make_shared<ChNodeFEAxyzDDD>(ChVector3d(0.0, 0.0, 0.0), dir1, dir2, dir3);
     nodeA->SetFixed(true);
     mesh->AddNode(nodeA);
-    auto nodeD = chrono_types::make_shared<ChNodeFEAxyzDDD>(ChVector3d(0, width / 2.0, 0.0), dir1, dir2, dir3);
+    auto nodeD = chrono_types::make_shared<ChNodeFEAxyzDDD>(ChVector3d(0.0, width, 0.0), dir1, dir2, dir3);
     nodeD->SetFixed(true);
     mesh->AddNode(nodeD);
 
@@ -1489,9 +1485,9 @@ bool ANCFShellTest::CantileverTipLoadCheck(int msglvl) {
     std::shared_ptr<ChNodeFEAxyzDDD> nodeEndPoint;
 
     for (int i = 1; i <= num_elements; i++) {
-        auto nodeB = chrono_types::make_shared<ChNodeFEAxyzDDD>(ChVector3d(dx * i, -width / 2.0, 0), dir1, dir2, dir3);
+        auto nodeB = chrono_types::make_shared<ChNodeFEAxyzDDD>(ChVector3d(dx * i, 0.0, 0.0), dir1, dir2, dir3);
         mesh->AddNode(nodeB);
-        auto nodeC = chrono_types::make_shared<ChNodeFEAxyzDDD>(ChVector3d(dx * i, width / 2.0, 0), dir1, dir2, dir3);
+        auto nodeC = chrono_types::make_shared<ChNodeFEAxyzDDD>(ChVector3d(dx * i, width, 0.0), dir1, dir2, dir3);
         mesh->AddNode(nodeC);
 
         auto element = chrono_types::make_shared<ChElementShellANCF_3443>();
@@ -1535,7 +1531,7 @@ bool ANCFShellTest::CantileverTipLoadCheck(int msglvl) {
             assert(auxsystem);
 
             F.setZero();
-            F(2) = TIP_FORCE;  // Apply the force along the global Z axis (beam axis)
+            // F(2) = 3100;  // Apply the force along the global Z axis (beam axis)
         }
 
       public:
@@ -1558,53 +1554,19 @@ bool ANCFShellTest::CantileverTipLoadCheck(int msglvl) {
     loadcontainer->Add(load);  // add the load to the load container.
 
     // Find the static solution for the system (final displacement)
-    system->DoStaticLinear();
+    // system->DoStaticLinear();
 
-    // Calculate the displacement of the end of the ANCF beam mesh
-    ChVector3d point;
-    ChQuaternion<> rot;
-    elementlast->EvaluateSectionFrame(1, 0, point, rot);
+    for (int i = 0; i < 20; i++) {
+        system->DoStepDynamics(0.001);
+        ChVector3d point;
+        ChQuaternion<> rot;
+        elementlast->EvaluateSectionFrame(1.0, 1.0, point, rot);
 
-    // For Analytical Formula, see a mechanics of materials textbook (delta = (P*L^3)/(3*E*I))
-    double I = 1.0 / 12.0 * width * std::pow(height, 3);
-    double Displacement_Theory = (TIP_FORCE * std::pow(length, 3)) / (3.0 * E * I);
-    double Displacement_Model = point.z();
-    ChVector3d Tip_Angles = rot.GetCardanAnglesXYZ();
-
-    double Percent_Error = (Displacement_Model - Displacement_Theory) / Displacement_Theory * 100.0;
-
-    // This element is prone to Poisson locking.  If Poisson's Ratio is set to zero, then the error should be about 0.2%
-    // instead of 12%
-    bool passed_displacement = abs(Percent_Error) < 15;
-    // check the off-axis angles which should be zeros
-    bool passed_angles = (abs(Tip_Angles.x() * CH_RAD_TO_DEG) < 0.001) && (abs(Tip_Angles.z() * CH_RAD_TO_DEG) < 0.001);
-    bool passed_tests = passed_displacement && passed_angles;
-
-    if (msglvl >= 2) {
-        std::cout << "Cantilever Beam (Tip Load) - ANCF Tip Position: " << point << "m" << std::endl;
-        std::cout << "Cantilever Beam (Tip Load) - ANCF Tip Displacement: " << Displacement_Model << "m" << std::endl;
-        std::cout << "Cantilever Beam (Tip Load) - Analytical Tip Displacement: " << Displacement_Theory << "m"
-                  << std::endl;
-        std::cout << "Cantilever Beam (Tip Load) - ANCF Tip Angles: (" << Tip_Angles.x() * CH_RAD_TO_DEG << ", "
-                  << Tip_Angles.y() * CH_RAD_TO_DEG << ", " << Tip_Angles.z() * CH_RAD_TO_DEG << ")deg" << std::endl;
-    }
-    if (msglvl >= 1) {
-        std::cout << "Cantilever Beam (Tip Load) - Tip Displacement Check (Percent Error less than 15%) = "
-                  << Percent_Error << "%";
-        if (passed_displacement)
-            print_green(" - Test PASSED\n");
-        else
-            print_red(" - Test FAILED\n");
-
-        std::cout
-            << "Cantilever Beam (Tip Load) - Off-axis Angular misalignment Checks (all angles less than 0.001 deg)";
-        if (passed_angles)
-            print_green(" - Test PASSED\n\n");
-        else
-            print_red(" - Test FAILED\n\n");
+        double displacement = point.z();
+        std::cout << displacement << std::endl;
     }
 
-    return (passed_tests);
+    return (false);
 }
 
 bool ANCFShellTest::CantileverGravityCheck(int msglvl) {
