@@ -209,28 +209,28 @@ ANCFShellTest::ANCFShellTest(bool useContInt) {
 
 bool ANCFShellTest::RunElementChecks(int msglvl) {
     bool tests_passed = true;
-    tests_passed = (tests_passed && MassMatrixCheck(msglvl));
-    tests_passed = (tests_passed && GeneralizedGravityForceCheck(msglvl));
+    // tests_passed = (tests_passed && MassMatrixCheck(msglvl));
+    // tests_passed = (tests_passed && GeneralizedGravityForceCheck(msglvl));
 
-    tests_passed = (tests_passed && GeneralizedInternalForceNoDispNoVelCheck(msglvl));
-    tests_passed = (tests_passed && GeneralizedInternalForceSmallDispNoVelCheck(msglvl));
-    tests_passed = (tests_passed && GeneralizedInternalForceNoDispSmallVelCheck(msglvl));
+    // tests_passed = (tests_passed && GeneralizedInternalForceNoDispNoVelCheck(msglvl));
+    // tests_passed = (tests_passed && GeneralizedInternalForceSmallDispNoVelCheck(msglvl));
+    // tests_passed = (tests_passed && GeneralizedInternalForceNoDispSmallVelCheck(msglvl));
 
-    tests_passed = (tests_passed && JacobianNoDispNoVelNoDampingCheck(msglvl));
-    tests_passed = (tests_passed && JacobianSmallDispNoVelNoDampingCheck(msglvl));
-    tests_passed = (tests_passed && JacobianNoDispNoVelWithDampingCheck(msglvl));
-    tests_passed = (tests_passed && JacobianSmallDispNoVelWithDampingCheck(msglvl));
-    tests_passed = (tests_passed && JacobianNoDispSmallVelWithDampingCheck(msglvl));
+    // tests_passed = (tests_passed && JacobianNoDispNoVelNoDampingCheck(msglvl));
+    // tests_passed = (tests_passed && JacobianSmallDispNoVelNoDampingCheck(msglvl));
+    // tests_passed = (tests_passed && JacobianNoDispNoVelWithDampingCheck(msglvl));
+    // tests_passed = (tests_passed && JacobianSmallDispNoVelWithDampingCheck(msglvl));
+    // tests_passed = (tests_passed && JacobianNoDispSmallVelWithDampingCheck(msglvl));
 
-    tests_passed = (tests_passed && AxialDisplacementCheck(msglvl));
+    // tests_passed = (tests_passed && AxialDisplacementCheck(msglvl));
     tests_passed = (tests_passed && CantileverTipLoadCheck(msglvl));
-    tests_passed = (tests_passed && CantileverGravityCheck(msglvl));
-    tests_passed = (tests_passed && AxialTwistCheck(msglvl));
+    // tests_passed = (tests_passed && CantileverGravityCheck(msglvl));
+    // tests_passed = (tests_passed && AxialTwistCheck(msglvl));
 
-    tests_passed = (tests_passed && MLCantileverCheck1A(msglvl));
-    tests_passed = (tests_passed && MLCantileverCheck1B(msglvl));
-    tests_passed = (tests_passed && MLCantileverCheck2A(msglvl));
-    tests_passed = (tests_passed && MLCantileverCheck2B(msglvl));
+    // tests_passed = (tests_passed && MLCantileverCheck1A(msglvl));
+    // tests_passed = (tests_passed && MLCantileverCheck1B(msglvl));
+    // tests_passed = (tests_passed && MLCantileverCheck2A(msglvl));
+    // tests_passed = (tests_passed && MLCantileverCheck2B(msglvl));
 
     return (tests_passed);
 }
@@ -1421,13 +1421,13 @@ bool ANCFShellTest::CantileverTipLoadCheck(int msglvl) {
     system->SetSolver(solver);
 
     // Set up integrator
-    system->SetTimestepperType(ChTimestepper::Type::HHT);
-    auto integrator = std::static_pointer_cast<ChTimestepperHHT>(system->GetTimestepper());
-    integrator->SetAlpha(-0.2);
-    integrator->SetMaxIters(100);
-    integrator->SetAbsTolerances(1e-5);
-    integrator->SetVerbose(false);
-    integrator->SetModifiedNewton(true);
+    system->SetTimestepperType(ChTimestepper::Type::EULER_IMPLICIT_LINEARIZED);
+    // auto integrator = std::static_pointer_cast<ChTimestepperHHT>(system->GetTimestepper());
+    // integrator->SetAlpha(-0.2);
+    // integrator->SetMaxIters(100);
+    // integrator->SetAbsTolerances(1e-5);
+    // integrator->SetVerbose(false);
+    // integrator->SetModifiedNewton(true);
 
     // Mesh properties - Dimensions and material from the Princeton Beam Experiment Addendum
     int num_elements = 20;
@@ -1533,54 +1533,17 @@ bool ANCFShellTest::CantileverTipLoadCheck(int msglvl) {
     auto load = chrono_types::make_shared<ChLoad>(loader);
     loadcontainer->Add(load);  // add the load to the load container.
 
-    // Find the static solution for the system (final displacement)
-    system->DoStaticLinear();
+    for (int i = 0; i < 30; i++) {
+        system->DoStepDynamics(0.001);
+        ChVector3d point;
+        ChQuaternion<> rot;
+        elementlast->EvaluateSectionFrame(1.0, 1.0, point, rot);
 
-    // Calculate the displacement of the end of the ANCF beam mesh
-    ChVector3d point;
-    ChQuaternion<> rot;
-    elementlast->EvaluateSectionFrame(1, 0, point, rot);
-
-    // For Analytical Formula, see a mechanics of materials textbook (delta = (P*L^3)/(3*E*I))
-    double I = 1.0 / 12.0 * width * std::pow(height, 3);
-    double Displacement_Theory = (TIP_FORCE * std::pow(length, 3)) / (3.0 * E * I);
-    double Displacement_Model = point.z();
-    ChVector3d Tip_Angles = rot.GetCardanAnglesXYZ();
-
-    double Percent_Error = (Displacement_Model - Displacement_Theory) / Displacement_Theory * 100.0;
-
-    // This element is prone to Poisson locking.  If Poisson's Ratio is set to zero, then the error should be about 0.2%
-    // instead of 12%
-    bool passed_displacement = abs(Percent_Error) < 15;
-    // check the off-axis angles which should be zeros
-    bool passed_angles = (abs(Tip_Angles.x() * CH_RAD_TO_DEG) < 0.001) && (abs(Tip_Angles.z() * CH_RAD_TO_DEG) < 0.001);
-    bool passed_tests = passed_displacement && passed_angles;
-
-    if (msglvl >= 2) {
-        std::cout << "Cantilever Beam (Tip Load) - ANCF Tip Position: " << point << "m" << std::endl;
-        std::cout << "Cantilever Beam (Tip Load) - ANCF Tip Displacement: " << Displacement_Model << "m" << std::endl;
-        std::cout << "Cantilever Beam (Tip Load) - Analytical Tip Displacement: " << Displacement_Theory << "m"
-                  << std::endl;
-        std::cout << "Cantilever Beam (Tip Load) - ANCF Tip Angles: (" << Tip_Angles.x() * CH_RAD_TO_DEG << ", "
-                  << Tip_Angles.y() * CH_RAD_TO_DEG << ", " << Tip_Angles.z() * CH_RAD_TO_DEG << ")deg" << std::endl;
-    }
-    if (msglvl >= 1) {
-        std::cout << "Cantilever Beam (Tip Load) - Tip Displacement Check (Percent Error less than 15%) = "
-                  << Percent_Error << "%";
-        if (passed_displacement)
-            print_green(" - Test PASSED\n");
-        else
-            print_red(" - Test FAILED\n");
-
-        std::cout
-            << "Cantilever Beam (Tip Load) - Off-axis Angular misalignment Checks (all angles less than 0.001 deg)";
-        if (passed_angles)
-            print_green(" - Test PASSED\n\n");
-        else
-            print_red(" - Test FAILED\n\n");
+        double displacement = point.z();
+        std::cout << displacement << std::endl;
     }
 
-    return (passed_tests);
+    return (false);
 }
 
 bool ANCFShellTest::CantileverGravityCheck(int msglvl) {

@@ -57,9 +57,9 @@
 using namespace chrono;
 using namespace chrono::fea;
 
-#define TIP_FORCE 1.0   // N
-#define TIP_MOMENT 1.0  // Nm
-#define Jac_Error 0.33  // Maximum allowed Jacobian percent error as decimal
+#define TIP_FORCE 3100.0  // N
+#define TIP_MOMENT 1.0    // Nm
+#define Jac_Error 0.33    // Maximum allowed Jacobian percent error as decimal
 
 // =============================================================================
 
@@ -1440,11 +1440,10 @@ bool ANCFShellTest::CantileverTipLoadCheck(int msglvl) {
     m_system->SetNumThreads(std::min(8, ChOMP::GetNumProcs()), 1, 1);
 
     std::cout << "setting solver" << std::endl;
-    auto solver = chrono_types::make_shared<ChSolverGMRES>();
-    solver->SetMaxIterations(1000);
-    solver->SetTolerance(1e-20);
-    // solver->LockSparsityPattern(true);
-    solver->SetVerbose(true);
+    auto solver = chrono_types::make_shared<ChSolverSparseQR>();
+    solver->UseSparsityPatternLearner(false);
+    solver->LockSparsityPattern(false);
+    solver->SetVerbose(false);
     system->SetSolver(solver);
 
     // Set up integrator
@@ -1531,7 +1530,8 @@ bool ANCFShellTest::CantileverTipLoadCheck(int msglvl) {
             assert(auxsystem);
 
             F.setZero();
-            // F(2) = 3100;  // Apply the force along the global Z axis (beam axis)
+            F(0) = 1250;
+            F(2) = 3100;  // Apply the force along the global Z axis (beam axis)
         }
 
       public:
@@ -1556,7 +1556,7 @@ bool ANCFShellTest::CantileverTipLoadCheck(int msglvl) {
     // Find the static solution for the system (final displacement)
     // system->DoStaticLinear();
 
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 30; i++) {
         system->DoStepDynamics(0.001);
         ChVector3d point;
         ChQuaternion<> rot;
