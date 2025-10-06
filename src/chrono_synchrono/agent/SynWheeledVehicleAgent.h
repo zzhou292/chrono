@@ -103,7 +103,7 @@ class SYN_API SynWheeledVehicleAgent : public SynAgent {
 
     /// @brief Obtain the last-received zombie position
     /// @return A ChVector describing the position of the zombie
-    ChVector<> GetZombiePos() { return m_zombie_body->GetPos(); }
+    ChVector3<> GetZombiePos() { return m_zombie_body->GetPos(); }
 
     /// @brief Obtain the last-received zombie orientation
     /// @return A ChQuaternion describing the rotation of the zombie
