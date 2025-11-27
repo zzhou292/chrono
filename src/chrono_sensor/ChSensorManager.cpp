@@ -42,6 +42,16 @@ CH_SENSOR_API std::shared_ptr<ChOptixEngine> ChSensorManager::GetEngine(int cont
 }
 
 CH_SENSOR_API void ChSensorManager::Update() {
+    // FIX: Force visual model updates before first render
+    static bool first_update = true;
+    if (first_update) {
+        // Trigger visual model update on all physics items
+        for (auto& item : m_system->GetOtherPhysicsItems()) {
+            item->Update(m_system->GetChTime(), true);  // update_assets = true
+        }
+        first_update = false;
+    }
+
     // update the scene
     // scene->PackFrame(m_system);
     //
@@ -101,7 +111,7 @@ CH_SENSOR_API void ChSensorManager::AddSensor(std::shared_ptr<ChSensor> sensor) 
             if (!found_group && engine->GetSensor().size() > 0 &&
                 abs(engine->GetSensor()[0]->GetUpdateRate() - sensor->GetUpdateRate()) < 0.001) {
                 found_group = true;
-                
+
                 engine->AssignSensor(pOptixSensor);
                 if (m_verbose)
                     std::cout << "Sensor added to existing engine\n";

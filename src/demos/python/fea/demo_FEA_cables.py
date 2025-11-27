@@ -14,7 +14,8 @@ import pychrono as chrono
 import pychrono.fea as fea
 import pychrono.irrlicht as chronoirr
 from cables import Model1, Model2, Model3
-
+import pychrono.sensor as sens
+import numpy as np
 
 # Select solver type (SPARSE_QR, SPARSE_LU, or MINRES).
 #ChSolver::Type solver_type = ChSolver::Type::SPARSE_QR
@@ -63,6 +64,19 @@ vis_beam_B.SetSymbolsScale(0.01)
 vis_beam_B.SetZbufferHide(False)
 mesh.AddVisualShapeFEA(vis_beam_B)
 
+mat0 = chrono.ChContactMaterialSMC();
+mat0.SetFriction(0.1);
+mat0.SetYoungModulus(2e7);
+mrigidBody_floor_0 = chrono.ChBodyEasyBox(5, 5, 0.25, 
+        400,         
+        True,        
+        True,        
+        mat0);       
+sys.Add(mrigidBody_floor_0);
+mrigidBody_floor_0.SetPos(chrono.ChVector3d(0, 0, -1.0));
+mrigidBody_floor_0.SetFixed(True);
+
+
 # Create the Irrlicht visualization
 vis = chronoirr.ChVisualSystemIrrlicht()
 vis.AttachSystem(sys)
@@ -101,11 +115,53 @@ else:
 ts = chrono.ChTimestepperEulerImplicitLinearized(sys)
 sys.SetTimestepper(ts)
 
+
+
+### Add sensors
+# Add camera sensor --------------------------------------------------------------------
+
+lens_model = sens.PINHOLE
+update_rate = 25
+image_width = 256
+image_height = 256
+fov = 1.408
+lag = 0
+exposure_time = 0
+
+manager = sens.ChSensorManager(sys)
+
+intensity = 1.0
+manager.scene.AddAreaLight(chrono.ChVector3f(0, 0, 4), chrono.ChColor(intensity, intensity, intensity), 500.0, chrono.ChVector3f(1,0,0), chrono.ChVector3f(0,-1,0))
+
+
+rotation_quat = chrono.QuatFromAngleAxis(np.pi*1/2, chrono.ChVector3d(1, 0, 0))
+rotation_quat = rotation_quat * chrono.QuatFromAngleAxis(-np.pi*1/2, chrono.ChVector3d(0, 1, 0))
+offset_pose = chrono.ChFramed(
+        chrono.ChVector3d(0.0, 0.0, 0.9), rotation_quat)
+
+cam = sens.ChCameraSensor(
+    mrigidBody_floor_0,              # body camera is attached to
+    update_rate,            # update rate in Hz
+    offset_pose,            # offset pose
+    image_width,            # image width
+    image_height,           # image height
+    fov                    # camera's horizontal field of view
+)
+cam.SetName("Camera Sensor")
+cam.SetLag(lag)
+cam.SetCollectionWindow(exposure_time)
+cam.PushFilter(sens.ChFilterVisualize(
+    image_width, image_height, "Arm Camera"))
+cam.PushFilter(sens.ChFilterRGBA8Access())
+manager.AddSensor(cam) # Turned off
+
+
 # Simulation loop
 while vis.Run():
     vis.BeginScene()
     vis.Render()
     vis.EndScene()
     sys.DoStepDynamics(0.01)
+    manager.Update()
 	##model.PrintBodyPositions()
 

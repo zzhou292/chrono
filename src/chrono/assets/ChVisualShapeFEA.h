@@ -179,6 +179,9 @@ class ChApi ChVisualShapeFEA {
     /// Update the triangle visualization mesh so that it matches with the FEM mesh.
     void Update(ChObj* updater, const ChFrame<>& frame);
 
+    /// Get the internal triangle mesh shape (for adding materials, etc.)
+    std::shared_ptr<ChVisualShapeTriangleMesh> GetTriangleMeshShape() { return m_trimesh_shape; }
+
   private:
     double ComputeScalarOutput(std::shared_ptr<fea::ChNodeFEAxyz> node,
                                std::shared_ptr<fea::ChElementBase> element) const;

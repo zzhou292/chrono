@@ -96,12 +96,12 @@ void ChOptixPipeline::Cleanup() {
         m_miss_module = 0;
     }
 
-    #ifdef USE_SENSOR_NVDB
+#ifdef USE_SENSOR_NVDB
     if (m_nvdb_vol_intersection_module) {
         OPTIX_ERROR_CHECK(optixModuleDestroy(m_nvdb_vol_intersection_module));
         m_nvdb_vol_intersection_module = 0;
     }
-    #endif
+#endif
 
     // === optix program groups ===
     // raygen groups
@@ -165,12 +165,12 @@ void ChOptixPipeline::Cleanup() {
         m_hit_mesh_group = 0;
     }
 
-    #ifdef USE_SENSOR_NVDB
+#ifdef USE_SENSOR_NVDB
     if (m_nvdb_vol_group) {
         OPTIX_ERROR_CHECK(optixProgramGroupDestroy(m_nvdb_vol_group));
         m_nvdb_vol_group = 0;
     }
-    #endif
+#endif
 
     // clean up environment map data if it exists
     // clear out and free texture samplers
@@ -280,10 +280,10 @@ void ChOptixPipeline::CompileBaseShaders() {
     GetShaderFromFile(m_context, m_cyl_intersection_module, "cylinder", module_compile_options,
                       m_pipeline_compile_options);
 
-    #ifdef USE_SENSOR_NVDB
+#ifdef USE_SENSOR_NVDB
     GetShaderFromFile(m_context, m_nvdb_vol_intersection_module, "nvdb_vol_intersect", module_compile_options,
                       m_pipeline_compile_options);
-    #endif
+#endif
 
     // material shaders
     GetShaderFromFile(m_context, m_material_shading_module, "material_shaders", module_compile_options,
@@ -355,12 +355,12 @@ void ChOptixPipeline::AssembleBaseProgramGroups() {
     CreateOptixProgramGroup(m_hit_mesh_group, OPTIX_PROGRAM_GROUP_KIND_HITGROUP, nullptr, nullptr,
                             m_material_shading_module, "__closesthit__material_shader");
 
-    #ifdef USE_SENSOR_NVDB
+#ifdef USE_SENSOR_NVDB
     // NanoVDB Voulume intersection and shading
     CreateOptixProgramGroup(m_nvdb_vol_group, OPTIX_PROGRAM_GROUP_KIND_HITGROUP, m_nvdb_vol_intersection_module,
                             "__intersection__nvdb_vol_intersect", m_material_shading_module,
                             "__closesthit__material_shader");
-    #endif
+#endif
 
     // miss shading
     CreateOptixProgramGroup(m_miss_group, OPTIX_PROGRAM_GROUP_KIND_MISS, nullptr, nullptr, m_miss_module,
@@ -369,14 +369,13 @@ void ChOptixPipeline::AssembleBaseProgramGroups() {
     // radar raygen
     CreateOptixProgramGroup(m_radar_raygen_group, OPTIX_PROGRAM_GROUP_KIND_RAYGEN, nullptr, nullptr,
                             m_radar_raygen_module, "__raygen__radar");
-                            
+
     // camera pinhole raygen
     CreateOptixProgramGroup(m_camera_raygen_group, OPTIX_PROGRAM_GROUP_KIND_RAYGEN, nullptr, nullptr,
                             m_camera_raygen_module, "__raygen__camera");
     // camera fov lens raygen
     // CreateOptixProgramGroup(m_camera_fov_lens_raygen_group, OPTIX_PROGRAM_GROUP_KIND_RAYGEN, nullptr, nullptr,
     //                         m_camera_raygen_module, "__raygen__camera_fov_lens");
-    
 
     CreateOptixProgramGroup(m_depthCamera_raygen_group, OPTIX_PROGRAM_GROUP_KIND_RAYGEN, nullptr, nullptr,
                             m_camera_raygen_module, "__raygen__depthcamera");
@@ -384,7 +383,7 @@ void ChOptixPipeline::AssembleBaseProgramGroups() {
     // segmentation pinhole raygen
     CreateOptixProgramGroup(m_segmentation_raygen_group, OPTIX_PROGRAM_GROUP_KIND_RAYGEN, nullptr, nullptr,
                             m_camera_raygen_module, "__raygen__segmentation");
-    
+
     // segmentation fov lens raygen
     // CreateOptixProgramGroup(m_segmentation_fov_lens_raygen_group, OPTIX_PROGRAM_GROUP_KIND_RAYGEN, nullptr, nullptr,
     //                         m_camera_raygen_module, "__raygen__segmentation_fov_lens");
@@ -394,7 +393,6 @@ void ChOptixPipeline::AssembleBaseProgramGroups() {
     // lidar multi raygen
     CreateOptixProgramGroup(m_lidar_multi_raygen_group, OPTIX_PROGRAM_GROUP_KIND_RAYGEN, nullptr, nullptr,
                             m_lidar_raygen_module, "__raygen__lidar_multi");
-    
 }
 
 void ChOptixPipeline::CreateBaseSBT() {
@@ -501,9 +499,9 @@ void ChOptixPipeline::SpawnPipeline(PipelineType type) {
         case PipelineType::DEPTH_CAMERA: {
             program_groups.push_back(m_depthCamera_raygen_group);
             OPTIX_ERROR_CHECK(optixSbtRecordPackHeader(m_depthCamera_raygen_group, raygen_record.get()));
-            raygen_record->data.specific.depthCamera.hFOV = 3.14f / 4;   // default value
-            raygen_record->data.specific.depthCamera.frame_buffer = {};  // default value
-            raygen_record->data.specific.depthCamera.lens_model = PINHOLE;     // default value
+            raygen_record->data.specific.depthCamera.hFOV = 3.14f / 4;      // default value
+            raygen_record->data.specific.depthCamera.frame_buffer = {};     // default value
+            raygen_record->data.specific.depthCamera.lens_model = PINHOLE;  // default value
             raygen_record->data.specific.depthCamera.lens_parameters = {};
             raygen_record->data.specific.depthCamera.max_depth = 1000.f;  // default value
             break;
@@ -568,10 +566,10 @@ void ChOptixPipeline::SpawnPipeline(PipelineType type) {
     program_groups.push_back(m_hit_cyl_group);
     program_groups.push_back(m_hit_mesh_group);
     program_groups.push_back(m_miss_group);
-    #ifdef USE_SENSOR_NVDB
+#ifdef USE_SENSOR_NVDB
     program_groups.push_back(m_nvdb_vol_group);
-    #endif
-    
+#endif
+
     OptixPipelineLinkOptions pipeline_link_options = {m_trace_depth};
 
     char log[2048];
@@ -684,7 +682,6 @@ CUdeviceptr ChOptixPipeline::GetMaterialPool() {
         md_material_pool = {};
     }
 
-    
     // allocate memory for new pool
     CUDA_ERROR_CHECK(
         cudaMalloc(reinterpret_cast<void**>(&md_material_pool), sizeof(MaterialParameters) * m_material_pool.size()));
@@ -734,8 +731,6 @@ unsigned int ChOptixPipeline::GetMaterial(std::shared_ptr<ChVisualMaterial> mat)
         material.tex_scale = {mat->GetTextureScale().x(), mat->GetTextureScale().y()};
         material.emissive_power = mat->GetEmissivePower();
 
-      
-
         // normal texture
         if (mat->GetNormalMapTexture() != "") {
             cudaArray_t d_img_array;
@@ -751,7 +746,7 @@ unsigned int ChOptixPipeline::GetMaterial(std::shared_ptr<ChVisualMaterial> mat)
             cudaArray_t d_img_array;
             CreateDeviceTexture(material.ks_tex, d_img_array, mat->GetKsTexture());
         }
-        
+
         // metalic texture
         if (mat->GetMetallicTexture() != "") {
             cudaArray_t d_img_array;
@@ -815,9 +810,6 @@ unsigned int ChOptixPipeline::GetMaterial(std::shared_ptr<ChVisualMaterial> mat)
             m_material_pool.push_back(material);
             m_default_material_id = static_cast<unsigned int>(m_material_pool.size() - 1);
             m_default_material_inst = true;
-            
-           
-
         }
 
         return m_default_material_id;
@@ -1118,6 +1110,22 @@ unsigned int ChOptixPipeline::GetDeformableMeshMaterial(CUdeviceptr& d_vertices,
     return mat_id;
 }
 
+bool ChOptixPipeline::CheckDeformableMeshesNeedRebuild() {
+    for (int i = 0; i < m_deformable_meshes.size(); i++) {
+        std::shared_ptr<ChVisualShapeTriangleMesh> mesh_shape = std::get<0>(m_deformable_meshes[i]);
+        unsigned int num_prev_triangles = std::get<3>(m_deformable_meshes[i]);
+
+        auto mesh = mesh_shape->GetMesh();
+        unsigned int current_triangles = static_cast<unsigned int>(mesh->GetIndicesVertexes().size());
+
+        // If mesh was empty but now has triangles, need full rebuild
+        if (num_prev_triangles == 0 && current_triangles > 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void ChOptixPipeline::UpdateDeformableMeshes() {
     for (int i = 0; i < m_deformable_meshes.size(); i++) {
         std::shared_ptr<ChVisualShapeTriangleMesh> mesh_shape = std::get<0>(m_deformable_meshes[i]);
@@ -1127,31 +1135,38 @@ void ChOptixPipeline::UpdateDeformableMeshes() {
 
         auto mesh = mesh_shape->GetMesh();
 
-        // if the mesh has changed size, we need to recreate the entire mesh (not very nice)
-        if (num_prev_triangles != mesh_shape->GetMesh()->GetIndicesVertexes().size()) {
+        // Skip empty meshes - they'll trigger rebuild via CheckDeformableMeshesNeedRebuild
+        if (mesh->GetIndicesVertexes().size() == 0) {
+            continue;
+        }
+
+        // Skip meshes that were empty (need rebuild, not update)
+        if (num_prev_triangles == 0) {
+            continue;
+        }
+
+        // if the mesh has changed size, we need to recreate the entire mesh
+        if (num_prev_triangles != mesh->GetIndicesVertexes().size()) {
             throw std::runtime_error("Error: changing mesh size not supported by Chrono::Sensor");
         }
 
         // update all the vertex locations
-
         std::vector<float4> vertex_buffer = std::vector<float4>(mesh->GetCoordsVertices().size());
         for (int j = 0; j < mesh->GetCoordsVertices().size(); j++) {
-            vertex_buffer[j] = make_float4((float)mesh->GetCoordsVertices()[j].x(),  //
-                                           (float)mesh->GetCoordsVertices()[j].y(),  //
-                                           (float)mesh->GetCoordsVertices()[j].z(),  //
-                                           0.f);                                     // padding for alignment
+            vertex_buffer[j] =
+                make_float4((float)mesh->GetCoordsVertices()[j].x(), (float)mesh->GetCoordsVertices()[j].y(),
+                            (float)mesh->GetCoordsVertices()[j].z(), 0.f);
         }
         CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_vertices), vertex_buffer.data(),
                                     sizeof(float4) * vertex_buffer.size(), cudaMemcpyHostToDevice));
 
-        // update all the normals if normal exist
+        // update all the normals if normals exist
         if (mesh_shape->GetMesh()->GetCoordsNormals().size() > 0) {
             std::vector<float4> normal_buffer = std::vector<float4>(mesh->GetCoordsNormals().size());
             for (int j = 0; j < mesh->GetCoordsNormals().size(); j++) {
-                normal_buffer[j] = make_float4((float)mesh->GetCoordsNormals()[j].x(),  //
-                                               (float)mesh->GetCoordsNormals()[j].y(),  //
-                                               (float)mesh->GetCoordsNormals()[j].z(),  //
-                                               0.f);                                    // padding for alignment
+                normal_buffer[j] =
+                    make_float4((float)mesh->GetCoordsNormals()[j].x(), (float)mesh->GetCoordsNormals()[j].y(),
+                                (float)mesh->GetCoordsNormals()[j].z(), 0.f);
             }
             CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_normals), normal_buffer.data(),
                                         sizeof(float4) * normal_buffer.size(), cudaMemcpyHostToDevice));

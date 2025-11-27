@@ -14,7 +14,8 @@ import math as m
 import pychrono as chrono
 import pychrono.fea as fea
 import pychrono.irrlicht as chronoirr
-
+import pychrono.sensor as sens
+import numpy as np
 
 
 print("Copyright (c) 2017 projectchrono.org")
@@ -180,29 +181,49 @@ sys.Add(mesh_beam)
 colormap_type = chrono.ChColormap.Type_FAST
 colormap_range = chrono.ChVector2d(0.0, 2.5)
 
+# Create a material for FEA visualization in sensor
+fea_material = chrono.ChVisualMaterial()
+fea_material.SetDiffuseColor(chrono.ChColor(0.8, 0.3, 0.3))  # reddish color
+fea_material.SetSpecularColor(chrono.ChColor(0.2, 0.2, 0.2))
+
+# Create material for tetrahedron mesh
+tet_material = chrono.ChVisualMaterial()
+tet_material.SetDiffuseColor(chrono.ChColor(0.9, 0.2, 0.2))  # Red
+tet_material.SetSpecularColor(chrono.ChColor(0.3, 0.3, 0.3))
+tet_material.SetRoughness(0.5)
+
+# Create FEA visualization
 vis_mesh_A = chrono.ChVisualShapeFEA()
-vis_mesh_A.SetFEMdataType(chrono.ChVisualShapeFEA.DataType_NODE_SPEED_NORM)
-vis_mesh_A.SetColormapRange(colormap_range)
+vis_mesh_A.SetFEMdataType(chrono.ChVisualShapeFEA.DataType_SURFACE)
 vis_mesh_A.SetSmoothFaces(True)
 mesh.AddVisualShapeFEA(vis_mesh_A)
 
-vis_mesh_B = chrono.ChVisualShapeFEA()
-vis_mesh_B.SetFEMdataType(chrono.ChVisualShapeFEA.DataType_CONTACTSURFACES)
-vis_mesh_B.SetWireframe(True)
-vis_mesh_B.SetDefaultMeshColor(chrono.ChColor(1, 0.5, 0))
-mesh.AddVisualShapeFEA(vis_mesh_B)
+# Now access the internal trimesh shape through the visual model and add material
+# The trimesh is the second-to-last shape added (glyphs is last)
+num_shapes = mesh.GetVisualModel().GetNumShapes()
+trimesh_shape = mesh.GetVisualModel().GetShape(num_shapes - 2)  # Get the trimesh (not glyphs)
+
+# Create and add material
+tet_material = chrono.ChVisualMaterial()
+tet_material.SetDiffuseColor(chrono.ChColor(0.9, 0.2, 0.2))  # Red
+tet_material.SetSpecularColor(chrono.ChColor(0.3, 0.3, 0.3))
+trimesh_shape.AddMaterial(tet_material)
+
+# Create material for beam mesh  
+beam_material = chrono.ChVisualMaterial()
+beam_material.SetDiffuseColor(chrono.ChColor(0.2, 0.6, 0.9))  # Blue
+beam_material.SetSpecularColor(chrono.ChColor(0.3, 0.3, 0.3))
 
 vis_beam_A = chrono.ChVisualShapeFEA()
-vis_beam_A.SetFEMdataType(chrono.ChVisualShapeFEA.DataType_NODE_SPEED_NORM)
-vis_beam_A.SetColormapRange(colormap_range)
+vis_beam_A.SetFEMdataType(chrono.ChVisualShapeFEA.DataType_SURFACE)
 vis_beam_A.SetSmoothFaces(True)
 mesh_beam.AddVisualShapeFEA(vis_beam_A)
 
-vis_beam_B = chrono.ChVisualShapeFEA()
-vis_beam_B.SetFEMglyphType(chrono.ChVisualShapeFEA.GlyphType_NODE_DOT_POS)
-vis_beam_B.SetFEMdataType(chrono.ChVisualShapeFEA.DataType_NONE)
-vis_beam_B.SetSymbolsThickness(0.008)
-mesh_beam.AddVisualShapeFEA(vis_beam_B)
+num_shapes = mesh_beam.GetVisualModel().GetNumShapes()
+beam_trimesh = mesh_beam.GetVisualModel().GetShape(num_shapes - 2)
+beam_material = chrono.ChVisualMaterial()
+beam_material.SetDiffuseColor(chrono.ChColor(0.2, 0.6, 0.9))  # Blue
+beam_trimesh.AddMaterial(beam_material)
 
 # Create the Irrlicht visualization
 vis = chronoirr.ChVisualSystemIrrlicht()
@@ -228,10 +249,64 @@ solver.EnableWarmStart(True)  # Enable for better convergence when using Euler i
 
 sys.GetSolver().AsIterative().SetTolerance(1e-10)
 
+
+
+### Add sensors
+# Add camera sensor --------------------------------------------------------------------
+
+lens_model = sens.PINHOLE
+update_rate = 250
+image_width = 2048
+image_height = 2048
+fov = 1.408
+lag = 0
+exposure_time = 0
+
+manager = sens.ChSensorManager(sys)
+
+# Add more/better lighting
+intensity = 2.0  # Increased intensity
+manager.scene.AddPointLight(chrono.ChVector3f(0, 2, 2), chrono.ChColor(intensity, intensity, intensity), 100.0)
+manager.scene.AddPointLight(chrono.ChVector3f(-2, 2, 0), chrono.ChColor(intensity, intensity, intensity), 100.0)
+
+
+rotation_quat = chrono.QuatFromAngleAxis(-np.pi*1/2, chrono.ChVector3d(1, 0, 0))
+offset_pose = chrono.ChFramed(
+        chrono.ChVector3d(-2.0, 0.8, 0.0), rotation_quat)
+
+cam = sens.ChCameraSensor(
+    floor,              # body camera is attached to
+    update_rate,            # update rate in Hz
+    offset_pose,            # offset pose
+    image_width,            # image width
+    image_height,           # image height
+    fov                    # camera's horizontal field of view
+)
+cam.SetName("Camera Sensor")
+cam.SetLag(lag)
+cam.SetCollectionWindow(exposure_time)
+cam.PushFilter(sens.ChFilterVisualize(
+    image_width, image_height, "Arm Camera"))
+cam.PushFilter(sens.ChFilterRGBA8Access())
+mesh.Update(sys.GetChTime(), True)  # This might trigger visual model update
+mesh_beam.Update(sys.GetChTime(), True)
+manager.AddSensor(cam) # Turned off
+
+# Force FEA visual model update before first sensor render
+# Run one step and render to trigger ChVisualShapeFEA::Update()
+sys.DoStepDynamics(0.001)
+vis.BeginScene()
+vis.Render()  # This triggers visual model updates
+vis.EndScene()
+
+# Now rebuild the sensor scene with populated FEA meshes
+manager.ReconstructScenes()
+
 # Simulation loop
 while vis.Run():
     vis.BeginScene()
     vis.Render()
     vis.EndScene()
     sys.DoStepDynamics(0.0005)
+    manager.Update()
 

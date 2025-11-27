@@ -48,10 +48,10 @@
 #include <random>
 
 #include "chrono_sensor/cuda/cuda_utils.cuh"
+#include "chrono/fea/ChMesh.h"
 
 namespace chrono {
 namespace sensor {
-
 
 // using namespace optix;
 ChOptixEngine::ChOptixEngine(ChSystem* sys, int device_id, int max_scene_reflections, bool verbose)
@@ -104,12 +104,12 @@ void ChOptixEngine::Initialize() {
     m_params.scene_epsilon = 1.e-3f;    // TODO: determine a good value for this
     m_params.importance_cutoff = .01f;  /// TODO: determine a good value for this
 
-    #ifdef USE_SENSOR_NVDB
-        m_params.handle_ptr = nullptr;
-    #else
+#ifdef USE_SENSOR_NVDB
+    m_params.handle_ptr = nullptr;
+#else
     m_params.handle_ptr = 0;
-    #endif  // USE_SENSOR_NVDB
-    
+#endif  // USE_SENSOR_NVDB
+
     CUDA_ERROR_CHECK(cudaMalloc(reinterpret_cast<void**>(&md_params), sizeof(ContextParameters)));
     m_params.root = {};
 
@@ -153,7 +153,7 @@ void ChOptixEngine::AssignSensor(std::shared_ptr<ChOptixSensor> sensor) {
             if (cam->GetUseGI()) {
                 std::cout << "Sensor: " << cam->GetName() << " requested global illumination\n";
                 opx_filter->m_denoiser = chrono_types::make_shared<ChOptixDenoiser>(m_context);
-                //opx_filter->m_denoiser = nullptr;
+                // opx_filter->m_denoiser = nullptr;
             }
         }
 
@@ -180,8 +180,9 @@ void ChOptixEngine::AssignSensor(std::shared_ptr<ChOptixSensor> sensor) {
 }
 
 void ChOptixEngine::UpdateSensors(std::shared_ptr<ChScene> scene) {
-    if (!m_params.root) {
+    if (!m_params.root || m_scene_needs_rebuild) {
         ConstructScene();
+        m_scene_needs_rebuild = false;
     }
     std::vector<int> to_be_updated;
     std::vector<int> to_be_waited_on;
@@ -561,13 +562,13 @@ void ChOptixEngine::ConstructScene() {
                     // std::cout << "Ignoring an asset that is set to invisible\n";
                 } else if (auto box_shape = std::dynamic_pointer_cast<ChVisualShapeBox>(shape)) {
                     boxVisualization(body, box_shape, shape_frame);
-                } 
-                #ifdef USE_SENSOR_NVDB
+                }
+#ifdef USE_SENSOR_NVDB
                 else if (std::shared_ptr<ChNVDBShape> nvdb_shape = std::dynamic_pointer_cast<ChNVDBShape>(shape)) {
                     nvdbVisualization(body, nvdb_shape, shape_frame);
                     printf("Added NVDB Shape!");
                 }
-                #endif
+#endif
                 else if (auto sphere_shape = std::dynamic_pointer_cast<ChVisualShapeSphere>(shape)) {
                     sphereVisualization(body, sphere_shape, shape_frame);
                 } else if (auto cylinder_shape = std::dynamic_pointer_cast<ChVisualShapeCylinder>(shape)) {
@@ -637,6 +638,33 @@ void ChOptixEngine::ConstructScene() {
         }
     }
 
+    // === FIX: Process FEA meshes (they are stored in a separate meshlist) ===
+    for (auto mesh : m_system->GetMeshes()) {
+        if (mesh->GetVisualModel()) {
+            for (auto& shape_instance : mesh->GetVisualModel()->GetShapeInstances()) {
+                const auto& shape = shape_instance.shape;
+                const auto& shape_frame = shape_instance.frame;
+
+                auto dummy_body = chrono_types::make_shared<ChBody>();
+
+                if (!shape->IsVisible()) {
+                    // Skip invisible shapes
+                } else if (auto trimesh_shape = std::dynamic_pointer_cast<ChVisualShapeTriangleMesh>(shape)) {
+                    // Skip empty meshes (FEA meshes start empty until Update() is called)
+                    if (trimesh_shape->GetMesh()->GetCoordsVertices().size() == 0) {
+                        continue;
+                    }
+
+                    if (!trimesh_shape->IsMutable()) {
+                        rigidMeshVisualization(dummy_body, trimesh_shape, shape_frame);
+                    } else {
+                        deformableMeshVisualization(dummy_body, trimesh_shape, shape_frame);
+                    }
+                }
+            }
+        }
+    }
+
     m_params.root = m_geometry->CreateRootStructure();
     m_pipeline->UpdateAllSBTs();
     m_pipeline->UpdateAllPipelines();
@@ -699,6 +727,12 @@ void ChOptixEngine::UpdateCameraTransforms(std::vector<int>& to_be_updated, std:
 }
 
 void ChOptixEngine::UpdateDeformableMeshes() {
+    // Check if any deformable mesh needs full rebuild (was empty, now has data)
+    if (m_pipeline->CheckDeformableMeshesNeedRebuild()) {
+        m_scene_needs_rebuild = true;
+        return;  // Will rebuild on next update
+    }
+
     // update the mesh in the pipeline
     m_pipeline->UpdateDeformableMeshes();
     // update the meshes in the geometric scene
@@ -718,12 +752,10 @@ void ChOptixEngine::UpdateSceneDescription(std::shared_ptr<ChScene> scene) {
     }
 
     if (scene->GetLightsChanged() || scene->GetOriginChanged() || scene->GetAreaLightsChanged()) {
-
         // Handling changes to area lights
 
         std::vector<AreaLight> a = scene->GetAreaLights();
-        
-       
+
         if (a.size() != m_params.num_arealights) {  // need new memory in this case
             if (m_params.arealights)
                 CUDA_ERROR_CHECK(cudaFree(reinterpret_cast<void*>(m_params.arealights)));
@@ -731,7 +763,6 @@ void ChOptixEngine::UpdateSceneDescription(std::shared_ptr<ChScene> scene) {
             cudaMalloc(reinterpret_cast<void**>(&m_params.arealights), a.size() * sizeof(AreaLight));
         }
 
-        
         for (unsigned int i = 0; i < a.size(); i++) {
             a[i].pos = make_float3(a[i].pos.x - scene->GetOriginOffset().x(), a[i].pos.y - scene->GetOriginOffset().y(),
                                    a[i].pos.z - scene->GetOriginOffset().z());
@@ -741,7 +772,7 @@ void ChOptixEngine::UpdateSceneDescription(std::shared_ptr<ChScene> scene) {
                    cudaMemcpyHostToDevice);
 
         m_params.num_arealights = static_cast<int>(a.size());
-        
+
         // Handling changes for point lights
 
         std::vector<PointLight> l = scene->GetPointLights();
@@ -760,7 +791,7 @@ void ChOptixEngine::UpdateSceneDescription(std::shared_ptr<ChScene> scene) {
         cudaMemcpy(reinterpret_cast<void*>(m_params.lights), l.data(), l.size() * sizeof(PointLight),
                    cudaMemcpyHostToDevice);
         m_params.num_lights = static_cast<int>(l.size());
-        
+
         // Handling changes in origin
 
         m_params.ambient_light_color = {scene->GetAmbientLight().x(), scene->GetAmbientLight().y(),
@@ -774,10 +805,10 @@ void ChOptixEngine::UpdateSceneDescription(std::shared_ptr<ChScene> scene) {
         scene->ResetOriginChanged();
     }
 
-    #ifdef USE_SENSOR_NVDB
+#ifdef USE_SENSOR_NVDB
     if (float* d_pts = scene->GetFSIParticles()) {
         int n = scene->GetNumFSIParticles();
-        
+
         printf("Creatinng NanoVDB Handle...\n");
         using buildType = nanovdb::Point;
         nanovdb::GridHandle<nanovdb::CudaDeviceBuffer> handle = createNanoVDBGridHandle(d_pts, n);
@@ -821,8 +852,8 @@ void ChOptixEngine::UpdateSceneDescription(std::shared_ptr<ChScene> scene) {
 
         cudaMemcpy(reinterpret_cast<void*>(md_params), &m_params, sizeof(ContextParameters), cudaMemcpyHostToDevice);
     }
-    #endif
-    }
+#endif
+}
 
 }  // namespace sensor
 }  // namespace chrono

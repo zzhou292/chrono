@@ -149,9 +149,9 @@ class CH_SENSOR_API ChOptixEngine {
                                      std::shared_ptr<ChVisualShapeTriangleMesh> sphere_shape,
                                      ChFrame<> asset_frame);
 
-    #ifdef USE_SENSOR_NVDB
+#ifdef USE_SENSOR_NVDB
     void nvdbVisualization(std::shared_ptr<ChBody> body, std::shared_ptr<ChNVDBShape> box_shape, ChFrame<> asset_frame);
-    #endif
+#endif
 
     std::vector<unsigned int> m_renderQueue;  ///< list of sensor indices that need to be updated
 
@@ -184,6 +184,9 @@ class CH_SENSOR_API ChOptixEngine {
     ChSystem* m_system;       ///< the chrono system that defines the scene
     unsigned int m_deviceId;  ///< ID of the GPU the context should be attached to
     int m_recursions;         ///< number of allowable ray tracing recursions in optix
+
+    /// Flag indicating scene needs to be rebuilt (e.g., FEA meshes became populated)
+    bool m_scene_needs_rebuild = false;
 };
 
 /// @} sensor_optix
