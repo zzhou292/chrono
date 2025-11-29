@@ -67,9 +67,21 @@ __device__ __inline__ void GetTriangleData(float3& normal,
         mesh_params.normal_buffer) {  // use vertex normals if normal index buffer exists
         const uint4& normal_idx = mesh_params.normal_index_buffer[tri_id];
 
-        normal = normalize(make_float3(mesh_params.normal_buffer[normal_idx.y]) * bary_coord.x +
+        float3 interp_normal = make_float3(mesh_params.normal_buffer[normal_idx.y]) * bary_coord.x +
                            make_float3(mesh_params.normal_buffer[normal_idx.z]) * bary_coord.y +
-                           make_float3(mesh_params.normal_buffer[normal_idx.x]) * (1.0f - bary_coord.x - bary_coord.y));
+                               make_float3(mesh_params.normal_buffer[normal_idx.x]) * (1.0f - bary_coord.x - bary_coord.y);
+        
+        // Check if interpolated normal is valid (non-zero length)
+        float len_sq = interp_normal.x * interp_normal.x + 
+                       interp_normal.y * interp_normal.y + 
+                       interp_normal.z * interp_normal.z;
+        
+        if (len_sq > 1e-12f) {
+            normal = normalize(interp_normal);
+        } else {
+            // Fall back to face normal if vertex normals are zero/invalid
+            normal = normalize(Cross(v2 - v1, v3 - v1));
+        }
 
     } else {  // else use face normals calculated from vertices
         normal = normalize(Cross(v2 - v1, v3 - v1));

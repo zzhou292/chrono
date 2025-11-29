@@ -996,10 +996,94 @@ unsigned int ChOptixPipeline::GetRigidMeshMaterial(CUdeviceptr& d_vertices,
 
         float4* d_normal_buffer = {};
         if (normal_buffer.size() > 0) {  // optional for there to be vertex normals
+            // Check if normals are valid (non-zero)
+            bool has_valid_normals = false;
             for (int i = 0; i < mesh->GetCoordsNormals().size(); i++) {
-                normal_buffer[i] = make_float4((float)mesh->GetCoordsNormals()[i].x(),  //
-                                               (float)mesh->GetCoordsNormals()[i].y(),  //
-                                               (float)mesh->GetCoordsNormals()[i].z(), 0.f);
+                auto& n = mesh->GetCoordsNormals()[i];
+                if (n.x() != 0 || n.y() != 0 || n.z() != 0) {
+                    has_valid_normals = true;
+                    break;
+                }
+            }
+
+            if (has_valid_normals) {
+                for (int i = 0; i < mesh->GetCoordsNormals().size(); i++) {
+                    normal_buffer[i] = make_float4((float)mesh->GetCoordsNormals()[i].x(),  //
+                                                   (float)mesh->GetCoordsNormals()[i].y(),  //
+                                                   (float)mesh->GetCoordsNormals()[i].z(), 0.f);
+                }
+            } else {
+                // Compute normals from face geometry
+                normal_buffer = std::vector<float4>(mesh->GetCoordsVertices().size(), make_float4(0, 0, 0, 0));
+                for (int j = 0; j < mesh->GetIndicesVertexes().size(); j++) {
+                    auto& idx = mesh->GetIndicesVertexes()[j];
+                    auto& v0 = mesh->GetCoordsVertices()[idx.x()];
+                    auto& v1 = mesh->GetCoordsVertices()[idx.y()];
+                    auto& v2 = mesh->GetCoordsVertices()[idx.z()];
+                    ChVector3d e1 = v1 - v0;
+                    ChVector3d e2 = v2 - v0;
+                    ChVector3d fn = e1.Cross(e2);
+                    fn.Normalize();
+                    normal_buffer[idx.x()].x += (float)fn.x();
+                    normal_buffer[idx.x()].y += (float)fn.y();
+                    normal_buffer[idx.x()].z += (float)fn.z();
+                    normal_buffer[idx.y()].x += (float)fn.x();
+                    normal_buffer[idx.y()].y += (float)fn.y();
+                    normal_buffer[idx.y()].z += (float)fn.z();
+                    normal_buffer[idx.z()].x += (float)fn.x();
+                    normal_buffer[idx.z()].y += (float)fn.y();
+                    normal_buffer[idx.z()].z += (float)fn.z();
+                }
+                for (int j = 0; j < normal_buffer.size(); j++) {
+                    float len =
+                        sqrtf(normal_buffer[j].x * normal_buffer[j].x + normal_buffer[j].y * normal_buffer[j].y +
+                              normal_buffer[j].z * normal_buffer[j].z);
+                    if (len > 1e-6f) {
+                        normal_buffer[j].x /= len;
+                        normal_buffer[j].y /= len;
+                        normal_buffer[j].z /= len;
+                    } else {
+                        normal_buffer[j] = make_float4(0, 0, 1, 0);
+                    }
+                }
+            }
+            CUDA_ERROR_CHECK(
+                cudaMalloc(reinterpret_cast<void**>(&d_normal_buffer), sizeof(float4) * normal_buffer.size()));
+            CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_normal_buffer), normal_buffer.data(),
+                                        sizeof(float4) * normal_buffer.size(), cudaMemcpyHostToDevice));
+            m_mesh_buffers_dptrs.push_back(reinterpret_cast<CUdeviceptr>(d_normal_buffer));
+        } else if (mesh->GetCoordsVertices().size() > 0) {
+            // No normals provided at all - compute from scratch for deformable meshes
+            normal_buffer = std::vector<float4>(mesh->GetCoordsVertices().size(), make_float4(0, 0, 0, 0));
+            for (int j = 0; j < mesh->GetIndicesVertexes().size(); j++) {
+                auto& idx = mesh->GetIndicesVertexes()[j];
+                auto& v0 = mesh->GetCoordsVertices()[idx.x()];
+                auto& v1 = mesh->GetCoordsVertices()[idx.y()];
+                auto& v2 = mesh->GetCoordsVertices()[idx.z()];
+                ChVector3d e1 = v1 - v0;
+                ChVector3d e2 = v2 - v0;
+                ChVector3d fn = e1.Cross(e2);
+                fn.Normalize();
+                normal_buffer[idx.x()].x += (float)fn.x();
+                normal_buffer[idx.x()].y += (float)fn.y();
+                normal_buffer[idx.x()].z += (float)fn.z();
+                normal_buffer[idx.y()].x += (float)fn.x();
+                normal_buffer[idx.y()].y += (float)fn.y();
+                normal_buffer[idx.y()].z += (float)fn.z();
+                normal_buffer[idx.z()].x += (float)fn.x();
+                normal_buffer[idx.z()].y += (float)fn.y();
+                normal_buffer[idx.z()].z += (float)fn.z();
+            }
+            for (int j = 0; j < normal_buffer.size(); j++) {
+                float len = sqrtf(normal_buffer[j].x * normal_buffer[j].x + normal_buffer[j].y * normal_buffer[j].y +
+                                  normal_buffer[j].z * normal_buffer[j].z);
+                if (len > 1e-6f) {
+                    normal_buffer[j].x /= len;
+                    normal_buffer[j].y /= len;
+                    normal_buffer[j].z /= len;
+                } else {
+                    normal_buffer[j] = make_float4(0, 0, 1, 0);
+                }
             }
             CUDA_ERROR_CHECK(
                 cudaMalloc(reinterpret_cast<void**>(&d_normal_buffer), sizeof(float4) * normal_buffer.size()));
@@ -1160,14 +1244,71 @@ void ChOptixPipeline::UpdateDeformableMeshes() {
         CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_vertices), vertex_buffer.data(),
                                     sizeof(float4) * vertex_buffer.size(), cudaMemcpyHostToDevice));
 
-        // update all the normals if normals exist
-        if (mesh_shape->GetMesh()->GetCoordsNormals().size() > 0) {
+        // Check if normals exist and are valid (non-zero)
+        bool has_valid_normals = false;
+        if (mesh->GetCoordsNormals().size() > 0) {
+            for (int j = 0; j < mesh->GetCoordsNormals().size(); j++) {
+                auto& n = mesh->GetCoordsNormals()[j];
+                if (n.x() != 0 || n.y() != 0 || n.z() != 0) {
+                    has_valid_normals = true;
+                    break;
+                }
+            }
+        }
+
+        if (has_valid_normals) {
+            // Use existing normals
             std::vector<float4> normal_buffer = std::vector<float4>(mesh->GetCoordsNormals().size());
             for (int j = 0; j < mesh->GetCoordsNormals().size(); j++) {
                 normal_buffer[j] =
                     make_float4((float)mesh->GetCoordsNormals()[j].x(), (float)mesh->GetCoordsNormals()[j].y(),
                                 (float)mesh->GetCoordsNormals()[j].z(), 0.f);
             }
+            CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_normals), normal_buffer.data(),
+                                        sizeof(float4) * normal_buffer.size(), cudaMemcpyHostToDevice));
+        } else if (d_normals != 0) {
+            // Compute normals from face geometry (for FEA shells that don't provide normals)
+            std::vector<float4> normal_buffer =
+                std::vector<float4>(mesh->GetCoordsVertices().size(), make_float4(0, 0, 0, 0));
+
+            // Accumulate face normals to vertices
+            for (int j = 0; j < mesh->GetIndicesVertexes().size(); j++) {
+                auto& idx = mesh->GetIndicesVertexes()[j];
+                auto& v0 = mesh->GetCoordsVertices()[idx.x()];
+                auto& v1 = mesh->GetCoordsVertices()[idx.y()];
+                auto& v2 = mesh->GetCoordsVertices()[idx.z()];
+
+                // Compute face normal
+                ChVector3d e1 = v1 - v0;
+                ChVector3d e2 = v2 - v0;
+                ChVector3d fn = e1.Cross(e2);
+                fn.Normalize();
+
+                // Accumulate to each vertex
+                normal_buffer[idx.x()].x += (float)fn.x();
+                normal_buffer[idx.x()].y += (float)fn.y();
+                normal_buffer[idx.x()].z += (float)fn.z();
+                normal_buffer[idx.y()].x += (float)fn.x();
+                normal_buffer[idx.y()].y += (float)fn.y();
+                normal_buffer[idx.y()].z += (float)fn.z();
+                normal_buffer[idx.z()].x += (float)fn.x();
+                normal_buffer[idx.z()].y += (float)fn.y();
+                normal_buffer[idx.z()].z += (float)fn.z();
+            }
+
+            // Normalize accumulated normals
+            for (int j = 0; j < normal_buffer.size(); j++) {
+                float len = sqrtf(normal_buffer[j].x * normal_buffer[j].x + normal_buffer[j].y * normal_buffer[j].y +
+                                  normal_buffer[j].z * normal_buffer[j].z);
+                if (len > 1e-6f) {
+                    normal_buffer[j].x /= len;
+                    normal_buffer[j].y /= len;
+                    normal_buffer[j].z /= len;
+                } else {
+                    normal_buffer[j] = make_float4(0, 0, 1, 0);  // Default up normal
+                }
+            }
+
             CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_normals), normal_buffer.data(),
                                         sizeof(float4) * normal_buffer.size(), cudaMemcpyHostToDevice));
         }
