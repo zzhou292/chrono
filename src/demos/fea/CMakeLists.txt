@@ -4,6 +4,7 @@ set(FEA_DEMOS
     demo_FEA_basic
     demo_FEA_dynamics
     demo_FEA_loads_statics
+    jz_FEA_3243_check
 )
 
 # Add demos that require IRRLICHT run-time visualization
