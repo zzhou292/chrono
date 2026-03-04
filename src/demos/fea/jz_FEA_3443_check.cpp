@@ -33,7 +33,7 @@
 //
 // =============================================================================
 
-// ./bin/jz_FEA_3443_check --csv --dt 1e-3 --nthreads 8 --res0 --msglvl 2
+// ./bin/jz_FEA_3443_check --csv --nthreads 16 --res0 --msglvl 2
 
 #include "chrono/ChConfig.h"
 
