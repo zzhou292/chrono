@@ -16,6 +16,8 @@ set(DEMOS
   demo_MBS_collisionSMC
   demo_MBS_collision_trimesh
   demo_MBS_earthquake
+  demo_MBS_feat10_double_pendulum
+  demo_MBS_feat10_double_pendulum_spherical
   demo_MBS_friction
   demo_MBS_motors
   demo_MBS_spring  
