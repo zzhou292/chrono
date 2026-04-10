@@ -161,6 +161,12 @@ class CH_SENSOR_API ChOptixGeometry {
                                    bool rebuild = false,
                                    unsigned int gas_id = 0);
 
+    /// Refit the BVH for a deformable triangle mesh GAS (in-place update, no full rebuild)
+    void RefitTrianglesGAS(std::shared_ptr<ChVisualShapeTriangleMesh> mesh_shape,
+                           CUdeviceptr d_vertices,
+                           CUdeviceptr d_indices,
+                           unsigned int gas_id);
+
     /// Function ot convert scale, rotation, translation to top 3 rows of transform matrix
     /// @param[in] s the scale vector
     /// @param[in] a the rotation matrix

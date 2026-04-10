@@ -507,8 +507,8 @@ void ChOptixGeometry::UpdateDeformableMeshes() {
         CUdeviceptr d_indices = std::get<2>(m_deformable_meshes[i]);
         unsigned int gas_id = std::get<3>(m_deformable_meshes[i]);
 
-        // perform a rebuild of the triange acceleration structure
-        BuildTrianglesGAS(mesh_shape, d_vertices, d_indices, false, true, gas_id);
+        // Refit the BVH (ALLOW_UPDATE was set at build time) instead of a full rebuild
+        RefitTrianglesGAS(mesh_shape, d_vertices, d_indices, gas_id);
     }
 }
 
@@ -611,6 +611,47 @@ unsigned int ChOptixGeometry::BuildTrianglesGAS(std::shared_ptr<ChVisualShapeTri
     return mesh_gas_id;
 }
 
+void ChOptixGeometry::RefitTrianglesGAS(std::shared_ptr<ChVisualShapeTriangleMesh> mesh_shape,
+                                        CUdeviceptr d_vertices,
+                                        CUdeviceptr d_indices,
+                                        unsigned int gas_id) {
+    auto mesh = mesh_shape->GetMesh();
+
+    OptixAccelBuildOptions accel_options = {};
+    accel_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_UPDATE;
+    accel_options.operation = OPTIX_BUILD_OPERATION_UPDATE;
+
+    uint32_t triangle_flags[] = {OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT};
+    OptixBuildInput mesh_input = {};
+    mesh_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+
+    mesh_input.triangleArray.vertexBuffers = &d_vertices;
+    mesh_input.triangleArray.numVertices = static_cast<unsigned int>(mesh->GetCoordsVertices().size());
+    mesh_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
+    mesh_input.triangleArray.vertexStrideInBytes = sizeof(float4);
+
+    mesh_input.triangleArray.indexBuffer = d_indices;
+    mesh_input.triangleArray.numIndexTriplets = static_cast<unsigned int>(mesh->GetIndicesVertexes().size());
+    mesh_input.triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+    mesh_input.triangleArray.indexStrideInBytes = sizeof(uint4);
+
+    mesh_input.triangleArray.flags = triangle_flags;
+    mesh_input.triangleArray.numSbtRecords = 1;
+    mesh_input.triangleArray.sbtIndexOffsetBuffer = 0;
+
+    OptixAccelBufferSizes gas_buffer_sizes;
+    OPTIX_ERROR_CHECK(optixAccelComputeMemoryUsage(m_context, &accel_options, &mesh_input, 1, &gas_buffer_sizes));
+
+    CUdeviceptr d_temp_buffer_gas;
+    CUDA_ERROR_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_temp_buffer_gas), gas_buffer_sizes.tempSizeInBytes));
+
+    // Refit in-place: use existing output buffer as both input and output
+    OPTIX_ERROR_CHECK(optixAccelBuild(m_context, 0, &accel_options, &mesh_input, 1, d_temp_buffer_gas,
+                                      gas_buffer_sizes.tempSizeInBytes, m_gas_buffers[gas_id],
+                                      gas_buffer_sizes.outputSizeInBytes, &m_gas_handles[gas_id], nullptr, 0));
+    CUDA_ERROR_CHECK(cudaFree(reinterpret_cast<void**>(d_temp_buffer_gas)));
+}
+
 OptixTraversableHandle ChOptixGeometry::CreateRootStructure() {
     // std::cout << "Creating root structure with " << m_obj_mat_ids.size() << " objects\n";
 
@@ -646,7 +687,7 @@ OptixTraversableHandle ChOptixGeometry::CreateRootStructure() {
     // accel_options.buildFlags = OPTIX_BUILD_FLAG_NONE;
     // accel_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_UPDATE;
     // accel_options.buildFlags = OPTIX_BUILD_FLAG_PREFER_FAST_TRACE | OPTIX_BUILD_FLAG_ALLOW_UPDATE;
-    accel_options.buildFlags = OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;  // | OPTIX_BUILD_FLAG_ALLOW_UPDATE;
+    accel_options.buildFlags = OPTIX_BUILD_FLAG_PREFER_FAST_TRACE | OPTIX_BUILD_FLAG_ALLOW_UPDATE;
     accel_options.operation = OPTIX_BUILD_OPERATION_BUILD;
     accel_options.motionOptions.numKeys = 2;               // m_start_time default at start
     accel_options.motionOptions.timeBegin = m_start_time;  // default at start
@@ -724,14 +765,13 @@ void ChOptixGeometry::RebuildRootStructure() {
     instance_input.instanceArray.instances = md_instances;
     instance_input.instanceArray.numInstances = static_cast<unsigned int>(m_instances.size());
     OptixAccelBuildOptions accel_options = {};
-    accel_options.buildFlags = OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;  // | OPTIX_BUILD_FLAG_ALLOW_UPDATE;
-    accel_options.operation = OPTIX_BUILD_OPERATION_BUILD;
+    accel_options.buildFlags = OPTIX_BUILD_FLAG_PREFER_FAST_TRACE | OPTIX_BUILD_FLAG_ALLOW_UPDATE;
+    accel_options.operation = OPTIX_BUILD_OPERATION_UPDATE;
 
     accel_options.motionOptions.numKeys = 2;
     accel_options.motionOptions.timeBegin = m_start_time;
     accel_options.motionOptions.timeEnd = m_end_time;
     accel_options.motionOptions.flags = OPTIX_MOTION_FLAG_NONE;
-    // accel_options.operation = OPTIX_BUILD_OPERATION_UPDATE;
 
     OptixAccelBufferSizes ias_buffer_sizes;
     OPTIX_ERROR_CHECK(optixAccelComputeMemoryUsage(m_context, &accel_options, &instance_input,

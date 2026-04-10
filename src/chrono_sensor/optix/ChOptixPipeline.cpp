@@ -1121,32 +1121,50 @@ void ChOptixPipeline::UpdateDeformableMeshes() {
             throw std::runtime_error("Error: changing mesh size not supported by Chrono::Sensor");
         }
 
-        // update all the vertex locations
+        // Use partial update if only a subset of vertices were modified (e.g. SCM terrain)
+        const auto& modified = mesh_shape->GetModifiedVertices();
+        if (modified.size() > 0 && modified.size() < mesh->GetCoordsVertices().size() / 2) {
+            // Partial vertex upload — only the modified vertices
+            const auto& verts = mesh->GetCoordsVertices();
+            const auto& normals = mesh->GetCoordsNormals();
+            bool has_normals = normals.size() > 0 && d_normals;
 
-        std::vector<float4> vertex_buffer = std::vector<float4>(mesh->GetCoordsVertices().size());
-        for (int j = 0; j < mesh->GetCoordsVertices().size(); j++) {
-            vertex_buffer[j] = make_float4((float)mesh->GetCoordsVertices()[j].x(),  //
-                                           (float)mesh->GetCoordsVertices()[j].y(),  //
-                                           (float)mesh->GetCoordsVertices()[j].z(),  //
-                                           0.f);                                     // padding for alignment
-        }
-        CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_vertices), vertex_buffer.data(),
-                                    sizeof(float4) * vertex_buffer.size(), cudaMemcpyHostToDevice));
-
-        // update all the normals if normal exist
-        if (mesh_shape->GetMesh()->GetCoordsNormals().size() > 0) {
-            std::vector<float4> normal_buffer = std::vector<float4>(mesh->GetCoordsNormals().size());
-            for (int j = 0; j < mesh->GetCoordsNormals().size(); j++) {
-                normal_buffer[j] = make_float4((float)mesh->GetCoordsNormals()[j].x(),  //
-                                               (float)mesh->GetCoordsNormals()[j].y(),  //
-                                               (float)mesh->GetCoordsNormals()[j].z(),  //
-                                               0.f);                                    // padding for alignment
+            for (int idx : modified) {
+                float4 v = make_float4((float)verts[idx].x(), (float)verts[idx].y(), (float)verts[idx].z(), 0.f);
+                CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_vertices + idx * sizeof(float4)), &v,
+                                            sizeof(float4), cudaMemcpyHostToDevice));
+                if (has_normals) {
+                    float4 n =
+                        make_float4((float)normals[idx].x(), (float)normals[idx].y(), (float)normals[idx].z(), 0.f);
+                    CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_normals + idx * sizeof(float4)), &n,
+                                                sizeof(float4), cudaMemcpyHostToDevice));
+                }
             }
-            CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_normals), normal_buffer.data(),
-                                        sizeof(float4) * normal_buffer.size(), cudaMemcpyHostToDevice));
-        }
+        } else {
+            // Full update — all vertices (fallback for non-SCM deformable meshes)
+            std::vector<float4> vertex_buffer = std::vector<float4>(mesh->GetCoordsVertices().size());
+            for (int j = 0; j < mesh->GetCoordsVertices().size(); j++) {
+                vertex_buffer[j] = make_float4((float)mesh->GetCoordsVertices()[j].x(),  //
+                                               (float)mesh->GetCoordsVertices()[j].y(),  //
+                                               (float)mesh->GetCoordsVertices()[j].z(),  //
+                                               0.f);
+            }
+            CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_vertices), vertex_buffer.data(),
+                                        sizeof(float4) * vertex_buffer.size(), cudaMemcpyHostToDevice));
 
-        // TODO: for SCM terrain, make use of the list of modified vertices
+            // update all the normals if normals exist
+            if (mesh_shape->GetMesh()->GetCoordsNormals().size() > 0) {
+                std::vector<float4> normal_buffer = std::vector<float4>(mesh->GetCoordsNormals().size());
+                for (int j = 0; j < mesh->GetCoordsNormals().size(); j++) {
+                    normal_buffer[j] = make_float4((float)mesh->GetCoordsNormals()[j].x(),  //
+                                                   (float)mesh->GetCoordsNormals()[j].y(),  //
+                                                   (float)mesh->GetCoordsNormals()[j].z(),  //
+                                                   0.f);
+                }
+                CUDA_ERROR_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_normals), normal_buffer.data(),
+                                            sizeof(float4) * normal_buffer.size(), cudaMemcpyHostToDevice));
+            }
+        }
     }
 }
 
